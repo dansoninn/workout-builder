@@ -1,6 +1,6 @@
 "use client";
 
-import { CopyIcon, EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UndoIcon } from "lucide-react";
+import { CalendarPlusIcon, CopyIcon, EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UndoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -72,6 +72,7 @@ export function Builder({
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [publishBlocked, setPublishBlocked] = useState<{ id: string; label: string }[] | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [useTemplate, setUseTemplate] = useState<{ date: string; trackId: string | null } | null>(null);
 
   // The engine runs in the browser on every change (deferred so typing never waits).
   const deferred = useDeferredValue(draft);
@@ -200,6 +201,31 @@ export function Builder({
     });
   }, [draft, problems, slug, router]);
 
+  /** A scheduled copy of this template on a date: new ids, its own history from here. */
+  const scheduleFromTemplate = useCallback(
+    (date: string, trackId: string | null) => {
+      if (problems.length > 0) return void toast.error(`Fix this first: ${problems[0]!.message}`);
+      const copy: DraftWorkout = {
+        ...draft,
+        id: crypto.randomUUID(),
+        kind: "scheduled",
+        date,
+        trackId,
+        status: "draft",
+        title: draft.title.replace(/ \(template\)$/, ""),
+        blocks: draft.blocks.map((b) => ({ ...b, id: crypto.randomUUID(), items: b.items.map((i) => ({ ...i, id: crypto.randomUUID() })) })),
+      };
+      startSaving(async () => {
+        const result = await saveWorkout(slug, copy);
+        if (!result.ok) return void toast.error(result.error);
+        setUseTemplate(null);
+        toast.success(`Added on ${new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`);
+        router.push(`/${slug}/builder/${copy.id}`);
+      });
+    },
+    [draft, problems, slug, router],
+  );
+
   // ⌘S saves from anywhere on the page.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -231,9 +257,11 @@ export function Builder({
             draft.status === "published"
               ? { id: "unpublish", label: "Back to draft", run: unpublish }
               : { id: "publish", label: "Publish workout", run: publish },
-            { id: "template", label: "Save as template", run: saveAsTemplate },
+            draft.kind === "template"
+              ? { id: "use-template", label: "Use this template on a date", run: () => setUseTemplate({ date: new Date().toISOString().slice(0, 10), trackId: draft.trackId ?? tracks.find((t) => !t.archived)?.id ?? null }) }
+              : { id: "template", label: "Save as template", run: saveAsTemplate },
           ],
-    [readOnly, save, addBlockAfter, draft.status, publish, unpublish, saveAsTemplate],
+    [readOnly, save, addBlockAfter, draft.status, draft.kind, draft.trackId, tracks, publish, unpublish, saveAsTemplate],
   );
   usePageCommands(commands);
 
@@ -297,6 +325,12 @@ export function Builder({
             <Button variant="outline" size="sm" onClick={() => save()} disabled={saving} aria-keyshortcuts="Meta+S">
               Save <Kbd className="ml-1 hidden sm:inline-flex">⌘S</Kbd>
             </Button>
+            {draft.kind === "template" && savedOnce && (
+              <Button variant="outline" size="sm" disabled={saving}
+                onClick={() => setUseTemplate({ date: new Date().toISOString().slice(0, 10), trackId: draft.trackId ?? tracks.find((t) => !t.archived)?.id ?? null })}>
+                <CalendarPlusIcon /> Use on a date
+              </Button>
+            )}
             {draft.status === "published" ? (
               <Button variant="ghost" size="sm" onClick={unpublish} disabled={saving}>
                 <UndoIcon /> Unpublish
@@ -311,9 +345,11 @@ export function Builder({
                 <EllipsisIcon />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onClick={saveAsTemplate}>
-                  <CopyIcon /> Save as template
-                </DropdownMenuItem>
+                {draft.kind === "scheduled" && (
+                  <DropdownMenuItem onClick={saveAsTemplate}>
+                    <CopyIcon /> Save as template
+                  </DropdownMenuItem>
+                )}
                 {savedOnce && (
                   <>
                     <DropdownMenuSeparator />
@@ -440,6 +476,59 @@ export function Builder({
           <DialogFooter>
             <DialogClose render={<Button />}>OK</DialogClose>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={useTemplate !== null} onOpenChange={(open) => !open && setUseTemplate(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Use this template on a date</DialogTitle>
+            <DialogDescription>A copy goes on the calendar as a draft. Changing it later leaves the template as it is.</DialogDescription>
+          </DialogHeader>
+          <form
+            className="grid gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (useTemplate?.date) scheduleFromTemplate(useTemplate.date, useTemplate.trackId);
+            }}
+          >
+            <div className="grid gap-1.5">
+              <label htmlFor={`${dateId}-use`} className="text-sm font-medium">
+                Date
+              </label>
+              <input
+                id={`${dateId}-use`}
+                type="date"
+                required
+                value={useTemplate?.date ?? ""}
+                onChange={(e) => setUseTemplate((u) => (u ? { ...u, date: e.target.value } : u))}
+                className="h-8 rounded-md border border-input bg-surface px-2 text-sm tabular focus-visible:border-ring focus-visible:outline-none"
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <label htmlFor={`${trackId}-use`} className="text-sm font-medium">
+                Track
+              </label>
+              <Select items={trackItems} value={useTemplate?.trackId ?? null} onValueChange={(v) => setUseTemplate((u) => (u ? { ...u, trackId: v ?? null } : u))}>
+                <SelectTrigger id={`${trackId}-use`} className="w-full">
+                  <SelectValue placeholder="No track" />
+                </SelectTrigger>
+                <SelectContent>
+                  {trackItems.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
+              <Button type="submit" disabled={saving || !useTemplate?.date}>
+                {saving ? "Adding…" : "Add to calendar"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

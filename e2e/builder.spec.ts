@@ -181,3 +181,28 @@ test("a generic word lists what it could mean and never picks for the coach", as
   await expect(page.getByLabel("A1 exercise")).not.toHaveValue("squat");
   await expect(page.getByLabel("A1 amount")).toBeFocused();
 });
+
+test("a workout saved as a template is used on another date, and the template stays", async ({ page }) => {
+  const { slug } = await ownerWithGym(page);
+  await page.getByLabel("Workout title").fill("Engine builder");
+  await page.getByLabel("A1 exercise").fill("air squat");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("50");
+  await page.getByRole("button", { name: "More workout actions" }).click();
+  await page.getByRole("menuitem", { name: "Save as template" }).click();
+  await expect(page.getByText("Saved as a template")).toBeVisible();
+  await expect(page.getByLabel("Workout title").filter({ visible: true })).toHaveValue("Engine builder (template)");
+
+  await page.getByRole("button", { name: "Use on a date" }).click();
+  const dialog = page.getByRole("dialog", { name: "Use this template on a date" });
+  const monday = new Date();
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  const date = monday.toISOString().slice(0, 10);
+  await dialog.getByLabel("Date").fill(date);
+  await dialog.getByRole("button", { name: "Add to calendar" }).click();
+  await expect(page.getByLabel("Workout title").filter({ visible: true })).toHaveValue("Engine builder");
+
+  await page.goto(`/${slug}/calendar?week=${date}`);
+  await expect(page.getByRole("row").filter({ hasText: "Mon" }).getByRole("link", { name: /Engine builder/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Templates" }).getByRole("link", { name: /Engine builder \(template\)/ })).toBeVisible();
+});
