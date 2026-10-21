@@ -4,8 +4,14 @@
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeArgs": ["run", "dev", "--", "-p", "3001"],
+      "port": 3001
+    },
+    {
+      "name": "web-local",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:local", "--", "-p", "3001"],
+      "port": 3001
     }
   ]
 }
