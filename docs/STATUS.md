@@ -1,75 +1,71 @@
 # Status
 
 **Updated:** 2026-10-21 by Claude Code
-**Current step:** Step 3 — Calculation engine. **Engine and pace table ready for Daniel's review.** Step 3 is not closed: the pace table needs approval first.
+**Current step:** Step 3 — Calculation engine. **Closed: complete, tested and live on the remote project. Waiting for Daniel's approval to start Step 4.**
 
-## What was built
+## What was built (Step 3 review decisions applied)
 
-1. **Your decisions recorded** (both specs ✅, BACKLOG). Pace defaults calibrated to an intermediate adult class member and gym-overridable (§9.5); first-listed Rx (§9.6); volume load per implement × implement count (§9.8, new); coaches may save gym aliases for ambiguous terms (Step 4); `profiles.locale` kept.
-2. **CI** (`.github/workflows/ci.yml`): every push and pull request runs lint, typecheck, Vitest, and the full pgTAP suite on a fresh Postgres built from the migrations. No secrets involved. First run green.
-3. **Implement count**: migration `20261021001100` adds `exercises.implement_count` (default 1) and a per-line override `block_items.implement_count` (1–4). Generated migration `20261021001200` sets 16 core exercises to 2 (list below). **Local only, not on the remote project yet.**
-4. **Calculation engine** (`src/lib/engine/`): pure TypeScript, no database, same input → same output, `CALC_VERSION = 1`.
-   - **Lens 1:** hard sets by pattern and muscle (primary 1.0, secondary 0.5), volume load, intensity zones.
-   - **Lens 2:** exposure by pattern and plane, plus push:pull, knee:hip and upper:lower ratios.
-   - **Lens 3:** monostructural distance, calories, reps and work time per modality.
-   - **Lens 4:** duration, planned RPE and sRPE per block and session; weekly total, monotony, strain and week-on-week change.
-   - Every number is tagged exact or estimated. Gaps (unmatched line, missing pace) give a warning instead of a guessed number.
-5. **Pace table proposal**: `docs/pace-defaults.md`, generated from `src/lib/library/pace-defaults.ts`. It covers the 128 core exercises (timed holds need none) plus three rules. It also shows what your worked WODs come out as with these paces.
+1. **Pace table approved and seeded.** 122 core exercises have a `pace_default` (migration `20261021001300`, generated from `src/lib/library/pace-defaults.ts`); the 6 timed holds need none. A new database check (`20261021001250`) accepts only `sec_per_rep` / `sec_per_m` / `sec_per_cal` with positive values. Reference: `docs/pace-defaults.md`.
+2. **Pace model** (calc spec §5.1), in `src/lib/engine/config.ts`:
+   - Pace-effort scaling: Easy ×1.4, Moderate ×1.15, Hard ×1, Max ×0.9.
+   - Fatigue factor for continuous pieces: under 10 min ×1.0, 10–20 min ×1.1, over 20 min ×1.2.
+   - Pace band: fast ×0.85, slow ×1.2.
+3. **Estimate ranges:** every estimated duration, round count and rep count is now `{low, mid, high}`. Exact values have low = mid = high. Ranges add up from block to session to week.
+4. **§7 recomputed** with the approved paces and your efforts (WOD 1 A Load Moderate, WOD 2 Pace Hard). The old numbers are kept in brackets as "initial estimates" (not coach-validated).
+5. **Implement counts approved:** migrations `20261021001100` and `20261021001200` are now on the remote.
+6. **`block_results`** (observed group results per block) added to the data model spec, to be built in Step 4.
+7. **Both specs ✅:** calc spec §1.3, §5/§5.1, §7, §8 and §9.4–§9.12; data model §5, §6 and §7.
 
 ## Test results
-- **Vitest:** 81 of 81 pass:
-  - Engine: 28 rule tests, plus 17 acceptance tests on the three §7 WODs.
+- **Vitest:** 88 of 88 pass:
+  - Engine: 35 rule tests, plus 17 acceptance tests on the three §7 WODs, run with the approved paces.
   - Library: 19. Pace table: 6. Alias normaliser: 10. Smoke test: 1.
-- **Mutation check:** I broke four formulas on purpose and each broke at least one test:
-  - Secondary muscle at full weight.
-  - Rep range using the minimum instead of the midpoint.
-  - 8/8 counted as 16 reps of exposure.
-  - Rest between interval rounds dropped.
-- **pgTAP:** 321 of 321 pass locally (implement-count checks added).
-- **CI:** both jobs green on GitHub.
-- **Engine tests and the pace table:** the engine tests use **test-only paces taken from §7/§9.5**, as you asked, not the proposed table. Only the table's own completeness and anchor checks use it.
+- **Mutation check:** I broke three of the new rules on purpose; each broke tests:
+  - Long-piece fatigue switched off.
+  - Range direction flipped.
+  - Pace-effort scaling dropped.
+- **pgTAP:** 328 of 328 pass. New checks: 122 seeded paces, timed holds without a pace, stored pace format, and invalid paces rejected.
+- **Remote:** the four Step 3 migrations were pushed after all tests passed. Verified:
+  - 15 of 15 migrations match.
+  - All 13 reference and library tables are identical row for row, including implement counts and paces.
+  - The structure differs only by the known Supabase platform defaults.
+- **CI:** green on GitHub (see the latest run on `main`).
 
-## Changes to calc spec §7, and why
-The approved effort words give RPE 4, 6, 8 or 9.5 only. §7 used RPE 7 and 9, so those blocks now take the nearest word:
+## §7: what changed and why
 
-| | Was | Now | Why |
+| | Initial estimate | Now (engine) | Why |
 |---|---|---|---|
-| WOD 1 A (5 back squat @75–80%) | RPE 7 → 105 AU | Load Hard (8) → 120 AU | 7 is a tie between Moderate (6) and Hard (8); the strength default (Hard) decides |
-| WOD 1 session | 217 AU | 232 AU | A above |
-| WOD 2 chipper | RPE 9 → ~198 AU | Pace Max (9.5) → ~209 AU | 9 is nearest to Max |
-| Week | 643 AU | ~669 AU | Both changes above |
+| WOD 1 A | RPE 7 → 105 AU | Load Moderate (6) → 90 AU | Your decision |
+| WOD 1 C | ~10 rounds | ~7.7 (6.7–8.7) | Approved paces: 47.5 s of work + 15 s transitions per round |
+| WOD 1 session | 217 AU | 202 AU | A |
+| WOD 2 finish | ~22 min | ~20.4 min (17.4–24.4) | 18.6 min at table paces, ×1.1 fatigue |
+| WOD 2 load | ~198 AU | ~163 AU (139–195) | Pace Hard (RPE 8) |
+| WOD 3 row / bike / lunges | ~1,500 m / ~80 cal / ~72 | ~1,348 / ~72 / ~120 (with ranges) | Pace Hard in 90 s windows, no fatigue |
+| Knee:hip | 3.2 | ~4.2 | Fewer AMRAP swings, more lunges |
+| Week | 643 AU | ~593 AU (569–625) | All of the above |
 
-Nothing else in §7 changed: implement counts and first Rx give the same volume loads (wall ball 450 kg, DB snatch 675 kg). Pace-dependent numbers stay as written until the pace table is approved. WOD 2's movements weren't listed in §7, so I reconstructed them from its totals and added them to §7.
+Unchanged: WOD 3 at 228 AU, all exact reps and exposure, volume loads (450 kg and 675 kg), hard sets, push:pull 1.3.
 
 ## Decisions made or interpreted
-- **Default efforts beyond §9.4:** tabata, EMOM conditioning and conditioning sets → Pace Moderate; skill and mobility → Pace Easy. "Accessory = Load Moderate" can't be applied automatically because blocks have no accessory intent, so the coach sets it (as in WOD 1 B).
-- A block's planned load is marked **estimated** when its effort came from a default rather than from the coach.
-- **AMRAP:** exposure uses the estimated rounds including the partial one (9.8); hard sets count completed rounds only (9).
-- **Volume load** counts every rep lifted: 8/8 is 16 reps lifted, while exposure stays 8 (the approved unilateral rule).
-- **Carries and holds** count exposure in metres and seconds, separately from reps. The balance ratios use reps.
-- **Tabata** with several exercises alternates rounds (A, B, A, B, …).
-- **For time:** when the estimate passes the cap, the duration is the cap; reps still count in full.
-- **Intervals duration** includes the rest after the final station, which matches §7's 28.5 min.
-- **Monotony** uses the spread of all 7 daily loads, with rest days as 0.
-- **Implement count = 2 (proposed):** DB front squat, DB thruster, walking lunge, reverse lunge, Bulgarian split squat, step-up, DB RDL, DB deadlift, DB clean, devil press, DB shoulder press, DB push press, DB bench press, renegade row, farmer carry, front rack carry. Everything else is 1 (e.g. DB snatch, DB clean & jerk, goblet squat, box step-over).
+- **Fatigue band:**
+  - For Time uses the finish estimated *before* fatigue, so the choice can't flip back and forth at a boundary.
+  - AMRAP uses its length; a max-effort line uses its window. WOD 3's 90 s stations therefore get no fatigue.
+  - Fixed amounts in sets, EMOMs, intervals and tabata get none.
+- **Ranges:**
+  - Prescribed ranges keep their own min–max (8–10 reps stays 8–10), as well as the pace band, which covers pace-based estimates.
+  - Transitions are not widened by the band.
+  - A coach's target rounds stay a single number.
+- **Weekly:** monotony and strain use the middle estimate; the weekly total carries the range.
+- **Ratios of ranges:** lowest = lowest top ÷ highest bottom.
+- **Calculation version:** `CALC_VERSION` stays 1, since nothing has been stored with an earlier version.
 
 ## Open questions for Daniel
-1. **Pace table** (`docs/pace-defaults.md`): approve or adjust. With the proposed paces, your worked WODs come out as:
-
-   | | Your estimate | Proposed paces |
-   |---|---|---|
-   | WOD 1 C AMRAP | ~10 rounds | ~7.7 |
-   | WOD 2 chipper | ~22 min | ~16.8 min |
-   | WOD 3 row (90 s × 4) | ~1,500 m | ~1,350 m |
-   | WOD 3 lunges | ~72 reps | ~120 reps |
-
-2. **Pace effort scaling:** should the pace slow down or speed up with the effort word (Easy ×1.4, Moderate ×1.15, Hard ×1.0, Max ×0.9)? The spec doesn't say; without scaling, "Easy" and "Max" give the same estimate.
-3. **Long pieces:** your AMRAP estimate needs faster paces than mine, but your chipper estimate needs slower ones. Should pace slow down as a piece gets longer (fatigue), or should one of the estimates move?
-4. **WOD 3 effort:** your row and bike numbers match the max-effort anchors, but the block is "Hard". Should WOD 3 be Pace Max (RPE 9.5 → ~271 AU)?
-5. **§7 effort choices:** is WOD 1 A Load Hard (120 AU), or Moderate (5 reps at 75–80% is about 3–5 in reserve, → 90 AU)? Is WOD 2 Max (~209 AU) or Hard, the chipper default (~176 AU)?
-6. **Accessory:** should blocks get an "accessory" intent, so §9.4's "accessory = Load Moderate" default can apply? That's a schema and spec change.
-7. **Implement counts:** approve the 16 above. The debatable ones are DB walking lunge, step-up and Bulgarian split squat at 2; single-DB lines can be overridden per line.
-8. **Default efforts** for tabata, EMOM, skill and mobility (my extension of §9.4, listed above).
+None blocking. Still open in BACKLOG:
+- The remaining provisional defaults in calc spec §9.4: strength = Load Hard / Pace Easy; AMRAP and intervals = Pace Moderate; chipper = Pace Hard. Validate them with real data.
 
 ## Recommended next step
-Answer 1–8. Then Claude Code finalises the pace table and seeds `pace_default` (generated migration), re-runs the worked WODs against the approved table and updates §7 to match, pushes the Step 3 migrations to the remote project, and closes Step 3. Then Step 4 (workout builder).
+Approve Step 3, then start **Step 4 — workout builder** (structured entry first, free-text parser after). Its BACKLOG items:
+- Store engine results in `workout_metrics` on every save.
+- Line preview showing "2 × load", with a per-line implement override.
+- Coaches saving gym aliases when they answer an ambiguous term (audited).
+- `block_results` logging.

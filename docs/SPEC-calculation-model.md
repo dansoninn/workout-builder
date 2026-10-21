@@ -1,6 +1,6 @@
 # Workout Builder — Calculation Model & Domain Spec
 
-**Status:** Draft v0.2 — decisions 1–3 and 5–8 approved; 4 provisional (§9)
+**Status:** Draft v0.2 — decisions 1–3 and 5–12 approved; 4 partly provisional (§9)
 **Date:** 2026-10-20
 **Purpose:** The single source of truth for how workouts are described, what is measured, and how every number is calculated. The database schema, parser and UI are all derived from this document. Nothing here is implemented until it is approved.
 
@@ -10,7 +10,7 @@
 
 1. **Big picture, not lab precision.** The goal is a reliable overview and trends across days, weeks and blocks. Individual numbers are approximations with a known buffer.
 2. **Consistency beats precision.** The same method is applied every time, so week-to-week comparisons are valid even when a single number is an estimate. The taxonomy and formulas are versioned and locked (§8).
-3. **Estimates are labelled.** Every computed value carries a confidence flag: `exact` or `estimated`. The UI shows estimates with `~`. Coaches trust numbers when they can see where the uncertainty lies.
+3. **Estimates are labelled, and given as ranges.** Every computed value carries a confidence flag: `exact` or `estimated`. Every estimated duration, round count or rep count is a range `{low, mid, high}`, not one number (§5.1) ✅. The UI shows estimates with `~` and their range. Coaches trust numbers when they can see where the uncertainty lies.
 4. **Established methods only.** Each metric maps to a method used in the sports-science literature (§10). No invented single "load index".
 5. **Different stimuli are measured separately.** Heavy strength sets, conditioning reps and monostructural work are not added into one number. That was the core flaw of the earlier prototype (`reps × load factor` makes 100 air squats outweigh 25 heavy back squats).
 
@@ -133,15 +133,23 @@ Block planned RPE = the higher of pace and load effort for that block. The coach
 
 | Case | Rule | Flag |
 |---|---|---|
-| Rep range 8–10 | midpoint | estimated |
-| AMRAP | rounds = time ÷ estimated round time (sum of exercise paces + transitions); coach can enter target rounds instead | estimated |
-| For Time duration | sum of paces, capped at time cap | estimated |
-| Max effort in window | window × pace_default | estimated |
+| Rep range 8–10 | midpoint 9, range 8–10 | estimated |
+| AMRAP | rounds = time ÷ estimated round time (sum of exercise paces + transitions); coach can enter target rounds instead. Each completed round is one set | estimated |
+| For Time duration | sum of paces + transitions, capped at time cap | estimated |
+| Max effort in window | window ÷ pace (pace is seconds per rep, metre or calorie) | estimated |
 | Unilateral 8/8 | **8 reps exposure + 1 set** (each side gets the same stimulus as one bilateral set) | exact |
 | Rx variants | calculations use the first-listed Rx; all stored ✅ (§9.6) | exact |
 | Implements | volume load = kg per implement × implement count (exercise default, line override) ✅ (§9.8) | exact |
 
-Pace defaults describe an **intermediate adult class member** and are configurable per gym (`organizations.settings.paces`), so a gym calibrates to its own members ✅ (§9.5). The proposed table is in `docs/pace-defaults.md`, pending approval.
+### 5.1 Pace model ✅ (approved 2026-10-21)
+
+- **Pace table:** the working pace of an **intermediate adult class member** at Pace **Hard**, including the short breaks such a member takes (`docs/pace-defaults.md`, seeded into `exercises.pace_default`). Approved as the starting point; every gym can override any pace (`organizations.settings.paces`).
+- **Effective pace** = table pace × pace-effort factor × fatigue factor.
+- **Pace-effort factor** (time per rep): Easy ×1.4 · Moderate ×1.15 · Hard ×1.0 · Max ×0.9.
+- **Fatigue factor** for continuous pieces (AMRAP, For Time, max-effort windows), by the piece's estimated duration: under 10 min ×1.0 · 10–20 min ×1.1 · over 20 min ×1.2. The duration is the AMRAP's length, the max-effort window, or for For Time the finish estimated *before* fatigue (so the band choice is stable). Fixed amounts in sets, EMOMs, intervals and tabata (rest between efforts) get no fatigue factor.
+- **Transitions:** 5 s between exercises in a round or chipper. **Rest between sets** when the coach gives none: strength 120 s, other blocks 60 s.
+- **Estimate ranges** ✅: every estimated duration, round count and rep count is `{low, mid, high}`. A pace band gives the range: fast = effective pace × 0.85, slow = effective pace × 1.2. Low and high are the smallest and largest results (a fast pace gives more rounds but a shorter finish). Prescribed ranges (8–10 reps, 8–12 cal) carry their own min–max. Ranges add through sums (block → session → week). Exact values have low = mid = high.
+- These rules live in `src/lib/engine/config.ts`; changing any of them bumps the calculation version (§8).
 
 ---
 
@@ -177,37 +185,35 @@ Balance warnings are **coach-configurable guidelines**, not scientific threshold
 
 ## 7. Worked examples (Daniel's real WODs)
 
-Assumed planned RPE and paces are the defaults to be approved in §9.
-
-**Updated 2026-10-21 (Step 3):** planned RPE now comes from the approved effort words (§4.4), which only produce RPE 4, 6, 8 or 9.5. This section first used RPE 7 and 9, which no word produces, so each block takes the nearest word: WOD 1 A "7" → Load Hard (8; a tie, settled by the strength default), WOD 2 "9" → Pace Max (9.5). WOD 1 B, WOD 1 C and WOD 3 are unchanged. Pace-dependent values (~10 rounds, ~22 min, ~1,500 m, ~80 cal, ~72 reps) are unchanged until the pace table (`docs/pace-defaults.md`) is approved. These examples are the engine's acceptance tests (`src/lib/engine/worked-wods.test.ts`).
+**Recomputed 2026-10-21 (Step 3)** with the approved paces and rules (§5.1) and the efforts Daniel set: WOD 1 A Load Moderate, WOD 1 B Load Moderate, WOD 1 C Pace Hard, WOD 2 Pace Hard, WOD 3 Pace Hard. Estimates are shown as middle (low–high). The **initial estimates** in brackets are the first rough guesses written into this section; they were never coach-validated and are kept only for comparison. The engine numbers are what the acceptance tests check (`src/lib/engine/worked-wods.test.ts`).
 
 ### WOD 1 — Strength + accessory + AMRAP
-| Block | Intent | Effort | Duration | RPE | Result |
-|---|---|---|---|---|---|
-| A. E3M×5: 5 back squat @75–80% | strength | Load Hard (default) | 15 min | 8 | 5 hard sets squat, 25 reps → 120 AU |
-| B. E2M×4: 8–10 DB bench, 8/8 SA DB row | strength | Load Moderate | 8 min | 6 | 4 sets h_push (~36 reps), 4 sets h_pull (32 reps) → 48 AU |
-| C. AMRAP 8: 5 KB swing, 10 air squat, 15 DU | conditioning | Pace Hard | 8 min | 8 | ~10 rounds → ~50 hinge, ~100 squat, ~150 DU → 64 AU |
+| Block | Intent | Effort | Duration | RPE | Result | Load |
+|---|---|---|---|---|---|---|
+| A. E3M×5: 5 back squat @75–80% | strength | Load Moderate | 15 min | 6 | 5 hard sets squat, 25 reps | 90 AU |
+| B. E2M×4: 8–10 DB bench, 8/8 SA DB row | strength | Load Moderate | 8 min | 6 | 4 sets h_push (~36 reps, 32–40), 4 sets h_pull (32 reps) | 48 AU |
+| C. AMRAP 8: 5 KB swing, 10 air squat, 15 DU | conditioning | Pace Hard | 8 min | 8 | ~7.7 rounds (6.7–8.7) → ~38 hinge (33–43), ~77 squat (67–87), ~115 DU (100–130) [initial estimate: ~10 rounds, ~50 / ~100 / ~150] | 64 AU |
 
-Session planned sRPE: **232 AU** (was 217 with A at RPE 7)
+Session planned sRPE: **202 AU** [initial estimate: 217]
 
 ### WOD 2 — Chipper, 25 min cap
 800 m run, 50 wall balls (9/6 kg), 30 alt. DB snatches (22.5/15 kg), 20 toes-to-bar, 40 box jump-overs, 10 burpees over the rower, 800 m row (reconstructed from the totals below).
-All reps exact. Estimated finish ~22 min, Pace Max (RPE 9.5) → **~209 AU** (was ~198 at RPE 9).
+All reps exact. Estimated finish **~20.4 min (17.4–24.4)**: 18.6 min at the table paces, ×1.1 fatigue (10–20 min piece). Pace Hard (RPE 8) → **~163 AU (139–195)** [initial estimate: ~22 min, ~198 AU].
 Exposure: squat 30, v_push 20, jump 45, hinge 21, v_pull 15, core 14, h_push 5. Mono: run 800 m, row 800 m. Volume load (first Rx): wall ball 450 kg, DB snatch 675 kg.
 
 ### WOD 3 — Intervals 4 × 3 stations, 90/30, 90 s between rounds
 Max row, max cal bike, max lunges. Block duration 28.5 min (18 min work), Pace Hard (RPE 8) → **228 AU**.
-All values estimated: row ~1,500 m, bike ~80 cal, lunges ~72 reps.
+Estimated (90 s windows, no fatigue): row **~1,348 m (1,124–1,586)**, bike **~72 cal (60–85)**, lunges **~120 reps (100–141)** [initial estimate: ~1,500 m, ~80 cal, ~72 reps].
 
 ### If these three were one week
 | Metric | Value | What a coach sees |
 |---|---|---|
 | Hard sets | squat 5, h_push 4, h_pull 4, **hinge 0, vertical 0** | No heavy hinge or vertical work this week |
-| Exposure push:pull | 61 : 47 = **1.3** | Fine |
-| Exposure knee:hip | 227 : 71 = **3.2** | Knee-dominant heavy week |
-| Weekly planned sRPE | **~669 AU** (232 / ~209 / 228; was 643) | Even distribution, low monotony (~0.9) |
+| Exposure push:pull | 61 : 47 = **1.3** (1.2–1.4) | Fine |
+| Exposure knee:hip | ~252 : ~59 = **~4.2** [initial estimate: 227 : 71 = 3.2] | Knee-dominant week |
+| Weekly planned sRPE | **~593 AU (569–625)** (202 / ~163 / 228) [initial estimate: 643] | Even distribution, low monotony (0.85) |
 
-This is the case for separate lenses: on exposure alone, hinge looks covered (71 reps of swings and snatches). On the strength lens it is zero. A single combined index hides exactly that.
+This is the case for separate lenses: on exposure alone, hinge looks covered (~59 reps of swings and snatches). On the strength lens it is zero. A single combined index hides exactly that.
 
 ---
 
@@ -216,7 +222,7 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (71
 - Raw workout text is stored alongside parsed data and is the source of truth.
 - Every computed metric snapshot stores `calc_version` and `taxonomy_version`.
 - Changing a formula or taxonomy → new version, history recomputed from raw + parsed data. History is never silently mixed across versions.
-- Calculation engine is a pure, deterministic function with unit tests; the three WODs above are the first test fixtures.
+- Calculation engine is a pure, deterministic function with unit tests; the three WODs above are the first test fixtures. Built in Step 3 (`src/lib/engine`, `CALC_VERSION = 1`); a change to a formula or to the rules in §5.1 bumps the version.
 
 ---
 
@@ -225,11 +231,15 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (71
 1. ✅ **Separate lenses** instead of one load index — approved 2026-10-20. More metrics welcome; extensible by design.
 2. ✅ **Unilateral rule:** 8/8 = 8 per side → 8 reps exposure + 1 hard set — approved.
 3. ✅ **Hard sets decided by load effort, not block type**, via the two effort axes (§4.4) — approved (Daniel's revision).
-4. ⏳ **Default effort** per block when the coach sets none — provisional: strength = Load Hard / Pace Easy; accessory = Load Moderate; AMRAP & intervals = Pace Moderate; chipper = Pace Hard.
-5. ✅ **Pace defaults** (row 2:00/500 m at max effort in a 90 s window, bike ~20 cal/90 s, etc.) — calibrated to an **intermediate adult class member**; every gym can override them in organization settings. Approved 2026-10-21. The pace table itself is proposed in `docs/pace-defaults.md` and needs approval before it is used.
+4. **Default effort** per block when the coach sets none. ✅ Approved 2026-10-21: tabata and EMOM conditioning → Pace Moderate; skill and mobility → Pace Easy; **no "accessory" intent** (the coach sets Load Moderate on accessory work). ⏳ Still provisional: strength = Load Hard / Pace Easy; AMRAP & intervals = Pace Moderate; chipper (For Time) = Pace Hard.
+5. ✅ **Pace defaults** (row 2:00/500 m at max effort in a 90 s window, bike ~20 cal/90 s, etc.) — calibrated to an **intermediate adult class member**; every gym can override them in organization settings. Approved 2026-10-21. The pace table (`docs/pace-defaults.md`) is approved as the starting point and seeded.
 6. ✅ **Rx:** calculations use the first-listed Rx; all Rx values are stored — approved 2026-10-21.
 7. ✅ **Pattern weights table** for compound movements (§3) — approved 2026-10-21 in Step 2, with changes (hip_flexors added, sled push = lunge 0.6 / carry 0.4). See `docs/core-library.md`.
 8. ✅ **Volume load and implements:** volume load = load per implement × implement count. Each exercise has a default implement count (e.g. DB thruster 2, DB snatch 1); the coach can override it on the workout line — approved 2026-10-21.
+9. ✅ **Pace-effort scaling:** Easy ×1.4 · Moderate ×1.15 · Hard ×1 · Max ×0.9 (§5.1) — approved 2026-10-21.
+10. ✅ **Fatigue factor** for continuous pieces by estimated duration: <10 min ×1.0, 10–20 ×1.1, >20 ×1.2 (§5.1) — approved 2026-10-21.
+11. ✅ **Estimate ranges:** every estimated duration, round count and rep count is `{low, mid, high}` from a pace band (fast ×0.85, slow ×1.2) applied after effort and fatigue (§1.3, §5.1) — approved 2026-10-21.
+12. ✅ **Observed results:** after class a coach logs what the group did per block (AMRAP rounds low–high, For Time finish low–high, optional note) — `block_results` in the data model spec, built in Step 4. Per-gym pace calibration from logged results comes later (BACKLOG) — approved 2026-10-21.
 
 ---
 

@@ -1,7 +1,7 @@
 # Workout Builder — Data Model Spec
 
 **Status:** v0.2 — approved
-**Amended:** 2026-10-21 — Step 1 review decisions ✅: tracks managed by owner + head coach (§3); sled removed from modalities, equipment becomes a locked list (§4, §5); monostructural exercises have no patterns (§5). Taxonomy version 2. English-only labels (§4). Step 2 review ✅: equipment list approved, `hip_flexors` muscle, ambiguous exercise terms (§5).
+**Amended:** 2026-10-21 — Step 1 review decisions ✅: tracks managed by owner + head coach (§3); sled removed from modalities, equipment becomes a locked list (§4, §5); monostructural exercises have no patterns (§5). Taxonomy version 2. English-only labels (§4). Step 2 review ✅: equipment list approved, `hip_flexors` muscle, ambiguous exercise terms (§5). Step 3 review ✅: implement count (§5, §6), pace defaults seeded with a shape check (§5), `block_results` for observed group results (§6).
 **Date:** 2026-10-20
 **Depends on:** `SPEC-calculation-model.md` v0.2
 **Stack:** Supabase (Postgres 15+), EU region (Frankfurt). Schema lives in git as Supabase migrations.
@@ -24,7 +24,8 @@
 ```
 organizations ─┬─ memberships ── profiles (auth.users)
                ├─ tracks
-               ├─ workouts ── blocks ── block_items ──► exercises
+               ├─ workouts ── blocks ─┬─ block_items ──► exercises
+               │                      └─ block_results (what the group did)
                ├─ exercises (org-owned)  ◄── exercise_aliases
                └─ workout_metrics (cache)
 
@@ -112,7 +113,7 @@ Labels are English only (`label_en`) — decided 2026-10-21 ✅. A translation l
 | unilateral | bool | |
 | default_unit | enum | reps · distance_m · calories · time_s |
 | implement_count | smallint | ✅ default number of implements when loaded (DB thruster 2, DB snatch 1); volume load = kg per implement × implement count × reps. Default 1. Approved 2026-10-21. |
-| pace_default | jsonb | working pace of an intermediate adult class member ✅ (calc spec §9.5): any of `{ "sec_per_rep": 2, "sec_per_m": 0.25, "sec_per_cal": 4.5 }`. Gyms override in `organizations.settings.paces`. |
+| pace_default | jsonb | working pace of an intermediate adult class member at Pace Hard ✅ (calc spec §5.1, §9.5): one or more of `{ "sec_per_rep": 2, "sec_per_m": 0.25, "sec_per_cal": 4.5 }`, each positive (CHECK). Core values approved and seeded 2026-10-21 (`docs/pace-defaults.md`); timed holds have none. Gyms override in `organizations.settings.paces`. |
 | status | enum | `active` · `needs_review` · `archived` |
 | created_by, created_at, updated_at, deleted_at | | |
 
@@ -225,6 +226,22 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 
 A workout can only move to `published` when every item has an `exercise_id`.
 
+### `block_results` ✅ (approved 2026-10-21; built in Step 4)
+What the **group** actually did in a block, logged by a coach after class. Not per athlete. Several rows per block are allowed (the same workout runs in several classes).
+
+| column | type | notes |
+|---|---|---|
+| id | uuid PK | |
+| org_id | uuid FK | RLS; must match the block's gym (composite FK, like block_items) |
+| block_id | uuid FK | |
+| session_label | text NULL | which class, e.g. "06:00" |
+| rounds_low, rounds_high | numeric NULL | AMRAP blocks: rounds the group reached, low–high (decimals for partial rounds) |
+| finish_low_s, finish_high_s | int NULL | For Time blocks: finish times, low–high; anyone capped counts as the cap |
+| note | text NULL | free note |
+| logged_by, created_at, updated_at, deleted_at | | soft delete |
+
+Rules: rounds only on AMRAP blocks, finish times only on For Time blocks; low ≤ high. RLS: everyone in the gym reads; owner, head coach and coach write. Audited. Results never overwrite a pace by themselves (see BACKLOG: per-gym pace calibration).
+
 ---
 
 ## 7. Computed data, audit, safety
@@ -233,7 +250,7 @@ A workout can only move to `published` when every item has an `exercise_id`.
 `workout_id`, `calc_version`, `taxonomy_version`, `computed_at`, `metrics jsonb`, `confidence jsonb`. PK `(workout_id, calc_version)`. Recomputed on save; rebuilt in bulk on version bump. Weekly/period analytics are SQL functions over this table.
 
 ### `audit_log`
-`id`, `org_id`, `actor_id`, `table_name`, `row_id`, `action` (insert/update/delete), `diff jsonb`, `at`. Written by triggers on workouts, blocks, block_items, exercises, memberships, and (from Step 4) exercise_aliases. Append-only.
+`id`, `org_id`, `actor_id`, `table_name`, `row_id`, `action` (insert/update/delete), `diff jsonb`, `at`. Written by triggers on workouts, blocks, block_items, exercises, memberships, and (from Step 4) exercise_aliases and block_results. Append-only.
 
 ### Safety baseline
 - RLS on every table. Policy pattern: `org_id IN (SELECT org_id FROM memberships WHERE user_id = auth.uid())`, write rights by role. Core exercises (`org_id IS NULL`) readable by all signed-in users, writable only by service role.
