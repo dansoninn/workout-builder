@@ -335,10 +335,11 @@ declare
 begin
   if new.exercise_id is null then
     -- Lock the workout row so a concurrent publish cannot slip past.
+    -- Only the item's own gym is consulted, so nothing leaks across gyms.
     select w.status into v_status
     from public.blocks b
     join public.workouts w on w.id = b.workout_id
-    where b.id = new.block_id
+    where b.id = new.block_id and b.org_id = new.org_id
     for share of w;
 
     if v_status = 'published' then
