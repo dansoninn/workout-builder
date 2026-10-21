@@ -1,6 +1,6 @@
 # Workout Builder — Data Model Spec
 
-**Status:** Draft v0.1 — awaiting Daniel's approval (decisions in §8)
+**Status:** v0.2 — approved
 **Date:** 2026-10-20
 **Depends on:** `SPEC-calculation-model.md` v0.2
 **Stack:** Supabase (Postgres 15+), EU region (Frankfurt). Schema lives in git as Supabase migrations.
@@ -231,8 +231,8 @@ A workout can only move to `published` when every item has an `exercise_id`.
 
 ## 8. Decisions needed from Daniel
 
-1. **Customer = gym (organization)** with coaches as members; a solo coach is a gym with one member — approve?
-2. **Four roles** (owner, head coach, coach, viewer) — enough, or fewer to start?
-3. **Tracks** (parallel programs in the same gym) — include from day one?
-4. **Templates** stored as workouts with `kind = template` (same structure, no date) — approve?
-5. **Publish rule:** a workout cannot be published while any line is unmatched to an exercise — approve?
+1. ✅ **Customer = gym (organization)** with coaches as members; a solo coach is a gym with one member — approved 2026-10-21.
+2. ✅ **Four roles** (owner, head coach, coach, viewer) — approved 2026-10-21.
+3. ✅ **Tracks** (parallel programs in the same gym) — included from day one, approved 2026-10-21.
+4. ✅ **Templates** stored as workouts with `kind = template` (same structure, no date) — approved 2026-10-21.
+5. ✅ **Publish rule:** a workout cannot be published while any line is unmatched to an exercise — approved 2026-10-21.
