@@ -137,10 +137,13 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   if (block.format === "intervals" || block.format === "tabata") windowSec = block.params.work_s;
   if (block.format === "amrap" && n === 1) windowSec = block.params.time_s;
 
-  // Max-effort lines: fatigue by their window, except in an intervals block,
-  // where it follows the block's total work time (rounds × stations × work).
-  const maxEffortFatigueSec =
-    block.format === "intervals" ? block.params.rounds * block.params.stations * block.params.work_s : windowSec;
+  // Max-effort lines: fatigue by the block's total work time in interval-type
+  // blocks (intervals: rounds × stations × work; EMOM: rounds × interval;
+  // tabata: rounds × work), otherwise by their window.
+  let maxEffortFatigueSec = windowSec;
+  if (block.format === "intervals") maxEffortFatigueSec = block.params.rounds * block.params.stations * block.params.work_s;
+  if (block.format === "every") maxEffortFatigueSec = block.params.rounds * block.params.interval_s;
+  if (block.format === "tabata") maxEffortFatigueSec = block.params.rounds * block.params.work_s;
 
   /** Per-line amount and time, given the fatigue factor of the piece. */
   const buildRows = (pieceFatigue: number) =>

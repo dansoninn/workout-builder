@@ -221,6 +221,19 @@ describe("pace model (approved 2026-10-21, calc spec §5)", () => {
     expect(intervals(6).monostructural.bike?.calories?.mid).toBeCloseTo(6 * (60 / (4 * 1.1)), 6);
   });
 
+  it("max effort in an EMOM or tabata: fatigue by the block's total work time", () => {
+    const emom = (rounds: number) => computeBlock(block({ intent: "conditioning", format: "every", paceEffort: "hard",
+      params: { interval_s: 60, rounds }, items: [item("Air bike", { type: "max_effort", unit: "calories" })] }), ENGINE_CONFIG);
+    // EMOM 8 → 8 min → ×1.0; EMOM 15 → 15 min → ×1.1; EMOM 24 → 24 min → ×1.2.
+    expect(emom(8).monostructural.bike?.calories?.mid).toBeCloseTo(8 * (60 / 4), 6);
+    expect(emom(15).monostructural.bike?.calories?.mid).toBeCloseTo(15 * (60 / (4 * 1.1)), 6);
+    expect(emom(24).monostructural.bike?.calories?.mid).toBeCloseTo(24 * (60 / (4 * 1.2)), 6);
+    // Tabata 8 × 20 s = 160 s of work → ×1.0.
+    const tabata = computeBlock(block({ intent: "conditioning", format: "tabata", paceEffort: "hard",
+      params: { rounds: 8, work_s: 20, rest_s: 10 }, items: [item("Air bike", { type: "max_effort", unit: "calories" })] }), ENGINE_CONFIG);
+    expect(tabata.monostructural.bike?.calories?.mid).toBeCloseTo(8 * (20 / 4), 6);
+  });
+
   it("max effort elsewhere: fatigue by the window", () => {
     const maxCal = (seconds: number) => computeBlock(block({ intent: "conditioning", format: "amrap", params: { time_s: seconds },
       paceEffort: "hard", items: [item("Air bike", { type: "max_effort", unit: "calories" })] }), ENGINE_CONFIG);

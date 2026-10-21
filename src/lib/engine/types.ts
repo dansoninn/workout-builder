@@ -129,8 +129,8 @@ export interface EngineConfig {
   /**
    * Fatigue in continuous pieces (AMRAP, For Time, max-effort windows), by the
    * piece's estimated duration: under mediumFromMin ×1, up to longAboveMin
-   * ×medium, longer ×long. In an intervals block, max-effort windows use the
-   * block's total work time.
+   * ×medium, longer ×long. In intervals, EMOM and tabata blocks, max-effort
+   * windows use the block's total work time.
    */
   fatigue: { mediumFromMin: number; longAboveMin: number; medium: number; long: number };
   /** Pace band for estimate ranges: fast = pace × fast, slow = pace × slow. */
