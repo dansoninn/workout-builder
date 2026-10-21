@@ -113,7 +113,7 @@ select throws_ok($$ insert into public.tracks (org_id, name) values (tests.id('g
 select is_empty($$ update public.tracks set name = 'x' where id = tests.id('track_a') returning 1 $$,
   'Coach cannot edit a track');
 select throws_ok($$
-  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('core_wallball'), 'fixture_kb')
+  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('core_wallball'), 'kettlebell')
 $$, '42501', null, 'Coach cannot tag equipment on an exercise');
 select throws_ok($$
   insert into public.memberships (org_id, user_id, role) values (tests.id('gym_a'), tests.id('outsider'), 'coach')
@@ -149,7 +149,7 @@ select lives_ok($$
 $$, 'Head coach can create a workout');
 select lives_ok($$
   insert into public.exercise_equipment (exercise_id, equipment_key)
-  select id, 'fixture_kb' from public.exercises where slug = 'head-coach-lunge'
+  select id, 'kettlebell' from public.exercises where slug = 'head-coach-lunge'
 $$, 'Head coach can tag equipment on a gym exercise');
 select lives_ok($$ insert into public.tracks (org_id, name, color) values (tests.id('gym_a'), 'Endurance', '#0891B2') $$,
   'Head coach can create a track');

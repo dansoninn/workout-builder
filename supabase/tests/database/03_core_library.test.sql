@@ -46,7 +46,7 @@ $$, '42501', null, 'Head coach cannot add a muscle to a core exercise');
 select is_empty($$ delete from public.exercise_muscles where exercise_id = tests.id('core_squat') returning 1 $$,
   'Head coach cannot remove core muscles');
 select throws_ok($$
-  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('core_wallball'), 'fixture_kb')
+  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('core_wallball'), 'kettlebell')
 $$, '42501', null, 'Head coach cannot tag equipment on a core exercise');
 select is_empty($$ delete from public.exercise_equipment where exercise_id = tests.id('core_squat') returning 1 $$,
   'Head coach cannot remove core equipment');
@@ -87,8 +87,8 @@ select results_eq($$ select name from public.exercises where id = tests.id('core
   array['Fixture back squat'], 'Core exercise name unchanged');
 select results_eq($$ select pattern_key || ' ' || weight from public.exercise_patterns where exercise_id = tests.id('core_squat') $$,
   array['squat 1.00'], 'Core pattern weights unchanged');
-select results_eq($$ select count(*) from public.exercise_aliases where org_id is null $$,
-  array[1::bigint], 'No core aliases added');
+select is_empty($$ select 1 from public.exercise_aliases where alias_normalized = 'squatty' $$,
+  'No core alias added');
 select throws_ok($$
   insert into public.exercise_aliases (org_id, alias_normalized, exercise_id) values (null, 'gym only', tests.id('ex_a'))
 $$, '23514', null, 'A core alias cannot point at a gym exercise');

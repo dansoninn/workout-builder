@@ -96,7 +96,7 @@ select throws_ok($$
 $$, '42501', null, 'A owner cannot change pattern weights of a gym B exercise');
 
 select throws_ok($$
-  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('ex_b'), 'fixture_kb')
+  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('ex_b'), 'kettlebell')
 $$, '42501', null, 'A owner cannot change equipment of a gym B exercise');
 
 select throws_ok($$
