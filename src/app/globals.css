@@ -12,10 +12,15 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  /* Typography: Geist, dense 13 px UI base. */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
-  --font-heading: var(--font-sans);
+  /*
+   * Typography: Geist, dense 13 px UI base. Each var() carries its own
+   * fallback: a var() without one that resolves to nothing makes the whole
+   * font-family invalid, and browsers then drop to their default serif.
+   * e2e/fonts.spec.ts fails if Geist is not the font in use.
+   */
+  --font-sans: var(--font-geist-sans, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono, ui-monospace), ui-monospace, monospace;
+  --font-heading: var(--font-geist-sans, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
 
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
