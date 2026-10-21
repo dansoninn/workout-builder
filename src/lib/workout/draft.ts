@@ -63,13 +63,6 @@ export const FORMAT_LABELS: Record<BlockFormat, string> = {
   tabata: "Tabata",
 };
 
-export const INTENT_LABELS: Record<BlockIntent, string> = {
-  strength: "Strength",
-  conditioning: "Conditioning",
-  skill: "Skill",
-  mobility: "Mobility",
-};
-
 /** Sensible starting values when a coach picks a format. */
 export const DEFAULT_PARAMS: Record<BlockFormat, BlockParams> = {
   sets: { sets: 5 },

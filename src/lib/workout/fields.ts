@@ -186,3 +186,22 @@ export function rawLine(quantity: Quantity | null, exerciseName: string | null, 
     .join(" ")
     .replace(/ @/, " @");
 }
+
+/**
+ * A duration field: "3:00", "3 min", "45 s", or a bare number in the field's
+ * own unit (minutes for AMRAP, EMOM and caps; seconds for work and rest).
+ */
+export function parseDuration(input: string, bareUnit: "min" | "s"): number | null {
+  const text = input.trim().toLowerCase().replace(",", ".");
+  if (!text) return null;
+  if (/^\d+(?:\.\d+)?$/.test(text)) {
+    const value = Number(text);
+    return Math.round(bareUnit === "min" ? value * 60 : value);
+  }
+  return seconds(text);
+}
+
+/** Seconds as m:ss ("3:00", "0:45"). */
+export function durationText(s: number): string {
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}

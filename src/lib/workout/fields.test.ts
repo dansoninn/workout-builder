@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { loadMeaning, loadText, parseLoad, parseQuantity, quantityMeaning, quantityText, rawLine } from "./fields";
+import {
+  durationText,
+  loadMeaning,
+  loadText,
+  parseDuration,
+  parseLoad,
+  parseQuantity,
+  quantityMeaning,
+  quantityText,
+  rawLine,
+} from "./fields";
 import { loadSchema, quantitySchema } from "./rules";
 
 describe("parseQuantity", () => {
@@ -92,5 +102,25 @@ describe("rawLine", () => {
       "8/8 Single-arm DB row 22.5 kg",
     );
     expect(rawLine({ type: "calories", min: 15, max: 15 }, null, null, 1)).toBe("15 cal ?");
+  });
+});
+
+describe("parseDuration", () => {
+  it.each([
+    ["3:00", "min", 180],
+    ["3", "min", 180],
+    ["2.5", "min", 150],
+    ["90", "s", 90],
+    ["1:30", "s", 90],
+    ["45 s", "min", 45],
+    ["8 min", "s", 480],
+    ["", "min", null],
+    ["soon", "min", null],
+  ] as const)("%s (bare = %s) → %s", (input, unit, expected) => {
+    expect(parseDuration(input, unit)).toBe(expected);
+  });
+
+  it("writes m:ss", () => {
+    expect([45, 90, 180, 600].map(durationText)).toEqual(["0:45", "1:30", "3:00", "10:00"]);
   });
 });

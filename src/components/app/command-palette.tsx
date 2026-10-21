@@ -7,6 +7,7 @@ import {
   PlusIcon,
   SettingsIcon,
   UserPlusIcon,
+  ZapIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -43,7 +44,7 @@ function Keys({ keys }: { keys: string[] }) {
 
 /** ⌘K: every page and action, by keyboard. */
 export function CommandPalette({ gyms, current }: { gyms: GymMembership[]; current: GymMembership | null }) {
-  const { paletteOpen, setPaletteOpen, setShortcutsOpen } = useShell();
+  const { paletteOpen, setPaletteOpen, setShortcutsOpen, pageCommands } = useShell();
   const router = useRouter();
   const { setTheme } = useTheme();
   const [, startTransition] = useTransition();
@@ -65,6 +66,18 @@ export function CommandPalette({ gyms, current }: { gyms: GymMembership[]; curre
         <CommandInput placeholder="Go to or do…" aria-label="Search pages and actions" />
         <CommandList>
           <CommandEmpty>Nothing matches.</CommandEmpty>
+
+          {pageCommands.length > 0 && (
+            <CommandGroup heading="This page">
+              {pageCommands.map((c) => (
+                <CommandItem key={c.id} value={c.label} onSelect={() => run(c.run)}>
+                  <ZapIcon />
+                  {c.label}
+                  {c.keys && <Keys keys={c.keys} />}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
 
           {current && (
             <CommandGroup heading="Go to">
