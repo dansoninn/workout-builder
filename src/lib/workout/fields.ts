@@ -165,7 +165,8 @@ export function loadText(load: Load | null | undefined, implementCount?: number 
   switch (load.type) {
     case "bodyweight": return "bw";
     case "percent_1rm": return load.min === load.max ? `${load.min}%` : `${load.min}-${load.max}%`;
-    case "absolute_kg": return `${implementCount && implementCount > 1 ? `${implementCount}x` : ""}${load.rx.join("/")} kg`;
+    // An explicit count is kept, "1x" included (one DB on a two-DB exercise).
+    case "absolute_kg": return `${implementCount ? `${implementCount}x` : ""}${load.rx.join("/")} kg`;
   }
 }
 

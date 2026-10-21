@@ -166,3 +166,18 @@ test("a viewer sees a workout but cannot change it", async ({ page, browser }) =
   await expect(viewer.getByTestId("planned-load").locator("[data-visible-number]")).toHaveText(/AU$/);
   await context.close();
 });
+
+test("a generic word lists what it could mean and never picks for the coach", async ({ page }) => {
+  await ownerWithGym(page);
+  await page.getByLabel("A1 exercise").fill("squat");
+  await expect(page.getByText("“squat” could mean")).toBeVisible();
+  await expect(page.getByRole("option").first()).not.toHaveAttribute("data-highlighted", "");
+  await page.keyboard.press("Enter");
+  // Nothing is picked, and what the coach typed stays.
+  await expect(page.getByLabel("A1 exercise")).toHaveValue("squat");
+  await expect(page.getByRole("option").first()).toBeVisible();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("A1 exercise")).not.toHaveValue("squat");
+  await expect(page.getByLabel("A1 amount")).toBeFocused();
+});

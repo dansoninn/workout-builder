@@ -71,8 +71,9 @@ export async function loadWorkout(orgId: string, workoutId: string): Promise<Sto
             id: i.id,
             exerciseId: i.exercise_id,
             quantity: quantityText(i.quantity),
-            load: loadText(i.load),
-            implementCount: i.implement_count,
+            // A two-dumbbell line reads back as "2x22.5 kg", as the coach typed it.
+            load: loadText(i.load, i.load?.type === "absolute_kg" ? i.implement_count : null),
+            implementCount: i.load?.type === "absolute_kg" ? null : i.implement_count,
             paceEffort: i.pace_effort as EffortKey | null,
             loadEffort: i.load_effort as Exclude<EffortKey, "max"> | null,
             notes: i.notes,

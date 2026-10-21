@@ -188,10 +188,8 @@ export function BlockEditor({
                 slots={slots}
                 readOnly={readOnly}
                 highlighted={highlightedItem === item.id}
-                onChange={(patch, focusNext) => {
-                  dispatch({ type: "item", blockId: block.id, id: item.id, patch });
-                  if (focusNext) requestAnimationFrame(() => focusField(item.id, focusNext));
-                }}
+                onChange={(patch) => dispatch({ type: "item", blockId: block.id, id: item.id, patch })}
+                onFocusField={(field) => focusField(item.id, field)}
                 keys={lineKeys(item)}
               />
             ))}

@@ -91,6 +91,8 @@ describe("parseLoad", () => {
   it("shows two implements as 2 × load", () => {
     expect(loadMeaning({ type: "absolute_kg", rx: [22.5, 15] }, 2)).toBe("2 × 22.5/15 kg");
     expect(loadText({ type: "absolute_kg", rx: [22.5, 15] }, 2)).toBe("2x22.5/15 kg");
+    expect(loadText({ type: "absolute_kg", rx: [22.5] }, 1)).toBe("1x22.5 kg");
+    expect(parseLoad("1x22.5 kg")).toEqual({ ok: true, value: { type: "absolute_kg", rx: [22.5] }, implementCount: 1 });
     expect(loadMeaning({ type: "percent_1rm", min: 75, max: 80 }, 1)).toBe("@75–80%");
   });
 });

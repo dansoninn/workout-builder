@@ -1,7 +1,7 @@
 "use client";
 
 import { Combobox } from "@base-ui/react/combobox";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { PatternTag } from "@/components/design/tags";
 import type { PatternKey } from "@/lib/taxonomy";
@@ -20,6 +20,7 @@ export function ExerciseField({
   value,
   onChange,
   onKeyDown,
+  onPicked,
   disabled,
   invalid,
   label,
@@ -29,6 +30,8 @@ export function ExerciseField({
   value: string | null;
   onChange: (exerciseId: string | null) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>, open: boolean) => void;
+  /** After an exercise is picked and the list has closed (e.g. to move on to the amount). */
+  onPicked?: () => void;
   disabled?: boolean;
   invalid?: boolean;
   label: string;
@@ -37,6 +40,8 @@ export function ExerciseField({
   const selected = useMemo(() => library.exercises.find((e) => e.id === value) ?? null, [library, value]);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const picked = useRef(false);
+  const highlighted = useRef<Option | undefined>(undefined);
 
   const options = useMemo<Option[]>(() => {
     const { results, ambiguous } = searchExercises(library, query);
@@ -60,6 +65,7 @@ export function ExerciseField({
       onValueChange={(option) => {
         onChange(option?.exercise.id ?? null);
         setQuery("");
+        picked.current = option !== null;
       }}
       onInputValueChange={(text, { reason }) => {
         if (reason !== "item-press") setQuery(text);
@@ -67,9 +73,20 @@ export function ExerciseField({
       itemToStringLabel={(option) => option.exercise.name}
       isItemEqualToValue={(a, b) => a.exercise.id === b.exercise.id}
       filter={null}
-      autoHighlight
+      // A generic word ("squat") never picks for the coach: they choose one.
+      autoHighlight={!isAmbiguous}
       open={open}
       onOpenChange={setOpen}
+      onItemHighlighted={(option) => {
+        highlighted.current = option;
+      }}
+      onOpenChangeComplete={(isOpen) => {
+        // Move on only once the list has closed and returned focus to the input.
+        if (!isOpen && picked.current) {
+          picked.current = false;
+          onPicked?.();
+        }
+      }}
       disabled={disabled}
     >
       <Combobox.Input
@@ -78,7 +95,15 @@ export function ExerciseField({
         placeholder="Exercise"
         data-line={lineId}
         data-field="exercise"
-        onKeyDown={(event) => onKeyDown?.(event, open)}
+        onKeyDown={(event: React.KeyboardEvent<HTMLInputElement> & { preventBaseUIHandler?: () => void }) => {
+          // A generic word: Enter waits until the coach has picked one (↑ ↓), keeping what they typed.
+          if (event.key === "Enter" && open && isAmbiguous && !highlighted.current) {
+            event.preventDefault();
+            event.preventBaseUIHandler?.();
+            return;
+          }
+          onKeyDown?.(event, open);
+        }}
         className={cn(
           "h-8 w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 text-sm text-foreground transition-[border-color,box-shadow] duration-100",
           "placeholder:text-subtle-foreground hover:border-border focus-visible:border-ring focus-visible:bg-surface focus-visible:shadow-[0_0_0_3px_color-mix(in_oklch,var(--ring)_22%,transparent)] focus-visible:outline-none",
@@ -93,7 +118,7 @@ export function ExerciseField({
           <Combobox.Popup className="max-h-[min(22rem,var(--available-height))] w-[max(var(--anchor-width),20rem)] max-w-[var(--available-width)] overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-raised">
             {isAmbiguous && (
               <div className="px-2 pt-1.5 pb-1 text-2xs font-medium text-muted-foreground uppercase">
-                &ldquo;{query.trim()}&rdquo; could mean
+                &ldquo;{query.trim()}&rdquo; could mean <span className="font-normal normal-case">(pick one with ↑ ↓)</span>
               </div>
             )}
             <Combobox.Empty>

@@ -8,6 +8,7 @@ import { Estimate } from "@/components/design/estimate";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { CALC_VERSION } from "@/lib/engine";
+import { add } from "@/lib/engine/measure";
 import type { Measure } from "@/lib/engine/types";
 import { can } from "@/lib/permissions";
 import type { GymMembership } from "@/lib/session";
@@ -67,10 +68,14 @@ async function Week({ gym, searchParams }: { gym: GymMembership; searchParams: P
   const canProgram = can.program(gym.role);
   const href = (path: string) => `/${gym.slug}/${path}`;
 
-  const weekTotal = (trackId: string | null) => {
-    const loads = workouts.filter((w) => w.track_id === trackId).map((w) => metricsOf(w)?.sRpe?.mid ?? 0);
-    return loads.reduce((a, b) => a + b, 0);
-  };
+  /** Planned load of a track's week: the sum of its workouts' loads, a range if any is an estimate. */
+  const weekTotal = (trackId: string | null): Measure | null =>
+    workouts
+      .filter((w) => w.track_id === trackId)
+      .reduce<Measure | null>((total, w) => {
+        const load = metricsOf(w)?.sRpe;
+        return load ? (total ? add(total, load) : load) : total;
+      }, null);
 
   return (
     <PageBody className="max-w-none">
@@ -170,11 +175,14 @@ async function Week({ gym, searchParams }: { gym: GymMembership; searchParams: P
           <tfoot>
             <tr className="border-t border-border-strong">
               <th scope="row" className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                Week load
+                Planned load
               </th>
               {columns.map((t) => (
                 <td key={t.id ?? "none"} className="px-3 py-2 text-xs text-muted-foreground tabular">
-                  {Math.round(weekTotal(t.id))} AU planned
+                  {(() => {
+                    const total = weekTotal(t.id);
+                    return total ? <Estimate measure={total} unit="AU" /> : "—";
+                  })()}
                 </td>
               ))}
             </tr>

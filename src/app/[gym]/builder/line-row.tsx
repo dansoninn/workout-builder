@@ -42,6 +42,7 @@ export function LineRow({
   readOnly,
   highlighted,
   onChange,
+  onFocusField,
   keys,
 }: {
   block: DraftBlock;
@@ -54,7 +55,9 @@ export function LineRow({
   slots: number | null;
   readOnly: boolean;
   highlighted: boolean;
-  onChange: (patch: Partial<Omit<DraftItem, "id">>, focusNext?: "quantity") => void;
+  onChange: (patch: Partial<Omit<DraftItem, "id">>) => void;
+  /** Moves focus to one of this line's fields. */
+  onFocusField: (field: "quantity") => void;
   keys: LineKeys;
 }) {
   const errorId = useId();
@@ -87,7 +90,7 @@ export function LineRow({
     .filter(Boolean)
     .join(" · ");
   const errors = [quantityProblem?.message, loadProblem?.message, unmatched ? "Choose an exercise (needed to publish)" : null].filter(Boolean);
-  const overrides = [item.paceEffort && "pace", item.loadEffort && "load", item.notes && "note", item.implementCount && `×${item.implementCount}`].filter(Boolean);
+  const overrides = [item.paceEffort && "own pace", item.loadEffort && "own load", item.notes && "note"].filter(Boolean);
 
   return (
     <div
@@ -107,7 +110,8 @@ export function LineRow({
         label={`${label} exercise`}
         disabled={readOnly}
         invalid={unmatched}
-        onChange={(exerciseId) => onChange({ exerciseId }, item.quantity.trim() === "" ? "quantity" : undefined)}
+        onChange={(exerciseId) => onChange({ exerciseId })}
+        onPicked={() => item.quantity.trim() === "" && onFocusField("quantity")}
         onKeyDown={onKeyDown}
       />
       <input

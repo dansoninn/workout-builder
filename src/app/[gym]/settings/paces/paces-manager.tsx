@@ -145,7 +145,7 @@ function PaceInput({
       <input
         aria-label={`${row.name} pace ${field.label}`}
         value={text}
-        placeholder={paceValueText(row.defaultPace, field) || "—"}
+        placeholder="—"
         disabled={disabled}
         aria-invalid={invalid || undefined}
         onChange={(e) => setText(e.target.value)}
