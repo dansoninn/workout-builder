@@ -147,6 +147,58 @@ describe("durations and rounds per format (calc spec §4.3)", () => {
     expect(r.exposure.reps.h_push).toEqual(estimated(40));
   });
 
+  it("alternating EMOM: the lines take turns, one per interval (approved 2026-10-21)", () => {
+    const lines = [
+      item("Air squat", { type: "reps", value: 15 }),
+      item("Push-up", { type: "reps", value: 10 }),
+      item("Kettlebell swing", { type: "reps", value: 12 }),
+    ];
+    const every = (rounds: number, alternating?: boolean) =>
+      computeBlock(block({ intent: "conditioning", format: "every", params: { interval_s: 60, rounds, alternating }, items: lines }), config);
+
+    // EMOM 12, three lines: each is done 4 times instead of 12; the 12 minutes are the same.
+    const plain = every(12);
+    const alternating = every(12, true);
+    expect(alternating.durationMin).toEqual(exact(12));
+    expect(alternating.durationMin).toEqual(plain.durationMin);
+    expect(plain.exposure.reps.squat).toEqual(exact(12 * 15));
+    expect(alternating.exposure.reps.squat).toEqual(exact(4 * 15));
+    expect(alternating.exposure.reps.h_push).toEqual(exact(4 * 10));
+    expect(alternating.exposure.reps.hinge).toEqual(exact(4 * 12));
+
+    // EMOM 10: the first line gets the extra minute (4, 3, 3), like tabata.
+    const uneven = every(10, true);
+    expect(uneven.exposure.reps.squat).toEqual(exact(4 * 15));
+    expect(uneven.exposure.reps.h_push).toEqual(exact(3 * 10));
+    expect(uneven.exposure.reps.hinge).toEqual(exact(3 * 12));
+    expect(uneven.warnings).toEqual([]);
+
+    // Fewer minutes than lines: say so.
+    const short = every(2, true);
+    expect(short.exposure.reps.hinge?.mid ?? 0).toBe(0);
+    expect(short.warnings).toContain("2 intervals for 3 alternating lines: the last line is never reached");
+  });
+
+  it("rest between blocks counts in the session length, never in planned load (approved 2026-10-21)", () => {
+    const a = block({ label: "A", intent: "strength", format: "every", params: { interval_s: 60, rounds: 10 },
+      paceEffort: "hard", restAfterSec: 300, items: [] });
+    const b = block({ label: "B", intent: "conditioning", format: "amrap", params: { time_s: 600 },
+      paceEffort: "hard", restAfterSec: 600, items: [] });
+    const withRest = computeWorkout({ blocks: [a, b] }, config);
+    const without = computeWorkout({ blocks: [{ ...a, restAfterSec: null }, b] }, config);
+
+    expect(withRest.durationMin).toEqual(exact(20));
+    // 20 min of blocks + 5 min between them; rest after the last block is not counted.
+    expect(withRest.sessionMin).toEqual(exact(25));
+    expect(without.sessionMin).toEqual(exact(20));
+    expect(withRest.sRpe).toEqual(without.sRpe);
+
+    // Unknown block duration: no session length either.
+    const unknown = computeWorkout({ blocks: [block({ label: "A", intent: "conditioning", format: "for_time", params: { rounds: 1 },
+      items: [{ exercise: coreExercise("Air squat", null), quantity: { type: "reps", value: 50 } }] }), b] }, config);
+    expect(unknown.sessionMin).toBeNull();
+  });
+
   it("AMRAP: rounds = time ÷ (paces + transitions); completed rounds count as sets", () => {
     const r = computeBlock(block({ intent: "conditioning", format: "amrap", params: { time_s: 300 }, loadEffort: "moderate",
       items: [item("Kettlebell swing", { type: "reps", value: 10 }), item("Push-up", { type: "reps", value: 10 })] }), config);
@@ -219,6 +271,19 @@ describe("pace model (approved 2026-10-21, calc spec §5)", () => {
     // 4 × 2 × 60 s = 8 min of work → ×1.0; 6 × 2 × 60 s = 12 min → ×1.1, even though each window is 60 s.
     expect(intervals(4).monostructural.bike?.calories?.mid).toBeCloseTo(4 * (60 / 4), 6);
     expect(intervals(6).monostructural.bike?.calories?.mid).toBeCloseTo(6 * (60 / (4 * 1.1)), 6);
+  });
+
+  it("max effort in an EMOM or tabata: fatigue by the block's total work time", () => {
+    const emom = (rounds: number) => computeBlock(block({ intent: "conditioning", format: "every", paceEffort: "hard",
+      params: { interval_s: 60, rounds }, items: [item("Air bike", { type: "max_effort", unit: "calories" })] }), ENGINE_CONFIG);
+    // EMOM 8 → 8 min → ×1.0; EMOM 15 → 15 min → ×1.1; EMOM 24 → 24 min → ×1.2.
+    expect(emom(8).monostructural.bike?.calories?.mid).toBeCloseTo(8 * (60 / 4), 6);
+    expect(emom(15).monostructural.bike?.calories?.mid).toBeCloseTo(15 * (60 / (4 * 1.1)), 6);
+    expect(emom(24).monostructural.bike?.calories?.mid).toBeCloseTo(24 * (60 / (4 * 1.2)), 6);
+    // Tabata 8 × 20 s = 160 s of work → ×1.0.
+    const tabata = computeBlock(block({ intent: "conditioning", format: "tabata", paceEffort: "hard",
+      params: { rounds: 8, work_s: 20, rest_s: 10 }, items: [item("Air bike", { type: "max_effort", unit: "calories" })] }), ENGINE_CONFIG);
+    expect(tabata.monostructural.bike?.calories?.mid).toBeCloseTo(8 * (20 / 4), 6);
   });
 
   it("max effort elsewhere: fatigue by the window", () => {

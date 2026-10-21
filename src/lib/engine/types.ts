@@ -94,6 +94,11 @@ interface BlockBase {
   loadEffort?: EffortKey | null;
   /** Coach's AMRAP estimate; overrides the pace estimate. */
   targetRounds?: number | null;
+  /**
+   * Rest after this block, before the next (blocks.rest_after_s). Counts in the
+   * session length, never in planned load (approved 2026-10-21).
+   */
+  restAfterSec?: number | null;
   items: Item[];
 }
 
@@ -101,7 +106,11 @@ interface BlockBase {
 export type Block = BlockBase &
   (
     | { format: "sets"; params: { sets: number; rest_s?: number } }
-    | { format: "every"; params: { interval_s: number; rounds: number } }
+    | {
+        format: "every";
+        /** alternating: the lines take turns, one per interval ("minute 1: X, minute 2: Y …"). */
+        params: { interval_s: number; rounds: number; alternating?: boolean };
+      }
     | { format: "amrap"; params: { time_s: number } }
     | { format: "for_time"; params: { rounds: number; time_cap_s?: number } }
     | {
@@ -129,8 +138,8 @@ export interface EngineConfig {
   /**
    * Fatigue in continuous pieces (AMRAP, For Time, max-effort windows), by the
    * piece's estimated duration: under mediumFromMin ×1, up to longAboveMin
-   * ×medium, longer ×long. In an intervals block, max-effort windows use the
-   * block's total work time.
+   * ×medium, longer ×long. In intervals, EMOM and tabata blocks, max-effort
+   * windows use the block's total work time.
    */
   fatigue: { mediumFromMin: number; longAboveMin: number; medium: number; long: number };
   /** Pace band for estimate ranges: fast = pace × fast, slow = pace × slow. */
@@ -199,6 +208,12 @@ export interface Ratios {
 }
 
 export interface WorkoutResult extends Lenses {
+  /**
+   * Session length for the calendar: block durations plus the rest between
+   * blocks (rest after the last block is not counted). Planned load uses the
+   * block durations only (`durationMin`). Null if a block's duration is unknown.
+   */
+  sessionMin: Measure | null;
   blocks: BlockResult[];
   ratios: Ratios;
   warnings: string[];

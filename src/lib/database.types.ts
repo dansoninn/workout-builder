@@ -103,14 +103,14 @@ isOneToOne: false
                   ]
                 },"blocks": {
                   Row: {
-                    "format": Database["public"]['Enums']["block_format"],"id": string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"params": NonNullable<Json>,"partner": boolean,"position": number,"target_rounds": number | null,"title": string | null,"workout_id": string
+                    "format": Database["public"]['Enums']["block_format"],"id": string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"params": NonNullable<Json>,"partner": boolean,"position": number,"rest_after_s": number | null,"target_rounds": number | null,"title": string | null,"workout_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "format": Database["public"]['Enums']["block_format"],"id"?: string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"params": NonNullable<Json>,"partner"?: boolean,"position": number,"target_rounds"?: number | null,"title"?: string | null,"workout_id": string
+                    "format": Database["public"]['Enums']["block_format"],"id"?: string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"params": NonNullable<Json>,"partner"?: boolean,"position": number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id": string
                   }
                   Update: {
-                    "format"?: Database["public"]['Enums']["block_format"],"id"?: string,"intent"?: Database["public"]['Enums']["block_intent"],"label"?: string,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"params"?: NonNullable<Json>,"partner"?: boolean,"position"?: number,"target_rounds"?: number | null,"title"?: string | null,"workout_id"?: string
+                    "format"?: Database["public"]['Enums']["block_format"],"id"?: string,"intent"?: Database["public"]['Enums']["block_intent"],"label"?: string,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"params"?: NonNullable<Json>,"partner"?: boolean,"position"?: number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id"?: string
                   }
                   Relationships: [
                     {
@@ -313,6 +313,38 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "planes"
       referencedColumns: ["key"]
+    }
+                  ]
+                },"invitations": {
+                  Row: {
+                    "accepted_at": string | null,"accepted_by": string | null,"created_at": string,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"org_id": string,"revoked_at": string | null,"role": Database["public"]['Enums']["org_role"],"token_hash": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accepted_at"?: string | null,"accepted_by"?: string | null,"created_at"?: string,"email": string,"expires_at"?: string,"id"?: string,"invited_by"?: string | null,"org_id": string,"revoked_at"?: string | null,"role": Database["public"]['Enums']["org_role"],"token_hash": string
+                  }
+                  Update: {
+                    "accepted_at"?: string | null,"accepted_by"?: string | null,"created_at"?: string,"email"?: string,"expires_at"?: string,"id"?: string,"invited_by"?: string | null,"org_id"?: string,"revoked_at"?: string | null,"role"?: Database["public"]['Enums']["org_role"],"token_hash"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "invitations_accepted_by_fkey"
+      columns: ["accepted_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invitations_invited_by_fkey"
+      columns: ["invited_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invitations_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
     }
                   ]
                 },"memberships": {
@@ -535,8 +567,24 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "create_organization":
+            "accept_invitation":
+{ Args: { "p_token": string }; Returns: string
+                           },
+"create_invitation":
+{ Args: { "p_email": string,"p_org": string,"p_role": Database["public"]['Enums']["org_role"] }; Returns: string
+                           },
+"create_organization":
 { Args: { "p_country"?: string,"p_name": string,"p_slug": string }; Returns: string
+                           },
+"invitation_preview":
+{ Args: { "p_token": string }; Returns: {
+              "email": string,"email_matches": boolean,"gym_name": string,"gym_slug": string,"role": Database["public"]['Enums']["org_role"],"status": string
+            }[]
+                           },
+"list_gym_members":
+{ Args: { "p_org": string }; Returns: {
+              "display_name": string,"email": string,"joined_at": string,"role": Database["public"]['Enums']["org_role"],"user_id": string
+            }[]
                            }
           }
           Enums: {
