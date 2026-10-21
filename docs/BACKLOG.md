@@ -7,9 +7,7 @@ Claude Code reads this file at the start of every step and moves items to "Done"
 Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs to when known.
 
 ## Open questions (need Daniel)
-- [ ] Calc spec §9.4: the remaining default efforts (strength = Load Hard / Pace Easy; AMRAP & intervals = Pace Moderate; chipper = Pace Hard) are still provisional. Validate against real data. (tabata/EMOM/skill/mobility approved 2026-10-21.) (2026-10-20, chat)
 
-- [ ] Alternating EMOM with minutes that are not whole rotations (e.g. EMOM 10 with 3 minutes): with rounds = rotations, the builder can only make 9 or 12 minutes. Allow a shorter last rotation? (2026-10-21, Claude Code)
 
 ## Next steps (planned order)
 - [ ] Step 4 — App (plan approved 2026-10-21: docs/PLAN-step-4.md). Four approval-gated sub-steps, each a pull request with a Vercel preview:
@@ -58,9 +56,10 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] `npm audit` reports 5 high-severity issues in ESLint's dev-only dependency chain (braces/micromatch via eslint-config-next). Not shipped to users; the suggested fix downgrades Next's lint config. Re-check when eslint-config-next updates. (2026-10-21, Claude Code)
 
 ## Done
+- [x] 4b approved (2026-10-21, Daniel). Alternating EMOM: total intervals set the length and the last rotation may be partial; default efforts (calc spec §9.4) all approved. The 4a merge missed CI and the production deploy because of a GitHub incident (push events delayed or lost); a production check now catches that and re-runs CI and the deploy.
 - [x] Step 4b built (2026-10-21): structured builder with the live load panel (keyboard-first, WOD 1 by keyboard gives 202 AU and ~7.7 rounds), save_workout + server-side metrics, publish rule explained, browser backup, templates (save as / use on a date), calendar week list, Exercises page (gym exercises, gym names), gym paces (owner and head coach), alternating EMOM slots, rest after blocks. (2026-10-21, Claude Code)
 - [x] Step 4a approved and merged (PR #1, 2026-10-21). Font fix: production rendered serif because shadcn's `--font-sans` pointed at itself; fixed, with a browser test that fails if Geist is not in use. Vercel connected (production https://workout-builder-cyan.vercel.app). (2026-10-21, Daniel)
-- [x] Alternating EMOM with several movements per minute: ordered slots, each with one or more lines; rounds = rotations through the slots (calc spec §4.3; built in 4b). (2026-10-21, Daniel)
+- [x] Alternating EMOM with several movements per minute: ordered slots, each with one or more lines; rounds were rotations at first, total intervals since the 4b review (calc spec §4.3; built in 4b). (2026-10-21, Daniel)
 - [x] 4a answers (2026-10-21, Daniel): a new gym starts with a "Class" track (built); Members page read-only for coaches and viewers (approved); alternating EMOM = option of `every`, lines take turns one per interval (database + engine built, calc spec §4.3); rest between blocks stored per block, in session length, never in planned load (database + engine built, calc spec Lens 4).
 - [x] Step 4 plan approved with the design-direction correction and answers to all ten questions (see docs/PLAN-step-4.md, Decisions). Long EMOMs and tabata take max-effort fatigue from total work time (calc spec §5.1). (2026-10-21, Daniel)
 - [x] Step 3 approved, with the fix: max-effort windows in an intervals block take fatigue from the block's total work time (calc spec §5.1); §7 recomputed. (2026-10-21, Daniel)

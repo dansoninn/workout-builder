@@ -117,6 +117,20 @@ export function newWorkout(date: string | null, trackId: string | null): DraftWo
 
 export const isAlternating = (block: DraftBlock) => block.format === "every" && block.params.alternating === true;
 
+/**
+ * How an alternating EMOM's intervals fall on its minutes: 10 intervals over
+ * 3 minutes → "3 rotations + minute 1" (the last rotation may be partial, calc
+ * spec §4.3). Null when there is nothing to say.
+ */
+export function rotationText(intervals: number | undefined, slots: number): string | null {
+  if (!intervals || slots < 2) return null;
+  const full = Math.floor(intervals / slots);
+  const extra = intervals % slots;
+  const rotations = full > 0 ? `${full} ${full === 1 ? "rotation" : "rotations"}` : null;
+  const partial = extra === 0 ? null : extra === 1 ? "minute 1" : `minutes 1–${extra}`;
+  return [rotations, partial].filter(Boolean).join(" + ");
+}
+
 /** A line the coach has started (an exercise or an amount); untouched empty lines are ignored. */
 export const isStarted = (item: DraftItem) => item.exerciseId !== null || item.quantity.trim() !== "" || item.load.trim() !== "";
 

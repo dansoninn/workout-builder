@@ -210,7 +210,7 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 
 `params` shape per format (validated by a CHECK + shared Zod schema in the app):
 - `sets`: `{ sets, rest_s }`
-- `every`: `{ interval_s, rounds, alternating? }` — `alternating: true` ✅ = ordered slots, one per interval, each with one or more lines (`block_items.slot`); `rounds` counts rotations through the slots (calc spec §4.3), approved 2026-10-21
+- `every`: `{ interval_s, rounds, alternating? }` — `alternating: true` ✅ = ordered slots, one per interval, each with one or more lines (`block_items.slot`); taking turns for `rounds` intervals, the last rotation possibly partial (calc spec §4.3), approved 2026-10-21
 - `amrap`: `{ time_s }`
 - `for_time`: `{ rounds, time_cap_s }`
 - `intervals`: `{ rounds, work_s, rest_s, rest_between_rounds_s, stations }`

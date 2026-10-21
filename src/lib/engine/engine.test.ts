@@ -147,34 +147,42 @@ describe("durations and rounds per format (calc spec §4.3)", () => {
     expect(r.exposure.reps.h_push).toEqual(estimated(40));
   });
 
-  it("alternating EMOM: ordered slots with one or more lines; rounds = rotations (approved 2026-10-21)", () => {
-    // "EMOM, 6 rounds: min 1: 10 cal row + 5 burpees, min 2: 12 wall balls"
+  it("alternating EMOM: ordered slots take turns for the total intervals; the last rotation may be partial (approved 2026-10-21)", () => {
+    // "EMOM 12: min 1: 10 cal row + 5 burpees, min 2: 12 wall balls"
     const row = coreExercise("Row", { secPerCal: 4 });
     const lines: Item[] = [
       { exercise: row, quantity: { type: "calories", min: 10, max: 10 }, slot: 1 },
       item("Burpee", { type: "reps", value: 5 }, { slot: 1 }),
       item("Wall ball", { type: "reps", value: 12 }, { slot: 2 }),
     ];
-    const r = computeBlock(block({ intent: "conditioning", format: "every",
-      params: { interval_s: 60, rounds: 6, alternating: true }, items: lines }), config);
+    const emom = (rounds: number, alternating: boolean, items = lines) =>
+      computeBlock(block({ intent: "conditioning", format: "every", params: { interval_s: 60, rounds, alternating }, items }), config);
 
-    // 6 rotations × 2 slots × 60 s = 12 minutes; every line is done 6 times.
+    // 12 minutes; each minute's lines are done 6 times.
+    const r = emom(12, true);
     expect(r.durationMin).toEqual(exact(12));
-    expect(r.rounds).toEqual(exact(6));
     expect(r.monostructural.row?.calories).toEqual(exact(60));
     expect(r.exposure.reps.squat?.mid).toBeCloseTo(6 * 12 * 0.6, 6); // wall ball: squat 0.6
     expect(r.issues).toEqual([]);
 
-    // The same lines, not alternating: every line in every one of 6 intervals.
-    const plain = computeBlock(block({ intent: "conditioning", format: "every",
-      params: { interval_s: 60, rounds: 6 }, items: lines.map((l) => ({ ...l, slot: null })) }), config);
-    expect(plain.durationMin).toEqual(exact(6));
-    expect(plain.monostructural.row?.calories).toEqual(exact(60));
+    // Not alternating: every line in every one of 12 intervals.
+    expect(emom(12, false, lines.map((l) => ({ ...l, slot: null }))).monostructural.row?.calories).toEqual(exact(120));
 
-    // Lines without a slot are a slot each: 3 slots → 18 minutes.
-    const unslotted = computeBlock(block({ intent: "conditioning", format: "every",
-      params: { interval_s: 60, rounds: 6, alternating: true }, items: lines.map((l) => ({ ...l, slot: null })) }), config);
-    expect(unslotted.durationMin).toEqual(exact(18));
+    // EMOM 10 with 3 minutes: 3 rotations and minute 1 once more → 4, 3, 3.
+    const three: Item[] = [
+      item("Air squat", { type: "reps", value: 15 }, { slot: 1 }),
+      item("Push-up", { type: "reps", value: 10 }, { slot: 2 }),
+      item("Kettlebell swing", { type: "reps", value: 12 }, { slot: 3 }),
+    ];
+    const ten = emom(10, true, three);
+    expect(ten.durationMin).toEqual(exact(10));
+    expect(ten.exposure.reps.squat).toEqual(exact(4 * 15));
+    expect(ten.exposure.reps.h_push).toEqual(exact(3 * 10));
+    expect(ten.exposure.reps.hinge).toEqual(exact(3 * 12));
+
+    // Lines without a slot are a minute each, after the numbered ones.
+    const unslotted = emom(6, true, three.map((l) => ({ ...l, slot: null })));
+    expect(unslotted.exposure.reps.squat).toEqual(exact(2 * 15));
   });
 
   it("issues point at the lines they are about", () => {

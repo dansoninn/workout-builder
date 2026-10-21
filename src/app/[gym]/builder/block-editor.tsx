@@ -18,7 +18,7 @@ import type { BlockIntent } from "@/lib/engine/types";
 import { INTENT_LABELS, semanticColor } from "@/lib/labels";
 import type { EffortKey } from "@/lib/taxonomy";
 import { cn } from "@/lib/utils";
-import { blockLabel, type DraftBlock, type DraftItem, type DraftProblem, FORMAT_LABELS, isAlternating } from "@/lib/workout/draft";
+import { blockLabel, type DraftBlock, type DraftItem, type DraftProblem, FORMAT_LABELS, isAlternating, rotationText } from "@/lib/workout/draft";
 import type { Library } from "@/lib/workout/library";
 import { BLOCK_FORMATS, type BlockFormat } from "@/lib/workout/rules";
 
@@ -275,7 +275,7 @@ function FormatFields({
       return (
         <>
           <SmallField label="Every">{(id) => <DurationInput id={id} value={p.interval_s} bareUnit="min" disabled={readOnly} onChange={(v) => setParam("interval_s", v)} />}</SmallField>
-          <SmallField label={p.alternating ? "Rotations" : "Rounds"}>
+          <SmallField label={p.alternating ? "Intervals" : "Rounds"}>
             {(id) => <NumberInput id={id} value={p.rounds} disabled={readOnly} onChange={(v) => setParam("rounds", v)} />}
           </SmallField>
           <label className="flex h-8 items-center gap-1.5 text-xs font-medium text-muted-foreground" title="Minute 1: X, minute 2: Y … repeated">
@@ -288,6 +288,7 @@ function FormatFields({
             />
             Alternating minutes
           </label>
+          {p.alternating && <RotationHint intervals={p.rounds} slots={new Set(block.items.flatMap((i) => (i.slot ? [i.slot] : []))).size} />}
           {rest}
           {partner}
         </>
@@ -339,6 +340,11 @@ function FormatFields({
         </>
       );
   }
+}
+
+function RotationHint({ intervals, slots }: { intervals: number | undefined; slots: number }) {
+  const text = rotationText(intervals, slots);
+  return text && <p className="flex h-8 items-center text-xs text-muted-foreground tabular-nums">{text}</p>;
 }
 
 /**

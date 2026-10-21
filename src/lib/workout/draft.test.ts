@@ -14,6 +14,7 @@ import {
   type DraftWorkout,
   newBlock,
   newItem,
+  rotationText,
   toEngineWorkout,
   toSavePayload,
 } from "./draft";
@@ -130,14 +131,24 @@ describe("the builder's draft", () => {
 
   it("alternating EMOM: slots are renumbered 1…k and 2 × load is kept as the line's own count", () => {
     const draft: DraftWorkout = { ...WOD_1, blocks: [block({ intent: "conditioning", format: "every",
-      params: { interval_s: 60, rounds: 6, alternating: true }, paceEffort: "moderate",
+      params: { interval_s: 60, rounds: 12, alternating: true }, paceEffort: "moderate",
       items: [line("Row", "10 cal", { slot: 2 }), line("Burpee", "5", { slot: 2 }), line("Wall ball", "12", { slot: 5, load: "2x9/6" })] })] };
     const payload = toSavePayload(draft, library);
-    expect(payload.blocks[0]?.params).toEqual({ interval_s: 60, rounds: 6, alternating: true });
+    expect(payload.blocks[0]?.params).toEqual({ interval_s: 60, rounds: 12, alternating: true });
     expect(payload.blocks[0]?.items.map((i) => i.slot)).toEqual([1, 1, 2]);
     expect(payload.blocks[0]?.items[2]).toMatchObject({ implement_count: 2, raw_line: "12 Wall ball 2 × 9/6 kg" });
-    // 6 rotations × 2 slots × 1 min.
+    // 12 intervals of 1 min, the two minutes taking turns.
     expect(computeWorkout(toEngineWorkout(draft, library).workout, ENGINE_CONFIG).durationMin?.mid).toBe(12);
+  });
+
+  it("alternating EMOM: says how the intervals fall on the minutes", () => {
+    expect(rotationText(10, 3)).toBe("3 rotations + minute 1");
+    expect(rotationText(11, 3)).toBe("3 rotations + minutes 1–2");
+    expect(rotationText(12, 2)).toBe("6 rotations");
+    expect(rotationText(3, 2)).toBe("1 rotation + minute 1");
+    expect(rotationText(2, 3)).toBe("minutes 1–2");
+    expect(rotationText(12, 1)).toBeNull();
+    expect(rotationText(undefined, 3)).toBeNull();
   });
 
   it("drops params the chosen format does not have", () => {

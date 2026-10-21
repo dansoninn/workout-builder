@@ -130,10 +130,17 @@ function rotation(count: number, n: number): (index: number) => Measure {
   return (index) => exact(Math.floor(count / n) + (index < count % n ? 1 : 0));
 }
 
-/** Alternating EMOM: number of slots in the rotation. Lines without a slot count as a slot each. */
-function slotCount(items: Item[]): number {
-  const slots = new Set(items.flatMap((item) => (item.slot ? [item.slot] : [])));
-  return Math.max(1, slots.size + items.filter((item) => !item.slot).length);
+/**
+ * Alternating EMOM: each line's place in the rotation (0 = the first minute)
+ * and how many slots the rotation has. Lines share a place when they share a
+ * slot; a line without a slot is a place of its own.
+ */
+function slotPlaces(items: Item[]): { placeOf: Map<Item, number>; count: number } {
+  const order = [...new Set(items.flatMap((item) => (item.slot ? [item.slot] : [])))].sort((a, b) => a - b);
+  const placeOf = new Map<Item, number>();
+  let next = order.length;
+  for (const item of items) placeOf.set(item, item.slot ? order.indexOf(item.slot) : next++);
+  return { placeOf, count: Math.max(1, next) };
 }
 
 export function computeBlock(block: Block, config: EngineConfig): BlockResult {
@@ -150,7 +157,6 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   });
   const n = items.length;
   const alternating = block.format === "every" && block.params.alternating === true;
-  const slots = alternating ? slotCount(block.items) : 1;
 
   // Time window for max-effort lines.
   let windowSec: number | null = null;
@@ -163,7 +169,7 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   // tabata: rounds × work), otherwise by their window.
   let maxEffortFatigueSec = windowSec;
   if (block.format === "intervals") maxEffortFatigueSec = block.params.rounds * block.params.stations * block.params.work_s;
-  if (block.format === "every") maxEffortFatigueSec = block.params.rounds * slots * block.params.interval_s;
+  if (block.format === "every") maxEffortFatigueSec = block.params.rounds * block.params.interval_s;
   if (block.format === "tabata") maxEffortFatigueSec = block.params.rounds * block.params.work_s;
 
   /** Per-line amount and time, given the fatigue factor of the piece. */
@@ -219,11 +225,21 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
       break;
     }
     case "every": {
-      // Alternating: `rounds` rotations through the slots, one slot per
-      // interval; each line is done once per rotation (calc spec §4.3).
       const { interval_s, rounds: count } = block.params;
       rounds = exact(count);
-      durationSec = exact(interval_s * count * slots);
+      durationSec = exact(interval_s * count);
+      if (alternating) {
+        // The slots take turns, one per interval, for `rounds` intervals; a
+        // last rotation may be partial (EMOM 10 with 3 slots: slot 1 four
+        // times, slots 2 and 3 three times; calc spec §4.3).
+        const { placeOf, count: slots } = slotPlaces(block.items);
+        const times = (index: number) => {
+          const place = placeOf.get(items[index]!) ?? 0;
+          return exact(Math.floor(count / slots) + (place < count % slots ? 1 : 0));
+        };
+        performances = times;
+        completedSets = times;
+      }
       break;
     }
     case "amrap": {

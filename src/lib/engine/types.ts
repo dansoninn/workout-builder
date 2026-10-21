@@ -115,7 +115,8 @@ export type Block = BlockBase &
         format: "every";
         /**
          * alternating: ordered slots, one per interval, each with one or more
-         * lines (Item.slot); `rounds` then counts rotations through the slots.
+         * lines (Item.slot), taking turns for `rounds` intervals; the last
+         * rotation may be partial.
          */
         params: { interval_s: number; rounds: number; alternating?: boolean };
       }
