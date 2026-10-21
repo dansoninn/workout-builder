@@ -11,6 +11,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  // Keep the dev-only badge clear of the account menu (bottom left).
+  devIndicators: { position: "bottom-right" },
   // End-to-end tests build into their own folder so they never mix with `next dev`.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   turbopack: {

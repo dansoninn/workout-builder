@@ -98,7 +98,7 @@ export function TracksManager({ slug, canManage, tracks }: { slug: string; canMa
   );
 
   return (
-    <div className="grid gap-10">
+    <div className="grid grid-cols-1 gap-10">
       <SettingsSection
         title="Tracks"
         description="Programming streams that run side by side, like Class, Strength club or Endurance."

@@ -15,7 +15,7 @@ export default function GymSettingsPage({ params }: PageProps<"/[gym]/settings/g
       params={params}
       fallback={<SectionSkeleton rows={2} />}
       render={(gym) => (
-        <div className="grid gap-10">
+        <div className="grid grid-cols-1 gap-10">
           <SettingsSection title="Gym" description="How your gym appears to everyone in it.">
             {can.editGym(gym.role) ? (
               <GymSettingsForm slug={gym.slug} name={gym.name} country={gym.country} />

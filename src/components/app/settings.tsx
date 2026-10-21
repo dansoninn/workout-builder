@@ -17,7 +17,7 @@ export function SettingsSection({
 }) {
   const id = `section-${title.toLowerCase().replace(/\W+/g, "-")}`;
   return (
-    <section aria-labelledby={id} className={cn("grid gap-4", className)}>
+    <section aria-labelledby={id} className={cn("grid grid-cols-1 gap-4", className)}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="grid gap-0.5">
           <h2 id={id} className="text-lg font-semibold">

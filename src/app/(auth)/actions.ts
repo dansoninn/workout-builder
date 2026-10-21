@@ -30,6 +30,11 @@ function authErrorMessage(error: AuthError, fallback: string): string {
       return "Choose a stronger password.";
     case "same_password":
       return "Choose a password you haven't used here before.";
+    case "email_address_invalid":
+      return "Enter a valid email address.";
+    case "email_address_not_authorized":
+    case "over_email_send_rate_limit":
+      return "We couldn't send an email to this address right now. Try again later or use another address.";
     default:
       return fallback;
   }

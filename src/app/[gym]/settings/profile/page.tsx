@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Profile" };
 /** Your own account, the same in every gym. */
 export default function ProfilePage() {
   return (
-    <div className="grid gap-10">
+    <div className="grid grid-cols-1 gap-10">
       <Suspense fallback={<SectionSkeleton rows={2} />}>
         <Account />
       </Suspense>

@@ -113,7 +113,7 @@ export function MembersManager({
     });
 
   return (
-    <div className="grid gap-10">
+    <div className="grid grid-cols-1 gap-10">
       <SettingsSection
         title="Members"
         description={`${shownMembers.length} ${shownMembers.length === 1 ? "person" : "people"} in ${gymName}.`}
