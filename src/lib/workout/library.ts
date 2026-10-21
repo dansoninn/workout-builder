@@ -26,7 +26,7 @@ export interface LibraryExercise {
   defaultPace: Pace | null;
   gymPace: Pace | null;
   /** Normalised aliases: the gym's first, then core. */
-  aliases: { text: string; gym: boolean }[];
+  aliases: { id: string; text: string; gym: boolean }[];
 }
 
 export interface Library {

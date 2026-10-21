@@ -20,7 +20,7 @@ export async function loadLibrary(orgId: string): Promise<Library> {
     supabase.from("exercise_patterns").select("exercise_id, pattern_key, weight"),
     supabase.from("exercise_muscles").select("exercise_id, muscle_key, role"),
     supabase.from("exercise_equipment").select("exercise_id, equipment_key"),
-    supabase.from("exercise_aliases").select("exercise_id, alias_normalized, org_id").or(`org_id.is.null,org_id.eq.${orgId}`),
+    supabase.from("exercise_aliases").select("id, exercise_id, alias_normalized, org_id").or(`org_id.is.null,org_id.eq.${orgId}`),
     supabase.from("ambiguous_exercise_terms").select("term, exercise_id, position").order("position"),
     supabase.from("exercise_pace_overrides").select("exercise_id, pace").eq("org_id", orgId),
   ]);
@@ -60,7 +60,7 @@ export async function loadLibrary(orgId: string): Promise<Library> {
   }
   for (const q of equipment.data ?? []) byExercise.get(q.exercise_id)?.equipment.push(q.equipment_key);
   for (const a of aliases.data ?? []) {
-    byExercise.get(a.exercise_id)?.aliases.push({ text: a.alias_normalized, gym: a.org_id !== null });
+    byExercise.get(a.exercise_id)?.aliases.push({ id: a.id, text: a.alias_normalized, gym: a.org_id !== null });
   }
   for (const e of byExercise.values()) e.aliases.sort((a, b) => Number(b.gym) - Number(a.gym));
   for (const p of paces.data ?? []) {

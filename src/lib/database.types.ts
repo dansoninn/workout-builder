@@ -618,6 +618,9 @@ isOneToOne: false
               "display_name": string,"email": string,"joined_at": string,"role": Database["public"]['Enums']["org_role"],"user_id": string
             }[]
                            },
+"save_gym_exercise":
+{ Args: { "p_exercise": Json,"p_org": string }; Returns: string
+                           },
 "save_workout":
 { Args: { "p_org": string,"p_workout": Json }; Returns: string
                            }
