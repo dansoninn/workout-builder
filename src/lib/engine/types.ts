@@ -35,7 +35,7 @@ export interface Measure {
 // Inputs
 // ---------------------------------------------------------------------------
 
-/** Working pace (exercises.pace_default / organizations.settings.paces). */
+/** Working pace (exercises.pace_default / exercise_pace_overrides.pace). */
 export interface Pace {
   secPerRep?: number;
   secPerM?: number;

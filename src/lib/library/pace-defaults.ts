@@ -1,6 +1,6 @@
 // Pace defaults, approved by Daniel on 2026-10-21 as the starting point (calc
 // spec §9.5). Seeded into exercises.pace_default by a generated migration;
-// every gym can override any pace in organizations.settings.paces.
+// every gym can override any pace (exercise_pace_overrides).
 //
 // Who: an intermediate adult class member. What: the working pace at Pace
 // "Hard" (fast, near limit) including the short breaks such a member takes;

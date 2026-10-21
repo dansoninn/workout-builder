@@ -8,18 +8,16 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 
 ## Open questions (need Daniel)
 - [ ] Calc spec §9.4: the remaining default efforts (strength = Load Hard / Pace Easy; AMRAP & intervals = Pace Moderate; chipper = Pace Hard) are still provisional. Validate against real data. (tabata/EMOM/skill/mobility approved 2026-10-21.) (2026-10-20, chat)
-- [ ] Alternating EMOM with two movements in one minute (e.g. "min 1: 10 cal row + 5 burpees, min 2: 12 wall balls"): today each line is one minute of the rotation. Group lines into one minute (e.g. by station label), or never needed? Settle before the 4b builder. (2026-10-21, Claude Code)
 
 ## Next steps (planned order)
 - [ ] Step 4 — App (plan approved 2026-10-21: docs/PLAN-step-4.md). Four approval-gated sub-steps, each a pull request with a Vercel preview:
-  - [ ] **4a** Design system (docs/DESIGN.md, /design page), accounts, gym onboarding, invitations by link (`invitations` table), roles, app shell with ⌘K (light/dark), Vercel deployment. **Built; ready for Daniel's review (branch step-4a, pull request). Needs the Vercel/Supabase steps in docs/STATUS.md.** (2026-10-21, Daniel)
   - [ ] Change a gym's address (slug) safely: old links redirect to the new one. Read-only for now. (2026-10-21, Claude Code)
   - [ ] Let coaches and viewers leave a gym themselves (today only an owner can remove someone). (2026-10-21, Claude Code)
   - [ ] Reorder tracks (the `position` column exists; new tracks go last). (2026-10-21, Claude Code)
   - [ ] Google sign-in (after email + password). (2026-10-21, Daniel)
-  - [ ] **4b** Structured builder with the live load panel; `save_workout` transaction; save stores engine output in `workout_metrics` (with `calc_version`, `taxonomy_version`), estimates as ranges, warnings next to their lines; simple week list; Exercises page; gym pace overrides for owner and head coach (own table or narrow function; spec update). (2026-10-21, Daniel)
+  - [ ] **4b** **In progress (branch step-4b).** Structured builder with the live load panel; `save_workout` transaction; save stores engine output in `workout_metrics` (with `calc_version`, `taxonomy_version`), estimates as ranges, warnings next to their lines; simple week list; Exercises page; gym pace overrides for owner and head coach (own table or narrow function; spec update). (2026-10-21, Daniel)
     - [ ] Line shows the implement count as "2 × load" (e.g. "2 × 22.5 kg") with a per-line override. (2026-10-21, Daniel)
-    - [ ] Builder: "alternating" option on EMOM / every blocks, and "rest after this block" on every block (database and engine done in 4a). Calendar shows session length (blocks + rest). (2026-10-21, Daniel)
+    - [ ] Builder: "alternating" option on EMOM / every blocks with ordered slots (one or more lines per slot; rounds = rotations), and "rest after this block" on every block. Calendar shows session length (blocks + rest). (2026-10-21, Daniel)
   - [ ] **4c** Paste text → parser → check-and-confirm screen; raw text stored. Daniel provides 20–50 real workouts as text before 4c starts. (2026-10-21, Daniel)
     - [ ] Look up exercises with `normalizeAlias` and strip plurals ("kb swings" → "kb swing"); lookup order gym alias → core alias → ambiguous term → unmatched. (2026-10-21, Claude Code)
     - [ ] Ambiguous terms asked once and saved as a gym alias: any coach may save the answer; owner/head coach edit or delete; audit trigger on `exercise_aliases`; RLS change (coach insert limited to ambiguous terms). (2026-10-21, Daniel)
@@ -33,7 +31,6 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] Later — Per-gym pace calibration from logged `block_results`: suggest pace adjustments only once a gym has ≥ 5 comparable results; never silently override a pace the coach set. (2026-10-21, Daniel)
 
 ## Infrastructure / ops
-- [ ] Connect Vercel to the GitHub repo — in 4a; exact steps in docs/STATUS.md when 4a is ready. (2026-10-20)
 - [ ] Before the first real gym: buy/choose a domain, set up a custom email sender (e.g. Resend) in Supabase Auth, send invitation emails automatically (4a shares links), and make sure "Confirm email" is on (turned off for testing in 4a). Supabase's built-in email only reaches members of the Supabase team. Point the email templates at `/auth/confirm?token_hash=…` (already built) so links work in any browser. (2026-10-21, Daniel)
 - [ ] Before the first real gym: a Content-Security-Policy header (nonce-based). 4a sends the other security headers. (2026-10-21, Claude Code)
 - [ ] Next.js 16.4 dev-server bug: a route handler at `/` makes pages reload endlessly in development. `/` is routed in the proxy instead. Re-check on the next Next.js upgrade (and report upstream if still present). (2026-10-21, Claude Code)
@@ -56,6 +53,8 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] `npm audit` reports 5 high-severity issues in ESLint's dev-only dependency chain (braces/micromatch via eslint-config-next). Not shipped to users; the suggested fix downgrades Next's lint config. Re-check when eslint-config-next updates. (2026-10-21, Claude Code)
 
 ## Done
+- [x] Step 4a approved and merged (PR #1, 2026-10-21). Font fix: production rendered serif because shadcn's `--font-sans` pointed at itself; fixed, with a browser test that fails if Geist is not in use. Vercel connected (production https://workout-builder-cyan.vercel.app). (2026-10-21, Daniel)
+- [x] Alternating EMOM with several movements per minute: ordered slots, each with one or more lines; rounds = rotations through the slots (calc spec §4.3; built in 4b). (2026-10-21, Daniel)
 - [x] 4a answers (2026-10-21, Daniel): a new gym starts with a "Class" track (built); Members page read-only for coaches and viewers (approved); alternating EMOM = option of `every`, lines take turns one per interval (database + engine built, calc spec §4.3); rest between blocks stored per block, in session length, never in planned load (database + engine built, calc spec Lens 4).
 - [x] Step 4 plan approved with the design-direction correction and answers to all ten questions (see docs/PLAN-step-4.md, Decisions). Long EMOMs and tabata take max-effort fatigue from total work time (calc spec §5.1). (2026-10-21, Daniel)
 - [x] Step 3 approved, with the fix: max-effort windows in an intervals block take fatigue from the block's total work time (calc spec §5.1); §7 recomputed. (2026-10-21, Daniel)

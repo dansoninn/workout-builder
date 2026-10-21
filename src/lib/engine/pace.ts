@@ -4,7 +4,7 @@
 import type { Pace } from "@/lib/engine/types";
 
 /**
- * Reads exercises.pace_default / organizations.settings.paces entries
+ * Reads exercises.pace_default / exercise_pace_overrides.pace entries
  * ({ "sec_per_rep": 2, "sec_per_m": 0.25, "sec_per_cal": 4.5 }).
  * Unknown keys and non-positive values are ignored; null if nothing usable.
  */

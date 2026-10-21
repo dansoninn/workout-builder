@@ -106,7 +106,7 @@ The examples below are part of the approved table, unchanged:
 | `intervals` | rounds, stations, work_s, rest_s, rest_between_rounds_s | exact |
 | `tabata` | rounds (default 8), 20/10 | exact |
 
-**Alternating EMOM** ✅ (approved 2026-10-21): an option of `every`, not stations. The lines take turns, one per interval ("minute 1: X, minute 2: Y …"), so each line is done rounds ÷ lines times; when that does not divide evenly the first lines get one more (EMOM 10 with three lines: 4, 3, 3), exactly as several exercises alternate in a tabata. Duration is unchanged. Without the option, every line is done in every interval.
+**Alternating EMOM** ✅ (approved 2026-10-21, slots revised the same day): an option of `every`, not stations. The block has **ordered slots**, one per interval, and each slot holds one or more lines ("min 1: 10 cal row + 5 burpees, min 2: 12 wall balls"). `rounds` counts **rotations** through all the slots: intervals = rounds × slots, and duration (exact) = interval × rounds × slots. Every line is done once per rotation, so `rounds` times. A max-effort line's window is the interval; its fatigue uses the block's total work time (interval × rounds × slots). Without the option, every line is done in every interval and `rounds` counts intervals.
 
 Each block also has:
 - `intent`: `strength` | `conditioning` | `skill` | `mobility` (used for labelling, colour and defaults — **not** for deciding hard sets).
@@ -146,10 +146,10 @@ Block planned RPE = the higher of pace and load effort for that block. The coach
 
 ### 5.1 Pace model ✅ (approved 2026-10-21)
 
-- **Pace table:** the working pace of an **intermediate adult class member** at Pace **Hard**, including the short breaks such a member takes (`docs/pace-defaults.md`, seeded into `exercises.pace_default`). Approved as the starting point; every gym can override any pace (`organizations.settings.paces`).
+- **Pace table:** the working pace of an **intermediate adult class member** at Pace **Hard**, including the short breaks such a member takes (`docs/pace-defaults.md`, seeded into `exercises.pace_default`). Approved as the starting point; every gym can override any pace (`exercise_pace_overrides`; owners and head coaches).
 - **Effective pace** = table pace × pace-effort factor × fatigue factor.
 - **Pace-effort factor** (time per rep): Easy ×1.4 · Moderate ×1.15 · Hard ×1.0 · Max ×0.9.
-- **Fatigue factor** for continuous pieces (AMRAP, For Time, max-effort windows), by the piece's estimated duration: under 10 min ×1.0 · 10–20 min ×1.1 · over 20 min ×1.2. The duration is the AMRAP's length; for a max-effort line, its window — except inside an **intervals, EMOM or tabata block, where it is the block's total work time** (intervals: rounds × stations × work; EMOM: rounds × interval; tabata: rounds × work; approved 2026-10-21); for For Time, the finish estimated *before* fatigue (so the band choice is stable). Fixed amounts in sets, EMOMs, intervals and tabata (rest between efforts) get no fatigue factor.
+- **Fatigue factor** for continuous pieces (AMRAP, For Time, max-effort windows), by the piece's estimated duration: under 10 min ×1.0 · 10–20 min ×1.1 · over 20 min ×1.2. The duration is the AMRAP's length; for a max-effort line, its window — except inside an **intervals, EMOM or tabata block, where it is the block's total work time** (intervals: rounds × stations × work; EMOM: rounds × interval, alternating EMOM: rounds × slots × interval; tabata: rounds × work; approved 2026-10-21); for For Time, the finish estimated *before* fatigue (so the band choice is stable). Fixed amounts in sets, EMOMs, intervals and tabata (rest between efforts) get no fatigue factor.
 - **Transitions:** 5 s between exercises in a round or chipper. **Rest between sets** when the coach gives none: strength 120 s, other blocks 60 s.
 - **Estimate ranges** ✅: every estimated duration, round count and rep count is `{low, mid, high}`. A pace band gives the range: fast = effective pace × 0.85, slow = effective pace × 1.2. Low and high are the smallest and largest results (a fast pace gives more rounds but a shorter finish). Prescribed ranges (8–10 reps, 8–12 cal) carry their own min–max. Ranges add through sums (block → session → week). Exact values have low = mid = high.
 - These rules live in `src/lib/engine/config.ts`; changing any of them bumps the calculation version (§8).
@@ -244,7 +244,7 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (~5
 10. ✅ **Fatigue factor** for continuous pieces by estimated duration: <10 min ×1.0, 10–20 ×1.1, >20 ×1.2 (§5.1) — approved 2026-10-21.
 11. ✅ **Estimate ranges:** every estimated duration, round count and rep count is `{low, mid, high}` from a pace band (fast ×0.85, slow ×1.2) applied after effort and fatigue (§1.3, §5.1) — approved 2026-10-21.
 12. ✅ **Observed results:** after class a coach logs what the group did per block (AMRAP rounds low–high, For Time finish low–high, optional note) — `block_results` in the data model spec, built in Step 4. Per-gym pace calibration from logged results comes later (BACKLOG) — approved 2026-10-21.
-13. ✅ **Alternating EMOM** is an option of `every`: lines take turns, one per interval; each is done rounds ÷ lines times, extra intervals going to the first lines (§4.3) — approved 2026-10-21.
+13. ✅ **Alternating EMOM** is an option of `every` with ordered slots (one per interval, one or more lines each); `rounds` = rotations through the slots; duration = interval × rounds × slots; each line is done `rounds` times (§4.3) — approved 2026-10-21 (slots: Daniel's 4a review).
 14. ✅ **Rest between blocks** is stored per block, shown in session length, never counted in planned load (§4.3, Lens 4) — approved 2026-10-21.
 
 ---
