@@ -1,7 +1,7 @@
 # Workout Builder — Data Model Spec
 
 **Status:** v0.2 — approved
-**Amended:** 2026-10-21 — Step 1 review decisions ✅: tracks managed by owner + head coach (§3); sled removed from modalities, equipment becomes a locked list (§4, §5); monostructural exercises have no patterns (§5). Taxonomy version 2.
+**Amended:** 2026-10-21 — Step 1 review decisions ✅: tracks managed by owner + head coach (§3); sled removed from modalities, equipment becomes a locked list (§4, §5); monostructural exercises have no patterns (§5). Taxonomy version 2. English-only labels (§4). Step 2 review ✅: equipment list approved, `hip_flexors` muscle, ambiguous exercise terms (§5).
 **Date:** 2026-10-20
 **Depends on:** `SPEC-calculation-model.md` v0.2
 **Stack:** Supabase (Postgres 15+), EU region (Frankfurt). Schema lives in git as Supabase migrations.
@@ -31,7 +31,8 @@ organizations ─┬─ memberships ── profiles (auth.users)
 exercises (core, org_id NULL) ─┬─ exercise_patterns  ──► movement_patterns
                                 ├─ exercise_muscles   ──► muscles
                                 ├─ exercise_equipment ──► equipment
-                                └─ exercise_aliases
+                                ├─ exercise_aliases
+                                └─ ambiguous_exercise_terms (core candidates per generic word)
 
 reference (global, read-only): movement_patterns, planes, modalities,
 muscles, effort_levels, equipment, taxonomy_versions
@@ -85,7 +86,7 @@ Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endura
 | `modalities` | run, row, bike, ski, jump_rope, swim (cyclical cardio only; sled removed ✅ 2026-10-21) | default_unit |
 | `muscles` | quads, hamstrings, glutes, … | region, labels |
 | `effort_levels` | easy, moderate, hard, max | rpe_calc, rir_min, rir_max |
-| `equipment` ✅ | list proposed in Step 2 for approval | labels |
+| `equipment` ✅ | 26 items incl. trap_bar, cable_machine — approved 2026-10-21 (`docs/core-library.md`) | labels |
 | `taxonomy_versions` | 1, 2, … | published_at, notes |
 
 Labels are English only (`label_en`) — decided 2026-10-21 ✅. A translation layer can be added later if ever needed.
@@ -128,6 +129,11 @@ Labels are English only (`label_en`) — decided 2026-10-21 ✅. A translation l
 | unique | (org_id, alias_normalized) |
 
 Aliases never create exercises. "KB swing", "kb swings", "Russian KBS" → one exercise.
+
+### `ambiguous_exercise_terms` ✅ (approved 2026-10-21)
+Generic words that could mean several core exercises ("squat", "clean", "snatch", "bike", …) are **not** core aliases. Each such term lists its candidate core exercises: `term` (same normalised form as aliases), `exercise_id` (core only), `position` (most likely first). Read-only reference data, like the taxonomy. A term can never also be a core alias (enforced both ways).
+
+When a coach writes an ambiguous term, the parser (Step 4) asks once which exercise the gym means and saves the answer as a **gym-level alias** (`exercise_aliases` with the gym's `org_id`). Lookup order for a written term: gym alias → core alias → ambiguous term (ask the coach) → unmatched (shown for review before publish). The full list is in `docs/core-library.md`.
 
 ---
 

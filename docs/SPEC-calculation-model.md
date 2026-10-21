@@ -46,7 +46,7 @@ Monostructural (cyclical) work is **not** a pattern. It is tracked by **modality
 ✅ Approved 2026-10-21 (taxonomy v2): monostructural = cyclical cardio only, and monostructural exercises have no movement patterns. Sled push/pull/drag are movements with patterns (e.g. `h_push`, `carry`), not a modality.
 
 ### 2.4 Muscle groups
-Fixed list (to be finalised in Step 2): quads, hamstrings, glutes, adductors, calves, chest, lats, upper_back, shoulders, biceps, triceps, forearms_grip, abs, obliques, lower_back.
+✅ Finalised in Step 2 (approved 2026-10-21, taxonomy v2): quads, hamstrings, glutes, adductors, hip_flexors, calves, chest, lats, upper_back, shoulders, biceps, triceps, forearms_grip, abs, obliques, lower_back. `hip_flexors` was added in Step 2 (toes-to-bar, sit-ups, L-sits etc. no longer count only as abs).
 
 ---
 
@@ -55,13 +55,15 @@ Fixed list (to be finalised in Step 2): quads, hamstrings, glutes, adductors, ca
 Each canonical exercise has:
 - `name` (canonical) + **aliases in a separate table** (aliases never create new exercises)
 - `patterns`: list of `{pattern, weight}`, weights sum to 1.0 (compound movements split)
-- `plane`, `primary_muscles[]`, `secondary_muscles[]`, `equipment[]` (from a locked equipment list, approved in Step 2)
+- `plane`, `primary_muscles[]`, `secondary_muscles[]`, `equipment[]` (from the locked equipment list ✅ approved 2026-10-21)
 - `unilateral: boolean`
 - `default_unit`: reps | distance_m | calories | time_s
 - `pace_default` (for estimating max-effort and AMRAP work, §5)
 - `owner`: null = core library (curated by us), or `organization_id` = gym-owned
 
-Example pattern weights (to be approved as a table in Step 2):
+✅ **Pattern-weight table approved 2026-10-21 (Step 2).** The full core library (128 exercises: patterns, muscles, equipment, aliases) is in `docs/core-library.md`, generated from `src/lib/library/`. Rules: weights in steps of 0.1, at most three patterns; holds and braces are not presses (overhead squat, carries, arms on a sled push); a movement that fits no pattern (calf raise) has none; monostructural exercises have no patterns and no muscles.
+
+The examples below are part of the approved table, unchanged:
 | Exercise | Patterns |
 |---|---|
 | Back squat, air squat | squat 1.0 |
@@ -221,7 +223,7 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (71
 4. ⏳ **Default effort** per block when the coach sets none — provisional: strength = Load Hard / Pace Easy; accessory = Load Moderate; AMRAP & intervals = Pace Moderate; chipper = Pace Hard.
 5. **Pace defaults** (row 2:00/500 m at max effort in a 90 s window, bike ~20 cal/90 s, etc.) — which population do we calibrate to? Your average class member?
 6. **Rx:** calculate on first-listed Rx, or show both?
-7. **Pattern weights table** for compound movements (§3) — you approve the final table in Step 2.
+7. ✅ **Pattern weights table** for compound movements (§3) — approved 2026-10-21 in Step 2, with changes (hip_flexors added, sled push = lunge 0.6 / carry 0.4). See `docs/core-library.md`.
 
 ---
 

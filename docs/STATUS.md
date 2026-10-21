@@ -1,48 +1,80 @@
 # Status
 
 **Updated:** 2026-10-21 by Claude Code
-**Current step:** Step 2 — Exercise library. **Proposal ready, waiting for Daniel's approval.**
+**Current step:** Step 2 — Exercise library. **Complete and live on the remote project. Waiting for Daniel's approval to start Step 3.**
 
 ## What was built
 
-### Before Step 2 (Daniel's instructions of 2026-10-21)
-- **English only:** migration `20261021000900` drops the Icelandic label columns (`label_is`) from all six taxonomy tables. `docs/review-icelandic-labels.md` deleted; data model spec updated.
-- `CLAUDE.md` (working agreement) and `docs/BACKLOG.md` committed.
-- Migration 9 pushed to the remote project. Remote and local match: 9 of 9 migrations, no `label_is` left, and the only differences are the Supabase platform defaults already reported (an auto-RLS helper and stricter default privileges on the hosted project).
+Daniel's Step 2 review decisions (2026-10-21) applied:
 
-### Step 2 — core library proposal
-- **Source of truth:** `src/lib/library/core-exercises.ts` (120 exercises) and `src/lib/library/equipment.ts` (24 items). Taxonomy keys are typed (`src/lib/taxonomy.ts`), so a typo fails the type check.
-- **Generated from it** (`npm run library:generate`):
-  - `supabase/migrations/20261021001000_core_exercise_library.sql`: equipment list, 120 core exercises, pattern weights, muscles, equipment links, 352 core aliases. Applied to the **local** database only.
-  - `docs/review-core-library.md`: the table for Daniel to review.
-- **Alias normaliser** `src/lib/normalize-alias.ts`: the same rules as the database check; the Step 4 parser will use it.
-- Exercise ids are UUID v5 of the slug, so they are identical in every database.
+1. **Library approved with changes.** Reference: `docs/core-library.md` (generated from `src/lib/library/`).
+2. **`hip_flexors` muscle** added to taxonomy v2 (migration `20261021000950`), placed after adductors.
+3. **Sled push = lunge 0.6 / carry 0.4.** Arms are a brace, not a press. Sled drag (carry 1.0) and sled pull (h_pull 1.0) as proposed.
+4. **Monostructural:** no patterns, no muscles (confirmed, enforced by tests).
+5. **Ambiguous terms:** generic words are no longer core aliases. New core table `ambiguous_exercise_terms` (migration `20261021000950`) lists candidates per word. The database blocks a term from also being a core alias, in both directions. A gym saves its choice as a gym alias. Data model spec §5 has the note and lookup order.
+6. **Dips = v_push** (confirmed).
+7. **Equipment:** approved, plus `trap_bar` and `cable_machine`: 26 items.
+8. **8 new exercises:** trap bar deadlift, Nordic hamstring curl, Copenhagen plank (↔, adductors), calf raise, lat pulldown, face pull, box step-over, burpee pull-up. Alias "shuttle run" → Run.
+9. **Backlog:** plyometric foot contacts metric added (Step 3+).
+
+**Totals:** 128 core exercises, 26 equipment items, 366 core aliases, 13 ambiguous terms (35 candidate rows), 16 muscle groups. Taxonomy stays at version 2.
+
+### Generic words: my choice per word
+| Word | Decision | Candidates / target |
+|---|---|---|
+| squat | ambiguous | Back squat, Front squat, Air squat, Goblet squat |
+| lunge | ambiguous | Walking lunge, Reverse lunge |
+| clean | ambiguous | Squat clean, Power clean, Hang power clean, Hang squat clean, Dumbbell clean |
+| snatch | ambiguous | Squat snatch, Power snatch, Hang power snatch, Dumbbell snatch, Kettlebell snatch |
+| jerk | ambiguous | Push jerk, Split jerk |
+| press | ambiguous | Strict press, Push press, Dumbbell shoulder press |
+| dip | ambiguous | Ring dip, Bar dip |
+| muscle up | ambiguous | Ring muscle-up, Bar muscle-up |
+| bike | ambiguous | Air bike, Bike erg (gyms have one or the other) |
+| bench | **kept as alias** | Bench press (as you said) |
+| row | **kept as alias** | Row (rowing machine). Strength rows are always qualified ("DB row", "ring row"); the parser can also use the unit (m/cal vs reps). |
+| ski | **kept as alias** | Ski erg (the only ski exercise) |
+| *also made ambiguous* | hang clean, shoulder press, db squat, hollow | Each fits two exercises (e.g. hollow → hold or rock) |
+
+### hip_flexors placement
+- **Primary:** toes-to-bar, knees-to-elbows, hanging knee raise (listed first), GHD sit-up, V-up, L-sit, mountain climber.
+- **Secondary:** sit-up (AbMat), hollow hold, hollow rock.
+
+### New exercises: my calls
+- Trap bar deadlift: hinge 1.0, with quads as a primary muscle.
+- Nordic hamstring curl: hinge 1.0. **Provisional, see the questions below.**
+- Copenhagen plank: core 1.0, frontal plane, unilateral; primary adductors and obliques; uses a bench.
+- Calf raise: **no pattern. Provisional, see the questions below.**
+- Lat pulldown: v_pull 1.0 (cable machine). Face pull: h_pull 1.0 (cable machine or band).
+- Box step-over: lunge 1.0, unilateral (like the step-up).
+- Burpee pull-up: h_push 0.4 / jump 0.3 / v_pull 0.3 (burpee split plus the pull-up).
 
 ## Test results
-- **pgTAP:** 301 of 301 pass (8 files). New file `08_core_library_seed.test.sql` (16 checks): library complete and curated, weights sum to 1.00, no monostructural patterns or muscles, every equipment item used, spec examples unchanged, worked-WOD aliases resolve, readable by all signed-in users, writable by none.
-- **Vitest:** 24 of 24 pass. Library rules, the 7 spec pattern examples, every exercise in the 3 worked WODs matched by alias, RFC UUID v5 reference vector, and generated files up to date with the source.
+- **pgTAP:** 315 of 315 pass (8 files). `08_core_library_seed` now has 30 checks, covering:
+  - 128 exercises, 26 equipment items, 13 terms.
+  - Weights sum to 1.00, with calf raise the only pattern-free movement.
+  - hip_flexors on exactly the 10 listed movements.
+  - Sled push split.
+  - Ambiguous-term rules enforced both ways.
+  - A gym can save "squat" = back squat as its own alias, and other gyms don't see it.
+- **Vitest:** 28 of 28 pass: library rules, review decisions, worked-WOD terms resolve (via alias or ambiguous term), generated files current.
 - `supabase db lint`, typecheck, ESLint: clean.
+- **Remote:** migrations `20261021000950` and `20261021001000` pushed after all tests passed. Verified:
+  - 11 of 11 migrations match.
+  - All 13 reference and library tables are identical row for row (fingerprint comparison).
+  - The structure differs only by the known Supabase platform defaults.
 
-## Decisions made or interpreted (easy to change)
-1. **Pattern weights:** steps of 0.1, at most three patterns, dominant phase 0.6–0.7. The 7 spec examples are used unchanged; similar movements follow them (thruster = wall ball, cleans/snatches = DB snatch, squat versions add squat 0.3).
-2. **Holds are not presses:** overhead squat, overhead lunge, carries and the Turkish get-up have no v_push.
-3. **One exercise per implement for the main lifts** (barbell / dumbbell / kettlebell versions are separate). Bodyweight movements that can be loaded (lunges, step-ups) stay one exercise; the load goes on the workout line.
-4. **The canonical name is always an alias**, so the parser looks in one table.
-5. **Pace defaults left empty** until calc spec §9.5 is decided (backlog, Step 3).
-6. **Taxonomy v2 notes** updated to record the equipment list; no v3 (as decided).
+## Decisions made or interpreted
+- `hip_flexors` region = lower (next to glutes and adductors).
+- Calc spec §2.4, §3 and §9.7 marked ✅. Data model spec: ambiguous terms (§5), equipment row (§4), amendment line.
+- Library document renamed `docs/review-core-library.md` → `docs/core-library.md`; it is now the approved reference, not a proposal.
 
 ## Open questions for Daniel
-1. **Approve the library table**: `docs/review-core-library.md` (exercises, pattern weights, muscles, equipment, aliases). Mark any changes.
-2. **Muscle list** (calc spec §2.4 says "finalise in Step 2"): keep the 15 groups as they are, or add `hip_flexors`? Sit-ups, toes-to-bar, GHD sit-ups, L-sits and knee raises are hip-flexor heavy and currently all count only as abs. *Recommendation: add `hip_flexors`.*
-3. **Sled push:** proposed carry 0.6 / h_push 0.4 (legs drive it), based on your "h_push / carry" example. Sled drag = carry 1.0, sled pull (hand over hand) = h_pull 1.0. Confirm?
-4. **Monostructural exercises have no muscles** (like patterns), so a 2 km row never shows up in muscle hard-set counts. Confirm?
-5. **Generic words** in aliases: "squat" → Air squat, "lunge" → Walking lunge, "clean" → Squat clean, "snatch" → Squat snatch, "jerk" → Push jerk, "press" → Strict press, "bench" → Bench press, "dip" → Bar dip, "muscle up" → Ring muscle-up, "bike" → Air bike. Confirm?
-6. **Dips** counted as vertical push. Confirm?
-7. **Equipment list** (24 items, no "bodyweight" item: an exercise with no equipment is bodyweight). Approve?
+1. **Calf raise has no movement pattern.** Ankle work fits none of the 11 patterns, so it counts in muscle analytics (calves) but not in pattern exposure. OK, or map it to a pattern?
+2. **Nordic hamstring curl = hinge 1.0.** It's knee flexion, but hinge is the closest posterior-chain pattern and it balances knee-dominant work in the knee:hip ratio. OK?
+3. **Saving gym aliases in Step 4:** today only owners and head coaches can write gym aliases (the exercise bank). Should a coach who answers "which squat?" be allowed to save the gym's answer too? (In BACKLOG, Step 4.)
 
-Still open from before (in BACKLOG): `profiles.locale` under English only.
+Still open in BACKLOG: `profiles.locale` under English only; calc spec §9.4–9.6 provisional (Step 3).
 
 ## Recommended next step
-Daniel reviews `docs/review-core-library.md` and answers the questions above. Claude Code then updates the source, regenerates, re-runs all tests, pushes migration `20261021001000` to the remote project, updates calc spec §2.4 / §3 / §9.7 with ✅, and closes Step 2. Then Step 3 (calculation engine).
-
-**Note:** the seed migration is committed to git but **not** on the remote database. Do not run `supabase db push` until Step 2 is approved.
+Approve Step 2, answer the three questions above (1 and 2 can also wait until Step 3), then start **Step 3 — calculation engine**: a pure TypeScript engine tested against the three worked WODs in calc spec §7. Before Step 3 starts, decisions §9.5 (pace defaults: which population) and §9.6 (Rx handling) are needed, since the worked examples depend on them.
