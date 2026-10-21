@@ -41,5 +41,13 @@ Earlier versions exist (Python/Streamlit prototype, a Lovable React app). This i
 Social features, notifications, athlete/client-facing app, AI recommendations, billing. The data model leaves room for them; do not build them.
 
 ## Conventions
-- English for code, comments, commits, docs. UI copy supports Icelandic + English (i18n from the start).
+- **English only** — code, comments, commits, docs, UI and taxonomy labels. No Icelandic anywhere for now (decided 2026-10-21). A translation layer can be added later if ever needed.
 - Daniel reads summaries in plain language — explain decisions briefly, no jargon walls.
+
+## Working agreement (how the two Claudes and Daniel work together)
+- **Claude chat (planning)** decides *what* and *why* with Daniel: domain rules, specs, priorities. Output lands in `docs/` as files.
+- **Claude Code (this agent)** decides *how*: implementation, tests, git.
+- **Files are the contract, not conversations.** Any decision made in either place is written to a spec or `docs/BACKLOG.md` before work continues.
+- At the **start** of every step: read `docs/BACKLOG.md` and both specs.
+- Anything discovered but out of scope for the current step → add to `docs/BACKLOG.md`, do not build it.
+- At the **end** of every step: overwrite `docs/STATUS.md` with: what was built, test results, decisions made or interpreted, open questions for Daniel, and the recommended next step. Then stop and wait for approval.
