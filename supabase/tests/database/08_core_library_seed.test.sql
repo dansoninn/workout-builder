@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(30);
+select plan(32);
 
 -- Only the seeded library, not the fixture's core rows.
 create view tests.seeded as
@@ -102,6 +102,11 @@ $$, array[
 ], 'What coaches write resolves through core aliases');
 select results_eq($$ select id::text from tests.seeded where slug = 'back-squat' $$,
   array['9aa1a1e3-1f42-5db0-a46c-a1c0e8455331'], 'Core exercise ids are deterministic (UUID v5 of the slug)');
+select results_eq($$
+  select slug || ' ' || implement_count from tests.seeded where slug in ('dumbbell-thruster', 'dumbbell-snatch') order by slug
+$$, array['dumbbell-snatch 1', 'dumbbell-thruster 2'], 'Implement counts follow calc spec §9.8: DB thruster 2, DB snatch 1');
+select results_eq($$ select count(*) from tests.seeded where implement_count = 2 $$, array[16::bigint],
+  '16 core exercises use two implements; all others one');
 
 -- ---------------------------------------------------------------------------
 -- Ambiguous terms: the coach is asked, never auto-matched

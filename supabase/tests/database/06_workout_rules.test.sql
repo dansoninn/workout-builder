@@ -10,7 +10,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(63);
+select plan(67);
 
 -- Scratch workout and block in gym A for the shape tests.
 insert into tests.ids (name) values ('workout_c'), ('block_c');
@@ -144,6 +144,25 @@ select throws_ok($$ select tests.add_item('{"type": "reps", "value": 5}', '{"typ
 select throws_ok($$ select tests.add_item('{"type": "reps", "value": 5}', '{"type": "percent_1rm", "min": 90, "max": 105}') $$, '23514', null, 'load: percent at most 100');
 select throws_ok($$ select tests.add_item('{"type": "reps", "value": 5}', '{"type": "absolute_kg", "rx": []}') $$, '23514', null, 'load: at least one Rx weight');
 select throws_ok($$ select tests.add_item('{"type": "reps", "value": 5}', '{"type": "absolute_kg", "rx": [20, -5]}') $$, '23514', null, 'load: weights positive');
+
+-- ---------------------------------------------------------------------------
+-- Implement count (calc spec §9.8): exercise default 1–4, line override 1–4
+-- ---------------------------------------------------------------------------
+select lives_ok($$
+  insert into public.block_items (block_id, org_id, position, exercise_id, raw_line, quantity, load, implement_count)
+  values (tests.id('block_c'), tests.id('gym_a'), 0, tests.id('core_squat'), 'single DB thruster',
+          '{"type": "reps", "value": 10}', '{"type": "absolute_kg", "rx": [22.5]}', 1)
+$$, 'A line can override the implement count');
+select throws_ok($$
+  insert into public.block_items (block_id, org_id, position, exercise_id, raw_line, quantity, implement_count)
+  values (tests.id('block_c'), tests.id('gym_a'), 0, tests.id('core_squat'), 'x', '{"type": "reps", "value": 1}', 0)
+$$, '23514', null, 'implement count: at least 1');
+select throws_ok($$
+  insert into public.block_items (block_id, org_id, position, exercise_id, raw_line, quantity, implement_count)
+  values (tests.id('block_c'), tests.id('gym_a'), 0, tests.id('core_squat'), 'x', '{"type": "reps", "value": 1}', 5)
+$$, '23514', null, 'implement count: at most 4');
+select results_eq($$ select implement_count from public.exercises where id = tests.id('ex_a') $$,
+  array[1::smallint], 'A new exercise defaults to one implement');
 
 -- ---------------------------------------------------------------------------
 -- Alias normalisation: lower-case, trimmed, no punctuation, single spaces

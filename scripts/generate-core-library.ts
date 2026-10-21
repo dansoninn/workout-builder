@@ -1,15 +1,25 @@
-// Regenerates the core-library seed migration and docs/core-library.md from
-// src/lib/library/. Run with: npm run library:generate
+// Regenerates the core-library migrations, docs/core-library.md and
+// docs/pace-defaults.md from src/lib/library/. Run with: npm run library:generate
 
 import { writeFileSync } from "node:fs";
 
 import {
+  IMPLEMENT_COUNT_MIGRATION_PATH,
   LIBRARY_DOC_PATH,
   MIGRATION_PATH,
+  buildImplementCountMigrationSql,
   buildLibraryMarkdown,
   buildMigrationSql,
 } from "@/lib/library/generate";
+import { PACE_DOC_PATH, buildPaceMarkdown } from "@/lib/library/pace-doc";
 
-writeFileSync(MIGRATION_PATH, buildMigrationSql());
-writeFileSync(LIBRARY_DOC_PATH, buildLibraryMarkdown());
-console.log(`Wrote ${MIGRATION_PATH} and ${LIBRARY_DOC_PATH}`);
+const outputs: [string, string][] = [
+  [MIGRATION_PATH, buildMigrationSql()],
+  [IMPLEMENT_COUNT_MIGRATION_PATH, buildImplementCountMigrationSql()],
+  [LIBRARY_DOC_PATH, buildLibraryMarkdown()],
+  [PACE_DOC_PATH, buildPaceMarkdown()],
+];
+for (const [path, content] of outputs) {
+  writeFileSync(path, content);
+  console.log(`Wrote ${path}`);
+}

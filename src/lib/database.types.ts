@@ -59,14 +59,14 @@ isOneToOne: false
                   ]
                 },"block_items": {
                   Row: {
-                    "block_id": string,"exercise_id": string | null,"id": string,"load": Json | null,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"station_label": string | null
+                    "block_id": string,"exercise_id": string | null,"id": string,"implement_count": number | null,"load": Json | null,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"station_label": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "block_id": string,"exercise_id"?: string | null,"id"?: string,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"station_label"?: string | null
+                    "block_id": string,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"station_label"?: string | null
                   }
                   Update: {
-                    "block_id"?: string,"exercise_id"?: string | null,"id"?: string,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"position"?: number,"quantity"?: NonNullable<Json>,"raw_line"?: string,"station_label"?: string | null
+                    "block_id"?: string,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"position"?: number,"quantity"?: NonNullable<Json>,"raw_line"?: string,"station_label"?: string | null
                   }
                   Relationships: [
                     {
@@ -279,14 +279,14 @@ isOneToOne: false
                   ]
                 },"exercises": {
                   Row: {
-                    "created_at": string,"created_by": string | null,"default_unit": Database["public"]['Enums']["measure_unit"],"deleted_at": string | null,"id": string,"kind": Database["public"]['Enums']["exercise_kind"],"modality": string | null,"name": string,"org_id": string | null,"pace_default": Json | null,"plane": string | null,"slug": string,"status": Database["public"]['Enums']["exercise_status"],"unilateral": boolean,"updated_at": string
+                    "created_at": string,"created_by": string | null,"default_unit": Database["public"]['Enums']["measure_unit"],"deleted_at": string | null,"id": string,"implement_count": number,"kind": Database["public"]['Enums']["exercise_kind"],"modality": string | null,"name": string,"org_id": string | null,"pace_default": Json | null,"plane": string | null,"slug": string,"status": Database["public"]['Enums']["exercise_status"],"unilateral": boolean,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by"?: string | null,"default_unit": Database["public"]['Enums']["measure_unit"],"deleted_at"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["exercise_kind"],"modality"?: string | null,"name": string,"org_id"?: string | null,"pace_default"?: Json | null,"plane"?: string | null,"slug": string,"status"?: Database["public"]['Enums']["exercise_status"],"unilateral"?: boolean,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string | null,"default_unit": Database["public"]['Enums']["measure_unit"],"deleted_at"?: string | null,"id"?: string,"implement_count"?: number,"kind": Database["public"]['Enums']["exercise_kind"],"modality"?: string | null,"name": string,"org_id"?: string | null,"pace_default"?: Json | null,"plane"?: string | null,"slug": string,"status"?: Database["public"]['Enums']["exercise_status"],"unilateral"?: boolean,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string | null,"default_unit"?: Database["public"]['Enums']["measure_unit"],"deleted_at"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["exercise_kind"],"modality"?: string | null,"name"?: string,"org_id"?: string | null,"pace_default"?: Json | null,"plane"?: string | null,"slug"?: string,"status"?: Database["public"]['Enums']["exercise_status"],"unilateral"?: boolean,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string | null,"default_unit"?: Database["public"]['Enums']["measure_unit"],"deleted_at"?: string | null,"id"?: string,"implement_count"?: number,"kind"?: Database["public"]['Enums']["exercise_kind"],"modality"?: string | null,"name"?: string,"org_id"?: string | null,"pace_default"?: Json | null,"plane"?: string | null,"slug"?: string,"status"?: Database["public"]['Enums']["exercise_status"],"unilateral"?: boolean,"updated_at"?: string
                   }
                   Relationships: [
                     {
