@@ -30,7 +30,11 @@ export async function signIn(page: Page, email: string) {
 
 /** Creates a gym from the onboarding page and returns its address (slug). */
 export async function createGym(page: Page, name = uniqueGymName()): Promise<string> {
-  await page.getByLabel("Gym name").fill(name);
+  // Until the form is interactive, typed text can be lost; the address following the name shows it is.
+  await expect(async () => {
+    await page.getByLabel("Gym name").fill(name);
+    await expect(page.getByLabel("Address")).not.toHaveValue("", { timeout: 1000 });
+  }).toPass();
   const slug = await page.getByLabel("Address").inputValue();
   await page.getByRole("button", { name: "Create gym" }).click();
   await expect(page).toHaveURL(new RegExp(`/${slug}/builder$`));

@@ -149,13 +149,15 @@ async function Week({ gym, searchParams }: { gym: GymMembership; searchParams: P
                         {canProgram && t.id !== null && !t.archived && (
                           <Link
                             href={`${href("builder")}?date=${day}&track=${t.id}`}
-                            aria-label={`New workout on ${dayLabel(day)}, ${t.name}`}
                             className={cn(
                               "flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors duration-100 hover:bg-hover hover:text-foreground focus-visible:opacity-100",
                               here.length > 0 && "opacity-0 group-hover/cell:opacity-100",
                             )}
                           >
                             <PlusIcon className="size-3.5" aria-hidden /> {here.length === 0 ? "Add" : "Another"}
+                            <span className="sr-only">
+                              {" "}workout on {dayLabel(day)}, {t.name}
+                            </span>
                           </Link>
                         )}
                       </div>

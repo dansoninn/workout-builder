@@ -86,8 +86,8 @@ test("WOD 1 by keyboard only: 202 AU and ~7.7 rounds, saved, the same after a re
 
   // The live panel: the approved WOD 1 numbers (calc spec §7).
   const panel = page.getByRole("complementary", { name: "Training load" });
-  await expect(page.getByTestId("planned-load")).toHaveText("202 AU");
-  await expect(page.getByTestId("session-length")).toHaveText("31 min");
+  await expect(page.getByTestId("planned-load").locator("[data-visible-number]")).toHaveText("202 AU");
+  await expect(page.getByTestId("session-length").locator("[data-visible-number]")).toHaveText("31 min");
   await expect(panel.getByRole("row").filter({ hasText: "AMRAP" })).toContainText("~7.7");
 
   // Save with ⌘S; the address becomes the workout's own.
@@ -100,7 +100,7 @@ test("WOD 1 by keyboard only: 202 AU and ~7.7 rounds, saved, the same after a re
   await expect(page.getByLabel("A1 amount")).toHaveValue("5");
   await expect(page.getByLabel("A1 load")).toHaveValue("75-80%");
   await expect(page.getByLabel("B2 amount")).toHaveValue("8/8");
-  await expect(page.getByTestId("planned-load")).toHaveText("202 AU");
+  await expect(page.getByTestId("planned-load").locator("[data-visible-number]")).toHaveText("202 AU");
   await expect(panel.getByRole("row").filter({ hasText: "AMRAP" })).toContainText("~7.7");
 
   // The calendar reads the numbers the server stored when saving.
@@ -163,6 +163,6 @@ test("a viewer sees a workout but cannot change it", async ({ page, browser }) =
   await expect(viewer.getByLabel("A1 amount")).toBeDisabled();
   await expect(viewer.getByRole("button", { name: /^Save/ })).toHaveCount(0);
   await expect(viewer.getByText("View only")).toBeVisible();
-  await expect(viewer.getByTestId("planned-load")).not.toHaveText("—");
+  await expect(viewer.getByTestId("planned-load").locator("[data-visible-number]")).toHaveText(/AU$/);
   await context.close();
 });
