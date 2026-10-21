@@ -1,71 +1,52 @@
 # Status
 
 **Updated:** 2026-10-21 by Claude Code
-**Current step:** Step 3 — Calculation engine. **Closed: complete, tested and live on the remote project. Waiting for Daniel's approval to start Step 4.**
+**Current step:** Step 3 closed (approved, with the fatigue fix below). **Step 4 plan ready for Daniel's review: `docs/PLAN-step-4.md`.** Nothing in Step 4 is built.
 
-## What was built (Step 3 review decisions applied)
+## What was done
 
-1. **Pace table approved and seeded.** 122 core exercises have a `pace_default` (migration `20261021001300`, generated from `src/lib/library/pace-defaults.ts`); the 6 timed holds need none. A new database check (`20261021001250`) accepts only `sec_per_rep` / `sec_per_m` / `sec_per_cal` with positive values. Reference: `docs/pace-defaults.md`.
-2. **Pace model** (calc spec §5.1), in `src/lib/engine/config.ts`:
-   - Pace-effort scaling: Easy ×1.4, Moderate ×1.15, Hard ×1, Max ×0.9.
-   - Fatigue factor for continuous pieces: under 10 min ×1.0, 10–20 min ×1.1, over 20 min ×1.2.
-   - Pace band: fast ×0.85, slow ×1.2.
-3. **Estimate ranges:** every estimated duration, round count and rep count is now `{low, mid, high}`. Exact values have low = mid = high. Ranges add up from block to session to week.
-4. **§7 recomputed** with the approved paces and your efforts (WOD 1 A Load Moderate, WOD 2 Pace Hard). The old numbers are kept in brackets as "initial estimates" (not coach-validated).
-5. **Implement counts approved:** migrations `20261021001100` and `20261021001200` are now on the remote.
-6. **`block_results`** (observed group results per block) added to the data model spec, to be built in Step 4.
-7. **Both specs ✅:** calc spec §1.3, §5/§5.1, §7, §8 and §9.4–§9.12; data model §5, §6 and §7.
+### Step 3 fix (Daniel, 2026-10-21)
+- Max-effort windows inside an **intervals block** now take their fatigue band from the block's **total work time** (rounds × stations × work), not from the single window. Calc spec §5.1 updated.
+- **WOD 3 recomputed** (§7): 4 × 3 × 90 s = 18 min of work → ×1.1.
+
+  | | Before the fix | Now |
+  |---|---|---|
+  | Row | ~1,348 m | ~1,226 m (1,021–1,442) |
+  | Bike | ~72 cal | ~65 cal (55–77) |
+  | Lunges | ~120 | ~109 (91–128) |
+  | Week knee:hip | ~4.2 | ~4.1 |
+
+  WOD 3's planned load (228 AU) and the weekly load (~593 AU, 569–625) are unchanged: duration and RPE are exact.
+- A new test proves the rule (8 min of interval work → ×1.0; 12 min → ×1.1, even with 60 s windows).
+
+### Step 4 plan
+`docs/PLAN-step-4.md`, written to be read by a coach. It covers:
+- **Four approval-gated sub-steps:** 4a accounts, gyms and deployment; 4b structured builder with the live load panel; 4c paste text; 4d after-class results.
+- For each sub-step: screens, user flows, what reuses the Lovable structure (Builder / Calendar / Analytics / Exercises, light and dark mode, live load panel), and what is tested and how. That includes RLS for every new table, end-to-end browser tests and accessibility checks.
+- **Your steps:** the environment variables and the exact Vercel and Supabase clicks.
+- Ten questions for you.
 
 ## Test results
-- **Vitest:** 88 of 88 pass:
-  - Engine: 35 rule tests, plus 17 acceptance tests on the three §7 WODs, run with the approved paces.
-  - Library: 19. Pace table: 6. Alias normaliser: 10. Smoke test: 1.
-- **Mutation check:** I broke three of the new rules on purpose; each broke tests:
-  - Long-piece fatigue switched off.
-  - Range direction flipped.
-  - Pace-effort scaling dropped.
-- **pgTAP:** 328 of 328 pass. New checks: 122 seeded paces, timed holds without a pace, stored pace format, and invalid paces rejected.
-- **Remote:** the four Step 3 migrations were pushed after all tests passed. Verified:
-  - 15 of 15 migrations match.
-  - All 13 reference and library tables are identical row for row, including implement counts and paces.
-  - The structure differs only by the known Supabase platform defaults.
-- **CI:** green on GitHub (see the latest run on `main`).
-
-## §7: what changed and why
-
-| | Initial estimate | Now (engine) | Why |
-|---|---|---|---|
-| WOD 1 A | RPE 7 → 105 AU | Load Moderate (6) → 90 AU | Your decision |
-| WOD 1 C | ~10 rounds | ~7.7 (6.7–8.7) | Approved paces: 47.5 s of work + 15 s transitions per round |
-| WOD 1 session | 217 AU | 202 AU | A |
-| WOD 2 finish | ~22 min | ~20.4 min (17.4–24.4) | 18.6 min at table paces, ×1.1 fatigue |
-| WOD 2 load | ~198 AU | ~163 AU (139–195) | Pace Hard (RPE 8) |
-| WOD 3 row / bike / lunges | ~1,500 m / ~80 cal / ~72 | ~1,348 / ~72 / ~120 (with ranges) | Pace Hard in 90 s windows, no fatigue |
-| Knee:hip | 3.2 | ~4.2 | Fewer AMRAP swings, more lunges |
-| Week | 643 AU | ~593 AU (569–625) | All of the above |
-
-Unchanged: WOD 3 at 228 AU, all exact reps and exposure, volume loads (450 kg and 675 kg), hard sets, push:pull 1.3.
+- **Vitest:** 89 of 89 pass. **pgTAP:** 328 of 328 pass.
+- **CI on GitHub:** green for the fix.
+- **Remote database:** no change needed; the fix is engine code only.
 
 ## Decisions made or interpreted
-- **Fatigue band:**
-  - For Time uses the finish estimated *before* fatigue, so the choice can't flip back and forth at a boundary.
-  - AMRAP uses its length; a max-effort line uses its window. WOD 3's 90 s stations therefore get no fatigue.
-  - Fixed amounts in sets, EMOMs, intervals and tabata get none.
-- **Ranges:**
-  - Prescribed ranges keep their own min–max (8–10 reps stays 8–10), as well as the pace band, which covers pace-based estimates.
-  - Transitions are not widened by the band.
-  - A coach's target rounds stay a single number.
-- **Weekly:** monotony and strain use the middle estimate; the weekly total carries the range.
-- **Ratios of ranges:** lowest = lowest top ÷ highest bottom.
-- **Calculation version:** `CALC_VERSION` stays 1, since nothing has been stored with an earlier version.
+- "Total work duration" for intervals = rounds × stations × work seconds; rest is not counted.
+- EMOM and tabata max-effort windows still use the single window (question 10 in the plan).
 
 ## Open questions for Daniel
-None blocking. Still open in BACKLOG:
-- The remaining provisional defaults in calc spec §9.4: strength = Load Hard / Pace Easy; AMRAP and intervals = Pace Moderate; chipper = Pace Hard. Validate them with real data.
+The ten questions at the end of `docs/PLAN-step-4.md`:
+- Sign-in method.
+- Domain for the email sender.
+- Phones.
+- One database for now.
+- Pull requests with preview links.
+- Lovable screenshots.
+- 20–50 real workouts for the parser.
+- Drafts.
+- Pace-override rights.
+- EMOM and tabata fatigue.
 
 ## Recommended next step
-Approve Step 3, then start **Step 4 — workout builder** (structured entry first, free-text parser after). Its BACKLOG items:
-- Store engine results in `workout_metrics` on every save.
-- Line preview showing "2 × load", with a per-line implement override.
-- Coaches saving gym aliases when they answer an ambiguous term (audited).
-- `block_results` logging.
+Approve the plan (with any changes) and answer the questions; questions 1, 2 and 5 matter first. Then I build **4a**. When 4a is ready you do the Vercel and Supabase steps in the plan, and review it on its preview link before approving.

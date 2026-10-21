@@ -8,23 +8,28 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 
 ## Open questions (need Daniel)
 - [ ] Calc spec §9.4: the remaining default efforts (strength = Load Hard / Pace Easy; AMRAP & intervals = Pace Moderate; chipper = Pace Hard) are still provisional. Validate against real data. (tabata/EMOM/skill/mobility approved 2026-10-21.) (2026-10-20, chat)
+- [ ] Step 4 plan questions 1–10 (sign-in method, domain, phones, one database for now, PR workflow, Lovable screenshots, real workouts for the parser, drafts, pace override rights, EMOM/tabata fatigue): see docs/PLAN-step-4.md. (2026-10-21, Claude Code)
 
 ## Next steps (planned order)
-- [ ] Step 4 — Workout builder (structured entry first, free-text parser after).
-  - [ ] Save engine results to `workout_metrics` on every workout save (with `calc_version` and `taxonomy_version`); show estimates as ranges and warnings next to the lines they concern. (2026-10-21, Claude Code)
-  - [ ] Line preview shows the implement count as "2 × load" (e.g. "2 × 22.5 kg") and lets the coach override it per line. (2026-10-21, Daniel)
-  - [ ] `block_results`: build the table (data model §6), RLS, audit trigger and pgTAP tests, plus the after-class logging screen (rounds low–high for AMRAP, finish low–high for For Time, note). (2026-10-21, Daniel)
-  - [ ] Parser: look up exercises with `normalizeAlias` (src/lib/normalize-alias.ts) and strip plurals ("kb swings" → "kb swing"); core aliases list singular forms only. Lookup order: gym alias → core alias → ambiguous term → unmatched. (2026-10-21, Claude Code)
-  - [ ] Ambiguous terms: when a line matches `ambiguous_exercise_terms` ("squat", "clean", "bike", …), ask the coach once which exercise the gym means and save it as a gym alias. **Decided:** any coach may save the answer; owner/head coach edit or delete gym aliases; add an audit trigger on `exercise_aliases` so the log records who. Needs an RLS change (coach insert limited to ambiguous terms). (2026-10-21, Daniel)
-  - [ ] Parser: read "2 × 22.5 kg" / "single DB" into the line's `implement_count` override. (2026-10-21, Claude Code)
+- [ ] Step 4 — App (plan: docs/PLAN-step-4.md, awaiting approval). Four approval-gated sub-steps:
+  - [ ] **4a** Accounts, gym onboarding, invitations (`invitations` table), roles, app shell (light/dark), Vercel deployment. (2026-10-21, Daniel)
+  - [ ] **4b** Structured builder with the live load panel; `save_workout` transaction; save stores engine output in `workout_metrics` (with `calc_version`, `taxonomy_version`), estimates as ranges, warnings next to their lines; simple week list; Exercises page; gym pace overrides. (2026-10-21, Daniel)
+    - [ ] Line shows the implement count as "2 × load" (e.g. "2 × 22.5 kg") with a per-line override. (2026-10-21, Daniel)
+  - [ ] **4c** Paste text → parser → check-and-confirm screen; raw text stored. (2026-10-21, Daniel)
+    - [ ] Look up exercises with `normalizeAlias` and strip plurals ("kb swings" → "kb swing"); lookup order gym alias → core alias → ambiguous term → unmatched. (2026-10-21, Claude Code)
+    - [ ] Ambiguous terms asked once and saved as a gym alias: any coach may save the answer; owner/head coach edit or delete; audit trigger on `exercise_aliases`; RLS change (coach insert limited to ambiguous terms). (2026-10-21, Daniel)
+    - [ ] Read "2 × 22.5 kg" / "single DB" into the line's `implement_count` override. (2026-10-21, Claude Code)
+  - [ ] **4d** `block_results`: table (data model §6), RLS, audit, pgTAP, and the phone-friendly after-class logging screen. (2026-10-21, Daniel)
 - [ ] Step 5 — Calendar, templates, analytics.
   - [ ] Weekly/period analytics over `workout_metrics` (the engine's `weekSummary` already computes total, monotony, strain, week-on-week change). (2026-10-21, Claude Code)
 - [ ] Later — Plyometric foot contacts metric (jumps, DU/SU, landings) — Lens candidate. (2026-10-21, Daniel)
 - [ ] Later — Per-gym pace calibration from logged `block_results`: suggest pace adjustments only once a gym has ≥ 5 comparable results; never silently override a pace the coach set. (2026-10-21, Daniel)
 
 ## Infrastructure / ops
-- [ ] Connect Vercel to the GitHub repo (after a deployable home page exists). (2026-10-20)
+- [ ] Connect Vercel to the GitHub repo — in 4a; exact steps in docs/PLAN-step-4.md ("Your steps"). (2026-10-20)
+- [ ] Custom email sender (e.g. Resend + a verified domain) in Supabase Auth before inviting real coaches; Supabase's built-in email is for testing only. (2026-10-21, Claude Code)
 - [ ] Upgrade Supabase to Pro (daily backups + PITR) BEFORE any real gym data goes in. (2026-10-20)
+- [ ] Separate production Supabase project before the first real gym (previews and production share the dev project until then, if Daniel agrees). (2026-10-21, Claude Code)
 - [ ] Rename Supabase project display name from "warm-project-pool…" to "workout-builder" (Dashboard → Settings → General). (2026-10-20)
 - [ ] Core library changes after go-live: the seed migration is frozen. Step 3 used the pattern of one generated follow-up migration per change (implement counts, paces); a general "diff the library into a migration" tool is still open. (2026-10-21, Claude Code)
 
@@ -41,6 +46,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] `npm audit` reports 5 high-severity issues in ESLint's dev-only dependency chain (braces/micromatch via eslint-config-next). Not shipped to users; the suggested fix downgrades Next's lint config. Re-check when eslint-config-next updates. (2026-10-21, Claude Code)
 
 ## Done
+- [x] Step 3 approved, with the fix: max-effort windows in an intervals block take fatigue from the block's total work time (calc spec §5.1); §7 recomputed. (2026-10-21, Daniel)
 - [x] Step 3 — Calculation engine (src/lib/engine): four lenses, weekly load, estimate ranges, pace model (effort scaling, fatigue, pace band), worked WODs as acceptance tests; pace table seeded (122 exercises); implement counts. 88 Vitest + 328 pgTAP passing; pushed to the remote project. (2026-10-21)
 - [x] Step 3 review answers (2026-10-21, Daniel): pace table approved as the starting point; effort scaling, fatigue factor and estimate ranges approved; WOD 3 Pace Hard, WOD 1 A Load Moderate, WOD 2 Pace Hard; no accessory intent; implement counts approved; tabata/EMOM/skill/mobility default efforts approved; §7 numbers relabelled as initial estimates; `block_results` specified.
 - [x] CI: lint, typecheck, Vitest and pgTAP on every push and pull request (GitHub Actions); first run green. (2026-10-21)
