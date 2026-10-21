@@ -80,7 +80,7 @@ Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endura
 
 | table | key examples | extra columns |
 |---|---|---|
-| `movement_patterns` | squat, lunge, hinge, h_push, v_push, h_pull, v_pull, carry, core, rotation, jump | region, label_en, label_is |
+| `movement_patterns` | squat, lunge, hinge, h_push, v_push, h_pull, v_pull, carry, core, rotation, jump | region, label_en |
 | `planes` | sagittal, frontal, transverse, multiplanar | labels |
 | `modalities` | run, row, bike, ski, jump_rope, swim (cyclical cardio only; sled removed ✅ 2026-10-21) | default_unit |
 | `muscles` | quads, hamstrings, glutes, … | region, labels |
@@ -88,7 +88,7 @@ Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endura
 | `equipment` ✅ | list proposed in Step 2 for approval | labels |
 | `taxonomy_versions` | 1, 2, … | published_at, notes |
 
-Bilingual labels (IS/EN) from the start: the product is sold internationally but used in Icelandic gyms.
+Labels are English only (`label_en`) — decided 2026-10-21 ✅. A translation layer can be added later if ever needed.
 
 ---
 

@@ -102,8 +102,8 @@ insert into public.exercises (id, org_id, name, slug, kind, plane, default_unit)
 insert into public.exercises (id, org_id, name, slug, kind, modality, default_unit) values
   (tests.id('core_row'), null, 'Fixture row', 'fixture-row', 'monostructural', 'row', 'distance_m');
 
-insert into public.equipment (key, label_en, label_is, position) values
-  ('fixture_kb', 'Fixture kettlebell', 'Prófunarketilbjalla', 1);
+insert into public.equipment (key, label_en, position) values
+  ('fixture_kb', 'Fixture kettlebell', 1);
 
 insert into public.exercise_equipment (exercise_id, equipment_key) values
   (tests.id('core_squat'), 'fixture_kb'),

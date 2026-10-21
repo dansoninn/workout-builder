@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(32);
+select plan(33);
 
 -- ---------------------------------------------------------------------------
 -- Seed matches the calc spec (§2, §4.4); version 2 removed sled (2026-10-21)
@@ -36,6 +36,10 @@ $$, array[
   'hard: RPE 7.0-8.0 (calc 8.0), RIR 0-1',
   'max: RPE 9.0-10.0 (calc 9.5), RIR 0'
 ], 'Effort levels carry the approved RPE/RIR mapping (§4.4)');
+select is_empty($$
+  select table_name from information_schema.columns
+  where table_schema = 'public' and column_name like 'label\_%' and column_name <> 'label_en'
+$$, 'Taxonomy labels are English only (no other label columns)');
 
 -- ---------------------------------------------------------------------------
 -- Invalid values are rejected where they are used
@@ -119,15 +123,15 @@ $$, '22P02', null, 'Unknown member role is rejected');
 -- ---------------------------------------------------------------------------
 -- The taxonomy itself is locked for every tenant role (owner shown)
 -- ---------------------------------------------------------------------------
-select throws_ok($$ insert into public.movement_patterns (key, region, label_en, label_is, position) values ('push', 'upper', 'Push', 'Ýta', 99) $$,
+select throws_ok($$ insert into public.movement_patterns (key, region, label_en, position) values ('push', 'upper', 'Push', 99) $$,
   '42501', null, 'Owner cannot add a movement pattern');
-select throws_ok($$ insert into public.planes (key, label_en, label_is, position) values ('diagonal', 'Diagonal', 'Á ská', 99) $$,
+select throws_ok($$ insert into public.planes (key, label_en, position) values ('diagonal', 'Diagonal', 99) $$,
   '42501', null, 'Owner cannot add a plane');
-select throws_ok($$ insert into public.modalities (key, default_unit, label_en, label_is, position) values ('kayak', 'distance_m', 'Kayak', 'Kajak', 99) $$,
+select throws_ok($$ insert into public.modalities (key, default_unit, label_en, position) values ('kayak', 'distance_m', 'Kayak', 99) $$,
   '42501', null, 'Owner cannot add a modality');
-select throws_ok($$ insert into public.muscles (key, region, label_en, label_is, position) values ('traps', 'upper', 'Traps', 'Sjalvöðvi', 99) $$,
+select throws_ok($$ insert into public.muscles (key, region, label_en, position) values ('traps', 'upper', 'Traps', 99) $$,
   '42501', null, 'Owner cannot add a muscle');
-select throws_ok($$ insert into public.equipment (key, label_en, label_is, position) values ('hula_hoop', 'Hula hoop', 'Húllahringur', 99) $$,
+select throws_ok($$ insert into public.equipment (key, label_en, position) values ('hula_hoop', 'Hula hoop', 99) $$,
   '42501', null, 'Owner cannot add equipment');
 select throws_ok($$ update public.effort_levels set rpe_calc = 5 where key = 'moderate' $$,
   '42501', null, 'Owner cannot change the effort mapping');

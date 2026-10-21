@@ -121,28 +121,28 @@ isOneToOne: false
                   ]
                 },"effort_levels": {
                   Row: {
-                    "key": string,"label_en": string,"label_is": string,"position": number,"rir_max": number | null,"rir_min": number,"rpe_calc": number,"rpe_max": number,"rpe_min": number
+                    "key": string,"label_en": string,"position": number,"rir_max": number | null,"rir_min": number,"rpe_calc": number,"rpe_max": number,"rpe_min": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "key": string,"label_en": string,"label_is": string,"position": number,"rir_max"?: number | null,"rir_min": number,"rpe_calc": number,"rpe_max": number,"rpe_min": number
+                    "key": string,"label_en": string,"position": number,"rir_max"?: number | null,"rir_min": number,"rpe_calc": number,"rpe_max": number,"rpe_min": number
                   }
                   Update: {
-                    "key"?: string,"label_en"?: string,"label_is"?: string,"position"?: number,"rir_max"?: number | null,"rir_min"?: number,"rpe_calc"?: number,"rpe_max"?: number,"rpe_min"?: number
+                    "key"?: string,"label_en"?: string,"position"?: number,"rir_max"?: number | null,"rir_min"?: number,"rpe_calc"?: number,"rpe_max"?: number,"rpe_min"?: number
                   }
                   Relationships: [
                     
                   ]
                 },"equipment": {
                   Row: {
-                    "key": string,"label_en": string,"label_is": string,"position": number
+                    "key": string,"label_en": string,"position": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "key": string,"label_en": string,"label_is": string,"position": number
+                    "key": string,"label_en": string,"position": number
                   }
                   Update: {
-                    "key"?: string,"label_en"?: string,"label_is"?: string,"position"?: number
+                    "key"?: string,"label_en"?: string,"position"?: number
                   }
                   Relationships: [
                     
@@ -323,42 +323,42 @@ isOneToOne: false
                   ]
                 },"modalities": {
                   Row: {
-                    "default_unit": Database["public"]['Enums']["measure_unit"],"key": string,"label_en": string,"label_is": string,"position": number
+                    "default_unit": Database["public"]['Enums']["measure_unit"],"key": string,"label_en": string,"position": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "default_unit": Database["public"]['Enums']["measure_unit"],"key": string,"label_en": string,"label_is": string,"position": number
+                    "default_unit": Database["public"]['Enums']["measure_unit"],"key": string,"label_en": string,"position": number
                   }
                   Update: {
-                    "default_unit"?: Database["public"]['Enums']["measure_unit"],"key"?: string,"label_en"?: string,"label_is"?: string,"position"?: number
+                    "default_unit"?: Database["public"]['Enums']["measure_unit"],"key"?: string,"label_en"?: string,"position"?: number
                   }
                   Relationships: [
                     
                   ]
                 },"movement_patterns": {
                   Row: {
-                    "key": string,"label_en": string,"label_is": string,"position": number,"region": Database["public"]['Enums']["body_region"]
+                    "key": string,"label_en": string,"position": number,"region": Database["public"]['Enums']["body_region"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "key": string,"label_en": string,"label_is": string,"position": number,"region": Database["public"]['Enums']["body_region"]
+                    "key": string,"label_en": string,"position": number,"region": Database["public"]['Enums']["body_region"]
                   }
                   Update: {
-                    "key"?: string,"label_en"?: string,"label_is"?: string,"position"?: number,"region"?: Database["public"]['Enums']["body_region"]
+                    "key"?: string,"label_en"?: string,"position"?: number,"region"?: Database["public"]['Enums']["body_region"]
                   }
                   Relationships: [
                     
                   ]
                 },"muscles": {
                   Row: {
-                    "key": string,"label_en": string,"label_is": string,"position": number,"region": Database["public"]['Enums']["body_region"]
+                    "key": string,"label_en": string,"position": number,"region": Database["public"]['Enums']["body_region"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "key": string,"label_en": string,"label_is": string,"position": number,"region": Database["public"]['Enums']["body_region"]
+                    "key": string,"label_en": string,"position": number,"region": Database["public"]['Enums']["body_region"]
                   }
                   Update: {
-                    "key"?: string,"label_en"?: string,"label_is"?: string,"position"?: number,"region"?: Database["public"]['Enums']["body_region"]
+                    "key"?: string,"label_en"?: string,"position"?: number,"region"?: Database["public"]['Enums']["body_region"]
                   }
                   Relationships: [
                     
@@ -379,14 +379,14 @@ isOneToOne: false
                   ]
                 },"planes": {
                   Row: {
-                    "key": string,"label_en": string,"label_is": string,"position": number
+                    "key": string,"label_en": string,"position": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "key": string,"label_en": string,"label_is": string,"position": number
+                    "key": string,"label_en": string,"position": number
                   }
                   Update: {
-                    "key"?: string,"label_en"?: string,"label_is"?: string,"position"?: number
+                    "key"?: string,"label_en"?: string,"position"?: number
                   }
                   Relationships: [
                     

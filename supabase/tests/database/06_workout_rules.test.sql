@@ -151,7 +151,7 @@ select throws_ok($$ select tests.add_item('{"type": "reps", "value": 5}', '{"typ
 select tests.login_as('head_a');
 
 select lives_ok($$ select tests.add_alias('kb swing') $$, 'alias: "kb swing" is normalised');
-select lives_ok($$ select tests.add_alias('þrýstipressa') $$, 'alias: Icelandic letters are fine');
+select lives_ok($$ select tests.add_alias('pec déc') $$, 'alias: accented letters are fine');
 select throws_ok($$ select tests.add_alias('KB Swing') $$, '23514', null, 'alias: upper case rejected');
 select throws_ok($$ select tests.add_alias('kb-swing') $$, '23514', null, 'alias: punctuation rejected');
 select throws_ok($$ select tests.add_alias(' kb swing') $$, '23514', null, 'alias: surrounding spaces rejected');
