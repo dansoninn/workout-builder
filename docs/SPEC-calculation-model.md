@@ -1,6 +1,6 @@
 # Workout Builder — Calculation Model & Domain Spec
 
-**Status:** Draft v0.2 — decisions 1–3 approved; 4–7 provisional (§9)
+**Status:** Draft v0.2 — decisions 1–3 and 5–8 approved; 4 provisional (§9)
 **Date:** 2026-10-20
 **Purpose:** The single source of truth for how workouts are described, what is measured, and how every number is calculated. The database schema, parser and UI are all derived from this document. Nothing here is implemented until it is approved.
 
@@ -58,6 +58,7 @@ Each canonical exercise has:
 - `plane`, `primary_muscles[]`, `secondary_muscles[]`, `equipment[]` (from the locked equipment list ✅ approved 2026-10-21)
 - `unilateral: boolean`
 - `default_unit`: reps | distance_m | calories | time_s
+- `implement_count`: implements used when loaded (DB thruster 2, DB snatch 1); the coach can override it per workout line ✅ (§9.8)
 - `pace_default` (for estimating max-effort and AMRAP work, §5)
 - `owner`: null = core library (curated by us), or `organization_id` = gym-owned
 
@@ -137,9 +138,10 @@ Block planned RPE = the higher of pace and load effort for that block. The coach
 | For Time duration | sum of paces, capped at time cap | estimated |
 | Max effort in window | window × pace_default | estimated |
 | Unilateral 8/8 | **8 reps exposure + 1 set** (each side gets the same stimulus as one bilateral set) | exact |
-| Rx variants | calculations use the first-listed Rx; both stored | exact |
+| Rx variants | calculations use the first-listed Rx; all stored ✅ (§9.6) | exact |
+| Implements | volume load = kg per implement × implement count (exercise default, line override) ✅ (§9.8) | exact |
 
-Pace defaults are configurable per gym, so a gym calibrates to its own members.
+Pace defaults describe an **intermediate adult class member** and are configurable per gym (`organizations.settings.paces`), so a gym calibrates to its own members ✅ (§9.5). The proposed table is in `docs/pace-defaults.md`, pending approval.
 
 ---
 
@@ -152,7 +154,7 @@ Four core lenses below. More metrics can be added at any time without changing s
 - For continuous formats (AMRAP, For Time, intervals) without discrete sets: each completed round counts as one set for the exercises in it, if their load effort qualifies.
 - Per pattern: sets × pattern weight.
 - Per muscle: primary = 1.0 set, secondary = 0.5 set (fractional set counting).
-- Volume load (kg) only when `absolute_kg` is given: sets × reps × kg.
+- Volume load (kg) only when `absolute_kg` is given: sets × reps × kg per implement × implement count (first-listed Rx) ✅.
 - Intensity zone recorded (e.g. 75–80% 1RM).
 
 ### Lens 2 — Movement exposure: pattern reps
@@ -221,9 +223,10 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (71
 2. ✅ **Unilateral rule:** 8/8 = 8 per side → 8 reps exposure + 1 hard set — approved.
 3. ✅ **Hard sets decided by load effort, not block type**, via the two effort axes (§4.4) — approved (Daniel's revision).
 4. ⏳ **Default effort** per block when the coach sets none — provisional: strength = Load Hard / Pace Easy; accessory = Load Moderate; AMRAP & intervals = Pace Moderate; chipper = Pace Hard.
-5. **Pace defaults** (row 2:00/500 m at max effort in a 90 s window, bike ~20 cal/90 s, etc.) — which population do we calibrate to? Your average class member?
-6. **Rx:** calculate on first-listed Rx, or show both?
+5. ✅ **Pace defaults** (row 2:00/500 m at max effort in a 90 s window, bike ~20 cal/90 s, etc.) — calibrated to an **intermediate adult class member**; every gym can override them in organization settings. Approved 2026-10-21. The pace table itself is proposed in `docs/pace-defaults.md` and needs approval before it is used.
+6. ✅ **Rx:** calculations use the first-listed Rx; all Rx values are stored — approved 2026-10-21.
 7. ✅ **Pattern weights table** for compound movements (§3) — approved 2026-10-21 in Step 2, with changes (hip_flexors added, sled push = lunge 0.6 / carry 0.4). See `docs/core-library.md`.
+8. ✅ **Volume load and implements:** volume load = load per implement × implement count. Each exercise has a default implement count (e.g. DB thruster 2, DB snatch 1); the coach can override it on the workout line — approved 2026-10-21.
 
 ---
 

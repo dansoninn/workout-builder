@@ -49,11 +49,11 @@ muscles, effort_levels, equipment, taxonomy_versions
 | name | text | "Afrek Functional Fitness" |
 | slug | text unique | |
 | country | text | ISO code |
-| settings | jsonb | pace defaults, warning thresholds, units |
+| settings | jsonb | pace defaults, warning thresholds, units. Gym pace overrides ✅ (calc spec §9.5): `settings.paces` = `{ "<exercise id>": { "sec_per_rep": 2.5 } }`, same keys as `exercises.pace_default`; an override replaces the core default for that gym. |
 | created_at | timestamptz | |
 
 ### `profiles`
-`id` (= `auth.users.id`), `display_name`, `locale` (`is` / `en`), `created_at`.
+`id` (= `auth.users.id`), `display_name`, `locale` (`is` / `en`), `created_at`. `locale` is kept but unused under English only — decided 2026-10-21 ✅.
 
 ### `memberships`
 | column | type | notes |
@@ -70,7 +70,11 @@ Role rights (enforced in RLS):
 | Edit gym exercise bank | ✓ | ✓ | | |
 | Manage tracks ✅ | ✓ | ✓ | | |
 | Create / edit workouts | ✓ | ✓ | ✓ | |
+| Save a gym alias by answering an ambiguous term ✅ (Step 4) | ✓ | ✓ | ✓ | |
+| Edit / delete gym aliases | ✓ | ✓ | | |
 | Read everything in the gym | ✓ | ✓ | ✓ | ✓ |
+
+Gym aliases (approved 2026-10-21): when the parser asks "which squat?", any coach may save the answer as a gym alias; only owners and head coaches can change or delete gym aliases afterwards. Alias changes are written to the audit log (who and when). Built in Step 4.
 
 ### `tracks`
 Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endurance*). `id`, `org_id`, `name`, `color`, `position`, `archived_at`. Created and edited by owners and head coaches, not coaches — approved 2026-10-21. Archived, never deleted.
@@ -107,7 +111,8 @@ Labels are English only (`label_en`) — decided 2026-10-21 ✅. A translation l
 | plane | FK NULL | NULL = not yet curated (flagged, never defaulted) |
 | unilateral | bool | |
 | default_unit | enum | reps · distance_m · calories · time_s |
-| pace_default | jsonb | e.g. `{ "sec_per_rep": 2 }` or `{ "sec_per_500m": 120 }` |
+| implement_count | smallint | ✅ default number of implements when loaded (DB thruster 2, DB snatch 1); volume load = kg per implement × implement count × reps. Default 1. Approved 2026-10-21. |
+| pace_default | jsonb | working pace of an intermediate adult class member ✅ (calc spec §9.5): any of `{ "sec_per_rep": 2, "sec_per_m": 0.25, "sec_per_cal": 4.5 }`. Gyms override in `organizations.settings.paces`. |
 | status | enum | `active` · `needs_review` · `archived` |
 | created_by, created_at, updated_at, deleted_at | | |
 
@@ -194,6 +199,7 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 | load | jsonb NULL | see below |
 | pace_effort | FK NULL | overrides block |
 | load_effort | FK NULL | overrides block |
+| implement_count | smallint NULL | ✅ overrides the exercise's default implement count for this line (e.g. a single-DB thruster) |
 | notes | text | "I go you go", "L/R" |
 
 `quantity` (exactly one type, per calc spec §4.1):
@@ -215,6 +221,8 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 { "type": "bodyweight" }
 ```
 
+`rx` stores every Rx variant; calculations use the first-listed — approved 2026-10-21 ✅ (calc spec §9.6). Load is per implement; the implement count multiplies it for volume load.
+
 A workout can only move to `published` when every item has an `exercise_id`.
 
 ---
@@ -225,7 +233,7 @@ A workout can only move to `published` when every item has an `exercise_id`.
 `workout_id`, `calc_version`, `taxonomy_version`, `computed_at`, `metrics jsonb`, `confidence jsonb`. PK `(workout_id, calc_version)`. Recomputed on save; rebuilt in bulk on version bump. Weekly/period analytics are SQL functions over this table.
 
 ### `audit_log`
-`id`, `org_id`, `actor_id`, `table_name`, `row_id`, `action` (insert/update/delete), `diff jsonb`, `at`. Written by triggers on workouts, blocks, block_items, exercises, memberships. Append-only.
+`id`, `org_id`, `actor_id`, `table_name`, `row_id`, `action` (insert/update/delete), `diff jsonb`, `at`. Written by triggers on workouts, blocks, block_items, exercises, memberships, and (from Step 4) exercise_aliases. Append-only.
 
 ### Safety baseline
 - RLS on every table. Policy pattern: `org_id IN (SELECT org_id FROM memberships WHERE user_id = auth.uid())`, write rights by role. Core exercises (`org_id IS NULL`) readable by all signed-in users, writable only by service role.
