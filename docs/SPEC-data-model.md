@@ -23,6 +23,7 @@
 
 ```
 organizations ─┬─ memberships ── profiles (auth.users)
+               ├─ invitations (link to join, Step 4a)
                ├─ tracks
                ├─ workouts ── blocks ─┬─ block_items ──► exercises
                │                      └─ block_results (what the group did)
@@ -48,7 +49,7 @@ muscles, effort_levels, equipment, taxonomy_versions
 |---|---|---|
 | id | uuid PK | |
 | name | text | "Afrek Functional Fitness" |
-| slug | text unique | |
+| slug | text unique | lowercase words with dashes; the first part of every app address (`/afrek/builder`), so the app's own route names (`settings`, `sign-in`, `invite`…) are reserved (Step 4a) |
 | country | text | ISO code |
 | settings | jsonb | pace defaults, warning thresholds, units. Gym pace overrides ✅ (calc spec §9.5): `settings.paces` = `{ "<exercise id>": { "sec_per_rep": 2.5 } }`, same keys as `exercises.pace_default`; an override replaces the core default for that gym. |
 | created_at | timestamptz | |
@@ -76,6 +77,28 @@ Role rights (enforced in RLS):
 | Read everything in the gym | ✓ | ✓ | ✓ | ✓ |
 
 Gym aliases (approved 2026-10-21): when the parser asks "which squat?", any coach may save the answer as a gym alias; only owners and head coaches can change or delete gym aliases afterwards. Alias changes are written to the audit log (who and when). Built in Step 4.
+
+### `invitations` (Step 4a)
+An owner invites a person by email with a role and shares the link (automatic emails come with the custom email sender, BACKLOG).
+
+| column | type | notes |
+|---|---|---|
+| id | uuid PK | |
+| org_id | uuid FK | |
+| email | text | lowercased |
+| role | enum | the role the person gets |
+| token_hash | text unique | SHA-256 of the link's secret; the secret itself is never stored |
+| invited_by | uuid FK | |
+| created_at, expires_at | timestamptz | expires 14 days after creation |
+| accepted_at, accepted_by | | set once, when used |
+| revoked_at | timestamptz | cancelled by an owner, or replaced by a fresh link |
+
+Rules (enforced in the database, tested in pgTAP):
+- Only owners create (`create_invitation`), see and cancel invitations of their gym. One open invitation per email and gym; a fresh link cancels the old one. Existing members cannot be invited again. Email, role, gym and secret cannot be changed afterwards.
+- Anyone holding the link can see what it is for (`invitation_preview`: gym, role, email, status).
+- Only a signed-in user whose **confirmed** email matches can accept (`accept_invitation`), once, before it expires; they get exactly the invited role.
+- Not in the audit log: the audit log is readable by every member, and the invitee's email is for owners only. Joining is audited (it creates a membership).
+- The member list (`list_gym_members`) is visible to every member; emails only to owners.
 
 ### `tracks`
 Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endurance*). `id`, `org_id`, `name`, `color`, `position`, `archived_at`. Created and edited by owners and head coaches, not coaches — approved 2026-10-21. Archived, never deleted.
