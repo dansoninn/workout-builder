@@ -102,6 +102,13 @@ test("WOD 1 by keyboard only: 202 AU and ~7.7 rounds, saved, the same after a re
   await expect(page.getByLabel("B2 amount")).toHaveValue("8/8");
   await expect(page.getByTestId("planned-load")).toHaveText("202 AU");
   await expect(panel.getByRole("row").filter({ hasText: "AMRAP" })).toContainText("~7.7");
+
+  // The calendar reads the numbers the server stored when saving.
+  await page.goto(`/${slug}/calendar`);
+  const card = page.getByRole("link", { name: /WOD 1/ });
+  await expect(card).toContainText("31 min");
+  await expect(card).toContainText("202 AU");
+  await expect(card).toContainText("Draft");
 });
 
 test("a line without an exercise can be saved but blocks publishing, with a link to it", async ({ page }) => {
