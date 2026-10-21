@@ -10,10 +10,15 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] Calc spec §9.4: the remaining default efforts (strength = Load Hard / Pace Easy; AMRAP & intervals = Pace Moderate; chipper = Pace Hard) are still provisional. Validate against real data. (tabata/EMOM/skill/mobility approved 2026-10-21.) (2026-10-20, chat)
 - [ ] 4b: alternating EMOM ("min 1: X, min 2: Y") — add an "alternating" option to `every`, or model as stations? (2026-10-21, Claude Code)
 - [ ] 4b: rest between blocks — should it count anywhere (e.g. session length on the calendar)? Planned load uses block durations only. (2026-10-21, Claude Code)
+- [ ] Should a new gym start with one track (e.g. "Class") automatically? Today the owner creates the first one; every workout needs a track. (2026-10-21, Claude Code)
+- [ ] Members page is visible read-only to coaches and viewers (names and roles, no emails). Keep, or owners only as in the plan? (2026-10-21, Claude Code)
 
 ## Next steps (planned order)
 - [ ] Step 4 — App (plan approved 2026-10-21: docs/PLAN-step-4.md). Four approval-gated sub-steps, each a pull request with a Vercel preview:
-  - [ ] **4a** Design system (docs/DESIGN.md, /design page), accounts, gym onboarding, invitations by link (`invitations` table), roles, app shell with ⌘K (light/dark), Vercel deployment. **In progress (branch step-4a).** (2026-10-21, Daniel)
+  - [ ] **4a** Design system (docs/DESIGN.md, /design page), accounts, gym onboarding, invitations by link (`invitations` table), roles, app shell with ⌘K (light/dark), Vercel deployment. **Built; ready for Daniel's review (branch step-4a, pull request). Needs the Vercel/Supabase steps in docs/STATUS.md.** (2026-10-21, Daniel)
+  - [ ] Change a gym's address (slug) safely: old links redirect to the new one. Read-only for now. (2026-10-21, Claude Code)
+  - [ ] Let coaches and viewers leave a gym themselves (today only an owner can remove someone). (2026-10-21, Claude Code)
+  - [ ] Reorder tracks (the `position` column exists; new tracks go last). (2026-10-21, Claude Code)
   - [ ] Google sign-in (after email + password). (2026-10-21, Daniel)
   - [ ] **4b** Structured builder with the live load panel; `save_workout` transaction; save stores engine output in `workout_metrics` (with `calc_version`, `taxonomy_version`), estimates as ranges, warnings next to their lines; simple week list; Exercises page; gym pace overrides for owner and head coach (own table or narrow function; spec update). (2026-10-21, Daniel)
     - [ ] Line shows the implement count as "2 × load" (e.g. "2 × 22.5 kg") with a per-line override. (2026-10-21, Daniel)
@@ -29,7 +34,9 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 
 ## Infrastructure / ops
 - [ ] Connect Vercel to the GitHub repo — in 4a; exact steps in docs/STATUS.md when 4a is ready. (2026-10-20)
-- [ ] Before the first real gym: buy/choose a domain, set up a custom email sender (e.g. Resend) in Supabase Auth, send invitation emails automatically (4a shares links), and make sure "Confirm email" is on. Supabase's built-in email only reaches members of the Supabase team. (2026-10-21, Daniel)
+- [ ] Before the first real gym: buy/choose a domain, set up a custom email sender (e.g. Resend) in Supabase Auth, send invitation emails automatically (4a shares links), and make sure "Confirm email" is on (turned off for testing in 4a). Supabase's built-in email only reaches members of the Supabase team. Point the email templates at `/auth/confirm?token_hash=…` (already built) so links work in any browser. (2026-10-21, Daniel)
+- [ ] Before the first real gym: a Content-Security-Policy header (nonce-based). 4a sends the other security headers. (2026-10-21, Claude Code)
+- [ ] Next.js 16.4 dev-server bug: a route handler at `/` makes pages reload endlessly in development. `/` is routed in the proxy instead. Re-check on the next Next.js upgrade (and report upstream if still present). (2026-10-21, Claude Code)
 - [ ] Upgrade Supabase to Pro (daily backups + PITR) BEFORE any real gym data goes in. (2026-10-20)
 - [ ] Separate production Supabase project before the first real gym (previews and production share the dev project until then — agreed). (2026-10-21, Daniel)
 - [ ] Rename Supabase project display name from "warm-project-pool…" to "workout-builder" (Dashboard → Settings → General). (2026-10-20)
