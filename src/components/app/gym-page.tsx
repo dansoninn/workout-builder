@@ -20,14 +20,14 @@ async function Guarded({ params, render }: { params: Params; render: (gym: GymMe
 export function GymPage({
   params,
   render,
-  skeletonRows,
+  fallback,
 }: {
   params: Params;
   render: (gym: GymMembership) => React.ReactNode;
-  skeletonRows?: number;
+  fallback?: React.ReactNode;
 }) {
   return (
-    <Suspense fallback={<PageSkeleton rows={skeletonRows} />}>
+    <Suspense fallback={fallback ?? <PageSkeleton />}>
       <Guarded params={params} render={render} />
     </Suspense>
   );
