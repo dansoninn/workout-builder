@@ -112,15 +112,15 @@ export function TracksManager({ slug, canManage, tracks }: { slug: string; canMa
       >
         {active.length === 0 ? (
           <div className="grid justify-items-center gap-2 rounded-lg border border-dashed border-border-strong px-4 py-8 text-center">
-            <p className="font-medium">No tracks yet</p>
+            <p className="font-medium">{archived.length > 0 ? "No active tracks" : "No tracks yet"}</p>
             <p className="max-w-sm text-muted-foreground">
               {canManage
-                ? "Most gyms start with one track for their classes. Every workout belongs to a track."
+                ? `Every workout belongs to a track. Create one${archived.length > 0 ? ", or restore an archived one below" : ""}.`
                 : "An owner or head coach can create the gym's tracks."}
             </p>
             {canManage && (
               <Button variant="outline" className="mt-2" onClick={() => openEditor("new")}>
-                <PlusIcon /> Create the first track
+                <PlusIcon /> Create a track
               </Button>
             )}
           </div>

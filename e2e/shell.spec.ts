@@ -55,17 +55,20 @@ test("on a phone, the navigation opens from the menu button", async ({ page }) =
   await expect(page.getByRole("dialog", { name: "Navigation" })).toHaveCount(0);
 });
 
-test("owners and head coaches create, rename and archive tracks", async ({ page }) => {
+test("a new gym starts with a Class track; owners create, rename and archive tracks", async ({ page }) => {
   const { slug } = await ownerWithGym(page);
   await page.goto(`/${slug}/settings/tracks`);
-  await expect(page.getByText("No tracks yet")).toBeVisible();
+  const tracks = page.getByRole("region", { name: "Tracks" });
+  await expect(tracks.getByRole("listitem")).toHaveCount(1);
+  await expect(tracks.getByText("Class", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "New track" }).click();
-  await page.getByRole("dialog").getByLabel("Name").fill("Class");
+  await page.getByRole("dialog").getByLabel("Name").fill("Strength club");
   await page.getByRole("dialog").getByTitle("Teal").click();
   await expect(page.getByRole("dialog").getByLabel("Teal")).toBeChecked();
   await page.getByRole("dialog").getByRole("button", { name: "Create track" }).click();
-  await expect(page.getByText("Class created")).toBeVisible();
+  await expect(page.getByText("Strength club created")).toBeVisible();
+  await expect(tracks.getByRole("listitem")).toHaveCount(2);
 
   // Names are unique among a gym's active tracks.
   await page.getByRole("button", { name: "New track" }).click();
@@ -75,14 +78,14 @@ test("owners and head coaches create, rename and archive tracks", async ({ page 
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Edit Class" }).click();
-  await page.getByRole("dialog").getByLabel("Name").fill("Classes");
+  await page.getByRole("dialog").getByLabel("Name").fill("Group class");
   await page.getByRole("dialog").getByRole("button", { name: "Save track" }).click();
   await expect(page.getByText("Track saved")).toBeVisible();
 
-  await page.getByRole("button", { name: "Archive Classes" }).click();
-  await expect(page.getByRole("region", { name: "Archived" }).getByText("Classes")).toBeVisible();
+  await page.getByRole("button", { name: "Archive Group class" }).click();
+  await expect(page.getByRole("region", { name: "Archived" }).getByText("Group class")).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button", { name: "Restore Classes" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Restore Group class" })).toBeVisible();
 });
 
 test("an owner renames the gym and everyone sees the new name", async ({ page }) => {
