@@ -1,7 +1,20 @@
 # Status
 
 **Updated:** 2026-10-21 by Claude Code
-**Current step:** **4a is built and ready for your review** (branch `step-4a`, pull request on GitHub). It needs your Vercel and Supabase steps below before the preview link works. 4b has not started.
+**Current step:** **4a is built and ready for your review** (branch `step-4a`, pull request #1). It needs your Vercel and Supabase steps below before the preview link works. Your 4a answers (below) are built in. 4b has not started.
+
+## Your 4a answers, built in (2026-10-21)
+1. **A new gym starts with a "Class" track** (indigo), which owners and head coaches can rename or archive. Gyms created before this change that had no track got one too, so a gym you create on the preview right now is covered.
+2. **Members page read-only for coaches and viewers:** approved, no change needed.
+3. **4b decisions, ready for the builder:**
+   - **Alternating EMOM** is an option of `every`: the lines take turns, one per interval. EMOM 12 with three lines → each line 4 times. EMOM 10 → 4, 3, 3 (the first lines get the extra minute, exactly like tabata). The duration doesn't change. If there are fewer minutes than lines, the app warns that some lines are never reached.
+   - **Rest between blocks** is stored on each block ("rest after this block"). The engine now gives a **session length** (blocks + rest between them, for the calendar) next to planned load, which still uses block time only. Rest after the last block isn't counted.
+   - Both are in the database, the calculation engine and the specs (calc spec §4.3 and Lens 4, decisions 13–14; data model spec §6). The builder screens for them come in 4b.
+4. **BACKLOG:** splitting `core` into anti-extension / anti-rotation / anti-lateral-flexion / flexion, and gait/locomotion as its own pattern, both to decide after 4b with real data.
+
+New question that came up (in BACKLOG): can one minute of an alternating EMOM hold two movements ("min 1: 10 cal row + 5 burpees")? Today each line is one minute of the rotation.
+
+Tests after these changes: **pgTAP 409/409, Vitest 185/185, Playwright 24/24** (production build). Both migrations are applied to the hosted database. One browser test failed once and then passed in more than 100 runs since. I couldn't reproduce it; CI retries a failed test once and reports it as flaky, and Auto-fix will flag it if it comes back.
 
 ## What was built in 4a
 
@@ -36,8 +49,8 @@
 ## How it was verified
 | What | Result |
 |---|---|
-| Database tests (pgTAP) | **392 of 392 pass** (64 new for invitations: only owners invite, see or cancel; gym isolation; wrong email, expired, cancelled or reused links rejected; exactly the invited role; emails only for owners; reserved addresses) |
-| Unit tests (Vitest) | **183 of 183 pass** (new: addresses, safe redirects, reserved names match the database, dates) |
+| Database tests (pgTAP) | **409 of 409 pass** (64 for invitations, 17 for your answers: only owners invite, see or cancel; gym isolation; wrong email, expired, cancelled or reused links rejected; exactly the invited role; emails only for owners; reserved addresses) |
+| Unit tests (Vitest) | **185 of 185 pass** (new: addresses, safe redirects, reserved names match the database, dates, alternating EMOM, session length) |
 | Browser tests (Playwright, production build) | **24 of 24 pass**: sign up → create gym; sign out/in returns to your gym; invite a coach → they join with coach rights only; link works once and only for its email; viewer can't change anything; role change and removal; gym B is "not found" for gym A; ⌘K and G shortcuts without the mouse; phone navigation; tracks; rename gym |
 | Accessibility (axe, WCAG 2.2 AA) | Every screen and dialog, **light and dark: no problems**. Two real issues it found were fixed (button names that didn't match their visible text; two pieces of text below 4.5:1). |
 | Looked at by eye | Every screen in light, dark and phone width (screenshots); fixed footer alignment, phone table overflow, backdrop blur. |
@@ -46,19 +59,17 @@
 CI on GitHub now runs four jobs on every push: lint + types + unit tests, database tests, and the browser + accessibility tests against a local copy of the database.
 
 ## Decisions made or interpreted (please check)
-1. **Members page for everyone, read-only.** The plan said "Members (owner)". Coaches and viewers now see who is on the team (names and roles, no emails); only owners can change anything. Easy to restrict if you prefer.
+1. **Members page for everyone, read-only** (approved): coaches and viewers see who is on the team (names and roles, no emails); only owners can change anything.
 2. **Invitations are not in the gym's audit log.** Every member can read the audit log, and an invitee's email is for owners only. Joining *is* logged (it creates a membership).
 3. **Anyone holding an invitation link sees what it is for** (gym, role, the invited email), even before signing in. That is what lets a new coach sign up and join on one page.
 4. **Accepting needs a confirmed email.** When "Confirm email" is off (testing), Supabase counts every address as confirmed, so this only matters once it is on.
 5. **Passwords: at least 8 characters.**
 6. **The gym address can't be changed yet** (it is in every link). Added to BACKLOG.
-7. **Track names are unique among a gym's active tracks.** No track is created automatically (see question 1).
+7. **Track names are unique among a gym's active tracks.** A new gym starts with "Class" (your answer 1).
 8. **Quality over speed, noted as asked:** a Next.js 16.4 development bug (a route at `/` made pages reload endlessly) took time to track down. `/` is now routed in the proxy, which is also one redirect faster. The browser tests run against a production build, not the dev server, to test what you will use.
 
 ## Open questions for Daniel
-1. Should a new gym start with one track (e.g. "Class") automatically, or should the owner always create the first one?
-2. Is a read-only Members page for coaches and viewers right (decision 1)?
-3. The two 4b questions in BACKLOG (alternating EMOM; rest between blocks) before 4b starts.
+1. Alternating EMOM: can one minute hold two movements (e.g. "min 1: 10 cal row + 5 burpees, min 2: 12 wall balls")? Settle before the 4b builder.
 
 ## Your steps (about 10 minutes)
 
@@ -89,4 +100,4 @@ Supabase's built-in email only reaches people in your Supabase team, so sign-up 
 Create an account and your gym, invite a second email of yours as Coach, open the link in a private window and join. Preview links are protected by Vercel login by default, which is fine for you; to let a coach try a preview, use the production link or turn off **Settings → Deployment Protection** for previews.
 
 ## Recommended next step
-Review the preview. If 4a is approved, merge the pull request (production deploys from `main`), answer the open questions, and settle the two 4b questions; then 4b, the structured builder with the live load panel.
+Review the preview. If 4a is approved, merge the pull request (production deploys from `main`) and answer the alternating-EMOM question; then 4b, the structured builder with the live load panel.

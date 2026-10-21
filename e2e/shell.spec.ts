@@ -84,6 +84,7 @@ test("a new gym starts with a Class track; owners create, rename and archive tra
 
   await page.getByRole("button", { name: "Archive Group class" }).click();
   await expect(page.getByRole("region", { name: "Archived" }).getByText("Group class")).toBeVisible();
+  await expect(page.getByText("Group class archived")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: "Restore Group class" })).toBeVisible();
 });
