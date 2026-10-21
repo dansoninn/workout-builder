@@ -11,9 +11,12 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] `profiles.locale` still accepts `is` / `en` (data spec §3) and defaults to `en`. Under English only: keep it for a future translation layer, or drop it? Recommendation: keep, nothing uses it yet. (2026-10-21, Claude Code)
 
 ## Next steps (planned order)
-- [ ] Step 2 — Exercise library: core library, aliases, pattern weights, equipment reference table. Daniel approves pattern-weight table and equipment list.
+- [ ] Step 2 — Exercise library: core library, aliases, pattern weights, equipment reference table. Daniel approves pattern-weight table and equipment list. **Proposal ready: docs/review-core-library.md (2026-10-21). Seed migration 20261021001000 is local only until approved.**
 - [ ] Step 3 — Calculation engine, tested against the 3 worked WODs in the calc spec.
+  - [ ] Volume load with dumbbell pairs: when a coach writes "2 × 22.5 kg" or "22.5/15" for a two-DB movement (DB thruster, DB bench), is the load counted once or per dumbbell? (2026-10-21, Claude Code)
+  - [ ] Fill `pace_default` for core exercises once calc spec §9.5 (which population) is decided; left empty in Step 2. (2026-10-21, Claude Code)
 - [ ] Step 4 — Workout builder (structured entry first, free-text parser after).
+  - [ ] Parser: look up exercises with `normalizeAlias` (src/lib/normalize-alias.ts) and strip plurals ("kb swings" → "kb swing"); core aliases list singular forms only. (2026-10-21, Claude Code)
 - [ ] Step 5 — Calendar, templates, analytics.
 
 ## Infrastructure / ops
@@ -21,6 +24,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] Upgrade Supabase to Pro (daily backups + PITR) BEFORE any real gym data goes in. (2026-10-20)
 - [ ] Rename Supabase project display name from "warm-project-pool…" to "workout-builder" (Dashboard → Settings → General). (2026-10-20)
 - [ ] CI: run lint, typecheck, Vitest and pgTAP on every push (GitHub Actions). (2026-10-21, chat)
+- [ ] Core library changes after go-live: the generator writes only the initial seed migration. Once it is on the remote database, later library edits need their own migrations (tooling to generate those diffs). (2026-10-21, Claude Code)
 
 ## Product ideas (parked — not in MVP)
 - [ ] Historical import: upload existing programming spreadsheets, preview interpretation, map unknown exercises, backfill analytics. (from Lovable handover)
