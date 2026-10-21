@@ -21,9 +21,9 @@ select results_eq($$ select key || ' ' || default_unit from public.modalities or
   array['run distance_m', 'row distance_m', 'bike calories', 'ski distance_m', 'jump_rope reps', 'swim distance_m'],
   'Monostructural modalities and default units (§2.3; no sled)');
 select results_eq($$ select key from public.muscles order by position $$,
-  array['quads', 'hamstrings', 'glutes', 'adductors', 'calves', 'chest', 'lats', 'upper_back',
+  array['quads', 'hamstrings', 'glutes', 'adductors', 'hip_flexors', 'calves', 'chest', 'lats', 'upper_back',
         'shoulders', 'biceps', 'triceps', 'forearms_grip', 'abs', 'obliques', 'lower_back'],
-  'Muscle groups (§2.4)');
+  'Muscle groups (§2.4, hip_flexors added in Step 2)');
 select results_eq($$
   select format('%s: RPE %s-%s (calc %s), RIR %s', key, rpe_min, rpe_max, rpe_calc,
     case when rir_max is null then rir_min || '+'

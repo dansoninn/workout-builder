@@ -1,12 +1,13 @@
--- The seeded core library and equipment list (Step 2), checked in the
--- database itself: complete, curated, consistent with the specs, readable by
--- every signed-in user and writable by none.
+-- The seeded core library, equipment list and ambiguous terms (Step 2),
+-- checked in the database itself: complete, curated, consistent with the
+-- specs and Daniel's review decisions, readable by every signed-in user and
+-- writable by none.
 
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(16);
+select plan(30);
 
 -- Only the seeded library, not the fixture's core rows.
 create view tests.seeded as
@@ -16,15 +17,21 @@ grant select on tests.seeded to authenticated;
 -- ---------------------------------------------------------------------------
 -- Complete and curated
 -- ---------------------------------------------------------------------------
-select results_eq($$ select count(*) from tests.seeded $$, array[120::bigint], '120 core exercises');
-select results_eq($$ select count(*) from public.equipment $$, array[24::bigint], '24 equipment items');
+select results_eq($$ select count(*) from tests.seeded $$, array[128::bigint], '128 core exercises');
+select results_eq($$ select count(*) from public.equipment $$, array[26::bigint], '26 equipment items (incl. trap bar, cable machine)');
+select results_eq($$ select count(distinct term) from public.ambiguous_exercise_terms $$, array[13::bigint], '13 ambiguous terms');
 select is_empty($$ select name from tests.seeded where plane is null or status <> 'active' $$,
   'Every core exercise is curated (plane set) and active');
 select is_empty($$
   select e.name from tests.seeded e
   where e.kind = 'movement'
     and (select sum(p.weight) from public.exercise_patterns p where p.exercise_id = e.id) is distinct from 1.00
-$$, 'Every core movement has pattern weights summing to 1.00');
+    and e.slug <> 'calf-raise'
+$$, 'Every core movement has pattern weights summing to 1.00 (except the pattern-free calf raise)');
+select results_eq($$
+  select e.slug from tests.seeded e
+  where e.kind = 'movement' and not exists (select 1 from public.exercise_patterns p where p.exercise_id = e.id)
+$$, array['calf-raise'], 'The calf raise is the only movement without a pattern');
 select is_empty($$
   select e.name from tests.seeded e
   where e.kind = 'monostructural'
@@ -41,10 +48,10 @@ select is_empty($$
   where not exists (select 1 from public.exercise_equipment x where x.equipment_key = q.key)
 $$, 'Every equipment item is used by at least one exercise');
 select results_eq($$ select version from public.taxonomy_versions order by version $$, array[1, 2],
-  'Equipment went into taxonomy version 2 (no version 3)');
+  'Equipment and hip_flexors went into taxonomy version 2 (no version 3)');
 
 -- ---------------------------------------------------------------------------
--- Consistent with the specs
+-- Consistent with the specs and the review decisions
 -- ---------------------------------------------------------------------------
 select results_eq($$
   select e.slug || ': ' || string_agg(p.pattern_key || ' ' || p.weight, ' / ' order by p.weight desc, p.pattern_key)
@@ -63,37 +70,89 @@ $$, array[
   'wall-ball: squat 0.60 / v_push 0.40'
 ], 'The seven pattern-weight examples from calc spec §3 are seeded unchanged');
 select results_eq($$
+  select string_agg(p.pattern_key || ' ' || p.weight, ' / ' order by p.weight desc)
+  from tests.seeded e join public.exercise_patterns p on p.exercise_id = e.id where e.slug = 'sled-push'
+$$, array['lunge 0.60 / carry 0.40'], 'Sled push is lunge 0.6 / carry 0.4 (arms brace, no press)');
+select results_eq($$
+  select e.slug from tests.seeded e join public.exercise_muscles m on m.exercise_id = e.id
+  where m.muscle_key = 'hip_flexors' order by e.slug
+$$, array['ghd-sit-up', 'hanging-knee-raise', 'hollow-hold', 'hollow-rock', 'knees-to-elbows', 'l-sit',
+          'mountain-climber', 'sit-up', 'toes-to-bar', 'v-up'],
+  'hip_flexors is mapped on exactly the ten core movements Daniel listed');
+select results_eq($$
   select a.alias_normalized || ' → ' || e.slug
   from public.exercise_aliases a join tests.seeded e on e.id = a.exercise_id
   where a.org_id is null
     and a.alias_normalized in ('kb swing', 'russian kbs', 'db bench', 'sa db row', 'du', 'alt db snatch',
-                               't2b', 'burpee over rower', 'bjo', 'bike')
+                               't2b', 'burpee over rower', 'bjo', 'bench', 'row', 'shuttle run')
   order by a.alias_normalized
 $$, array[
   'alt db snatch → dumbbell-snatch',
-  'bike → air-bike',
+  'bench → bench-press',
   'bjo → box-jump-over',
   'burpee over rower → burpee',
   'db bench → dumbbell-bench-press',
   'du → double-under',
   'kb swing → kettlebell-swing',
+  'row → row',
   'russian kbs → kettlebell-swing',
   'sa db row → single-arm-dumbbell-row',
+  'shuttle run → run',
   't2b → toes-to-bar'
-], 'What coaches write in the worked WODs resolves through core aliases');
+], 'What coaches write resolves through core aliases');
 select results_eq($$ select id::text from tests.seeded where slug = 'back-squat' $$,
   array['9aa1a1e3-1f42-5db0-a46c-a1c0e8455331'], 'Core exercise ids are deterministic (UUID v5 of the slug)');
-select is_empty($$ select modality from tests.seeded where modality = 'sled' $$,
-  'No exercise uses the removed sled modality');
+
+-- ---------------------------------------------------------------------------
+-- Ambiguous terms: the coach is asked, never auto-matched
+-- ---------------------------------------------------------------------------
+select is_empty($$
+  select t.term from public.ambiguous_exercise_terms t
+  join public.exercise_aliases a on a.org_id is null and a.alias_normalized = t.term
+$$, 'No ambiguous term is also a core alias');
+select results_eq($$
+  select e.slug from public.ambiguous_exercise_terms t join tests.seeded e on e.id = t.exercise_id
+  where t.term = 'squat' order by t.position
+$$, array['back-squat', 'front-squat', 'air-squat', 'goblet-squat'], '"squat" offers back, front, air and goblet squat, in that order');
+select is_empty($$
+  select term from public.ambiguous_exercise_terms group by term having count(*) < 2
+$$, 'Every ambiguous term has at least two candidates');
+select throws_ok($$
+  insert into public.exercise_aliases (org_id, alias_normalized, exercise_id)
+  values (null, 'squat', (select id from tests.seeded where slug = 'air-squat'))
+$$, '23514', null, 'An ambiguous term cannot be added as a core alias, not even by the service role');
+select throws_ok($$
+  insert into public.ambiguous_exercise_terms (term, exercise_id, position)
+  values ('kb swing', (select id from tests.seeded where slug = 'kettlebell-swing'), 1)
+$$, '23514', null, 'A core alias cannot be made an ambiguous term');
+select throws_ok($$
+  insert into public.ambiguous_exercise_terms (term, exercise_id, position)
+  values ('squat', tests.id('ex_a'), 9)
+$$, '23514', null, 'Ambiguous-term candidates must be core exercises');
+
+select tests.login_as('head_a');
+select lives_ok($$
+  insert into public.exercise_aliases (org_id, alias_normalized, exercise_id)
+  values (tests.id('gym_a'), 'squat', (select id from tests.seeded where slug = 'back-squat'))
+$$, 'A gym saves its answer as a gym alias: in gym A, "squat" means back squat');
+select throws_ok($$
+  insert into public.ambiguous_exercise_terms (term, exercise_id, position)
+  values ('squat', (select id from tests.seeded where slug = 'overhead-squat'), 9)
+$$, '42501', null, 'A head coach cannot change the ambiguous terms');
+
+select tests.login_as('coach_b');
+select is_empty($$ select 1 from public.exercise_aliases where alias_normalized = 'squat' $$,
+  '... and gym B does not see gym A''s choice');
 
 -- ---------------------------------------------------------------------------
 -- Readable by every signed-in user, writable by none
 -- ---------------------------------------------------------------------------
 select tests.login_as('outsider');
-select results_eq($$ select count(*) from tests.seeded $$, array[120::bigint],
+select results_eq($$ select count(*) from tests.seeded $$, array[128::bigint],
   'A signed-in user with no gym sees the whole core library');
-select results_eq($$ select count(*) from public.equipment $$, array[24::bigint],
-  '... and the whole equipment list');
+select results_eq($$ select count(*) from public.equipment $$, array[26::bigint],
+  '... the whole equipment list');
+select isnt_empty($$ select 1 from public.ambiguous_exercise_terms $$, '... and the ambiguous terms');
 
 select tests.login_as('head_a');
 select is_empty($$ update public.exercises set name = 'Hacked squat' where slug = 'back-squat' and org_id is null returning 1 $$,
@@ -101,6 +160,10 @@ select is_empty($$ update public.exercises set name = 'Hacked squat' where slug 
 select is_empty($$
   delete from public.exercise_aliases where org_id is null and alias_normalized = 'kb swing' returning 1
 $$, 'A head coach cannot delete a seeded core alias');
+
+select tests.login_anon();
+select throws_ok($$ select 1 from public.ambiguous_exercise_terms $$, '42501', null,
+  'Anonymous visitors cannot read the ambiguous terms');
 
 select * from finish();
 rollback;

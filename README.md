@@ -26,7 +26,7 @@ supabase start               # local Postgres + Auth in Docker
 | `npm run typecheck` / `npm run lint` | Type and lint checks |
 | `supabase db reset` | Rebuild the local database from `supabase/migrations/` |
 | `npm run db:types` | Regenerate `src/lib/database.types.ts` after a migration |
-| `npm run library:generate` | Regenerate the core-library seed migration and `docs/review-core-library.md` from `src/lib/library/` |
+| `npm run library:generate` | Regenerate the core-library seed migration and `docs/core-library.md` from `src/lib/library/` |
 
 ## Database rules
 

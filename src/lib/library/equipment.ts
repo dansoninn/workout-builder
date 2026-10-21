@@ -1,9 +1,10 @@
-// Proposed locked equipment list (Step 2, for Daniel's approval).
+// Locked equipment list, approved by Daniel 2026-10-21 (Step 2).
 // Order here is display order. Bodyweight is not equipment: an exercise with
 // no equipment is a bodyweight exercise.
 
 export const EQUIPMENT = [
   { key: "barbell", label: "Barbell" },
+  { key: "trap_bar", label: "Trap bar" },
   { key: "dumbbell", label: "Dumbbell" },
   { key: "kettlebell", label: "Kettlebell" },
   { key: "medicine_ball", label: "Medicine ball" },
@@ -21,6 +22,7 @@ export const EQUIPMENT = [
   { key: "ghd", label: "GHD" },
   { key: "ab_mat", label: "Ab mat" },
   { key: "resistance_band", label: "Resistance band" },
+  { key: "cable_machine", label: "Cable machine" },
   { key: "landmine", label: "Landmine" },
   { key: "sled", label: "Sled" },
   { key: "rower", label: "Rower" },

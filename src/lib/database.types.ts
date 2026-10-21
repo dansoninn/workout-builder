@@ -23,7 +23,27 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "audit_log": {
+            "ambiguous_exercise_terms": {
+                  Row: {
+                    "exercise_id": string,"position": number,"term": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "exercise_id": string,"position": number,"term": string
+                  }
+                  Update: {
+                    "exercise_id"?: string,"position"?: number,"term"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "ambiguous_exercise_terms_exercise_id_fkey"
+      columns: ["exercise_id"]
+isOneToOne: false
+      referencedRelation: "exercises"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"audit_log": {
                   Row: {
                     "action": Database["public"]['Enums']["audit_action"],"actor_id": string | null,"at": string,"diff": NonNullable<Json>,"id": number,"org_id": string | null,"row_id": string,"table_name": string
                   }

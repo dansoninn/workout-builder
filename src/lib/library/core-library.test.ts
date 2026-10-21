@@ -2,14 +2,16 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { AMBIGUOUS_TERMS } from "@/lib/library/ambiguous-terms";
 import { CORE_EXERCISES } from "@/lib/library/core-exercises";
 import { EQUIPMENT } from "@/lib/library/equipment";
 import {
+  LIBRARY_DOC_PATH,
   MIGRATION_PATH,
-  REVIEW_DOC_PATH,
   aliasesOf,
+  buildLibraryMarkdown,
   buildMigrationSql,
-  buildReviewMarkdown,
+  exerciseByName,
   exerciseId,
   musclesOf,
   patternsOf,
@@ -21,14 +23,9 @@ import { normalizeAlias } from "@/lib/normalize-alias";
 const movements = CORE_EXERCISES.filter((e) => e.kind === "movement");
 const monostructural = CORE_EXERCISES.filter((e) => e.kind === "monostructural");
 
-const byName = (name: string) => {
-  const exercise = CORE_EXERCISES.find((e) => e.name === name);
-  if (!exercise) throw new Error(`No exercise named ${name}`);
-  return exercise;
-};
-
 /** Alias → exercise name, for lookups the way the parser will do them. */
 const aliasIndex = new Map(CORE_EXERCISES.flatMap((e) => aliasesOf(e).map((a) => [a, e.name] as const)));
+const termIndex = new Map(AMBIGUOUS_TERMS.map((t) => [t.term, t.candidates]));
 
 describe("core library: identity", () => {
   it("has unique names and slugs in the database's slug format", () => {
@@ -48,17 +45,22 @@ describe("core library: identity", () => {
 
 describe("core library: patterns", () => {
   it("every movement has 1–3 patterns whose weights sum to exactly 1.00 in steps of 0.1", () => {
-    for (const exercise of movements) {
+    for (const exercise of movements.filter((e) => patternsOf(e).length > 0)) {
       const patterns = patternsOf(exercise);
-      expect(patterns.length, exercise.name).toBeGreaterThanOrEqual(1);
       expect(patterns.length, exercise.name).toBeLessThanOrEqual(3);
-      const tenths = patterns.map(([, weight]) => weight * 10);
+      const tenths = patterns.map(([, weight]) => Math.round(weight * 1000) / 100);
       for (const t of tenths) {
-        expect(Number.isInteger(Math.round(t * 1e9) / 1e9), `${exercise.name}: step of 0.1`).toBe(true);
+        expect(Number.isInteger(t), `${exercise.name}: step of 0.1`).toBe(true);
         expect(t, exercise.name).toBeGreaterThan(0);
       }
-      expect(Math.round(tenths.reduce((a, b) => a + b, 0)), exercise.name).toBe(10);
+      expect(tenths.reduce((a, b) => a + b, 0), exercise.name).toBe(10);
     }
+  });
+
+  it("only the calf raise has no pattern, and it says why", () => {
+    const patternFree = movements.filter((e) => patternsOf(e).length === 0);
+    expect(patternFree.map((e) => e.name)).toEqual(["Calf raise"]);
+    for (const exercise of patternFree) expect(exercise.note, exercise.name).toMatch(/pattern/);
   });
 
   it("monostructural exercises have a modality and no patterns or muscles", () => {
@@ -81,8 +83,26 @@ describe("core library: patterns", () => {
       "Box jump-over": { jump: 1 },
     };
     for (const [name, weights] of Object.entries(expected)) {
-      expect(Object.fromEntries(patternsOf(byName(name))), name).toEqual(weights);
+      expect(Object.fromEntries(patternsOf(exerciseByName(name))), name).toEqual(weights);
     }
+  });
+
+  it("applies Daniel's review decisions (2026-10-21)", () => {
+    expect(Object.fromEntries(patternsOf(exerciseByName("Sled push")))).toEqual({ lunge: 0.6, carry: 0.4 });
+    expect(Object.fromEntries(patternsOf(exerciseByName("Sled drag")))).toEqual({ carry: 1 });
+    expect(Object.fromEntries(patternsOf(exerciseByName("Sled pull")))).toEqual({ h_pull: 1 });
+    for (const name of ["Toes-to-bar", "Knees-to-elbows", "Hanging knee raise", "Sit-up", "GHD sit-up", "V-up",
+      "L-sit", "Hollow hold", "Hollow rock", "Mountain climber"]) {
+      const { primary, secondary } = musclesOf(exerciseByName(name));
+      expect([...primary, ...secondary], name).toContain("hip_flexors");
+    }
+    for (const name of ["Trap bar deadlift", "Nordic hamstring curl", "Copenhagen plank", "Calf raise",
+      "Lat pulldown", "Face pull", "Box step-over", "Burpee pull-up"]) {
+      expect(() => exerciseByName(name), name).not.toThrow();
+    }
+    expect(musclesOf(exerciseByName("Copenhagen plank")).primary).toContain("adductors");
+    expect(exerciseByName("Copenhagen plank").unilateral).toBe(true);
+    expect(aliasIndex.get("shuttle run")).toBe("Run");
   });
 });
 
@@ -93,7 +113,6 @@ describe("core library: muscles, plane, equipment", () => {
       expect(primary.length, exercise.name).toBeGreaterThanOrEqual(1);
       expect(primary.length, exercise.name).toBeLessThanOrEqual(3);
       expect(secondary.length, exercise.name).toBeLessThanOrEqual(3);
-      expect(primary.filter((m) => secondary.includes(m)), exercise.name).toEqual([]);
       expect(new Set([...primary, ...secondary]).size, exercise.name).toBe(primary.length + secondary.length);
     }
   });
@@ -113,8 +132,8 @@ describe("core library: muscles, plane, equipment", () => {
   });
 });
 
-describe("core library: aliases", () => {
-  it("are normalised and include the canonical name", () => {
+describe("core library: aliases and ambiguous terms", () => {
+  it("aliases are normalised and include the canonical name", () => {
     for (const exercise of CORE_EXERCISES) {
       const aliases = aliasesOf(exercise);
       expect(aliases[0], exercise.name).toBe(normalizeAlias(exercise.name));
@@ -132,7 +151,30 @@ describe("core library: aliases", () => {
     }
   });
 
-  it("matches every exercise in the calc spec's worked WODs (§7) and the data spec's alias example (§5)", () => {
+  it("ambiguous terms are normalised, unique, never core aliases, with 2+ distinct core candidates", () => {
+    expect(new Set(AMBIGUOUS_TERMS.map((t) => t.term)).size).toBe(AMBIGUOUS_TERMS.length);
+    for (const { term, candidates } of AMBIGUOUS_TERMS) {
+      expect(normalizeAlias(term), term).toBe(term);
+      expect(aliasIndex.get(term), `"${term}" is also a core alias`).toBeUndefined();
+      expect(candidates.length, term).toBeGreaterThanOrEqual(2);
+      expect(new Set(candidates).size, term).toBe(candidates.length);
+      for (const name of candidates) expect(() => exerciseByName(name), `${term}: ${name}`).not.toThrow();
+    }
+  });
+
+  it("generic words Daniel listed are ambiguous terms, except the unambiguous ones kept as aliases", () => {
+    for (const word of ["squat", "lunge", "clean", "snatch", "jerk", "press", "dip", "muscle up", "bike"]) {
+      expect(termIndex.has(word), word).toBe(true);
+    }
+    expect(aliasIndex.get("bench")).toBe("Bench press");
+    expect(aliasIndex.get("row")).toBe("Row");
+    expect(aliasIndex.get("ski")).toBe("Ski erg");
+    expect(termIndex.get("squat")?.slice(0, 3)).toEqual(["Back squat", "Front squat", "Air squat"]);
+  });
+
+  it("resolves every exercise in the calc spec's worked WODs (§7) and the data spec's alias example (§5)", () => {
+    // Written term → expected exercise. Generic words resolve to an ambiguous
+    // term whose candidates include the expected exercise (the coach picks).
     const written: Record<string, string> = {
       "Back squat": "Back squat",
       "DB bench": "Dumbbell bench press",
@@ -153,9 +195,10 @@ describe("core library: aliases", () => {
     };
     for (const [text, name] of Object.entries(written)) {
       // Plural stripping is the parser's job (Step 4); emulate it minimally here.
-      const alias = normalizeAlias(text);
-      const match = aliasIndex.get(alias) ?? aliasIndex.get(alias.replace(/s$/, ""));
-      expect(match, text).toBe(name);
+      const forms = [normalizeAlias(text), normalizeAlias(text).replace(/s$/, "")];
+      const direct = forms.map((f) => aliasIndex.get(f)).find(Boolean);
+      const candidates = forms.map((f) => termIndex.get(f)).find(Boolean);
+      expect(direct ?? (candidates?.includes(name) ? name : undefined), text).toBe(name);
     }
   });
 });
@@ -165,7 +208,7 @@ describe("generated files", () => {
     expect(readFileSync(MIGRATION_PATH, "utf8"), "run npm run library:generate").toBe(buildMigrationSql());
   });
 
-  it("the review document is up to date with the library source", () => {
-    expect(readFileSync(REVIEW_DOC_PATH, "utf8"), "run npm run library:generate").toBe(buildReviewMarkdown());
+  it("the library document is up to date with the library source", () => {
+    expect(readFileSync(LIBRARY_DOC_PATH, "utf8"), "run npm run library:generate").toBe(buildLibraryMarkdown());
   });
 });

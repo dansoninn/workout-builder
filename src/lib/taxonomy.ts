@@ -15,7 +15,7 @@ export const MODALITIES = ["run", "row", "bike", "ski", "jump_rope", "swim"] as 
 export type ModalityKey = (typeof MODALITIES)[number];
 
 export const MUSCLES = [
-  "quads", "hamstrings", "glutes", "adductors", "calves",
+  "quads", "hamstrings", "glutes", "adductors", "hip_flexors", "calves",
   "chest", "lats", "upper_back", "shoulders", "biceps", "triceps", "forearms_grip",
   "abs", "obliques", "lower_back",
 ] as const;

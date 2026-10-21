@@ -1,13 +1,16 @@
-// Proposed core exercise library (Step 2, for Daniel's approval).
+// Core exercise library, approved by Daniel 2026-10-21 (Step 2).
 //
 // This file is the single source for the core library: the seed migration and
-// docs/review-core-library.md are generated from it (npm run library:generate).
+// docs/core-library.md are generated from it (npm run library:generate).
 //
-// Conventions (also listed in the review document):
+// Conventions (also listed in docs/core-library.md):
 //   * Pattern weights sum to 1.00, in steps of 0.1, at most three patterns.
-//     Dominant phase 0.6–0.7, secondary phase 0.3–0.4. Holds (overhead squat,
-//     carries, Turkish get-up) are not counted as presses.
+//     Dominant phase 0.6–0.7, secondary phase 0.3–0.4. Holds and braces
+//     (overhead squat, carries, Turkish get-up, arms on a sled) are not presses.
+//   * A movement that fits no pattern (calf raise) has none and says why in a note.
 //   * Monostructural exercises have a modality and no patterns or muscles.
+//   * Generic words that could mean several exercises ("squat", "clean") are
+//     not aliases; they live in ambiguous-terms.ts.
 //   * Muscles: at most three primary (prime movers) and three secondary.
 //   * Equipment: what the exercise is done with; several items = any one of
 //     them. Bodyweight exercises list none; optional loading goes on the
@@ -36,6 +39,7 @@ export const CATEGORIES = {
   core: "Core & rotation",
   jump: "Jump & plyometrics",
   carry: "Carry & sled",
+  isolation: "Isolation (no pattern)",
   mono: "Monostructural",
 } as const;
 export type Category = keyof typeof CATEGORIES;
@@ -83,13 +87,13 @@ export const CORE_EXERCISES: CoreExercise[] = [
     aliases: ["ohs"], note: "Overhead position is a hold, not a press: no v_push." },
   { name: "Air squat", category: "squat", kind: "movement", patterns: { squat: 1 }, plane: S, unit: "reps",
     primary: ["quads", "glutes"], secondary: ["adductors"],
-    aliases: ["squat", "bodyweight squat", "bw squat"], note: "\"squat\" on its own maps here (metcon usage)." },
+    aliases: ["bodyweight squat", "bw squat"] },
   { name: "Goblet squat", category: "squat", kind: "movement", patterns: { squat: 1 }, plane: S, unit: "reps",
     primary: ["quads", "glutes"], secondary: ["adductors", "abs"], equipment: ["kettlebell", "dumbbell"],
     aliases: ["kb goblet squat", "db goblet squat"] },
   { name: "Dumbbell front squat", category: "squat", kind: "movement", patterns: { squat: 1 }, plane: S, unit: "reps",
     primary: ["quads", "glutes"], secondary: ["abs", "upper_back"], equipment: ["dumbbell"],
-    aliases: ["db front squat", "db squat"] },
+    aliases: ["db front squat"] },
   { name: "Wall ball", category: "squat", kind: "movement", patterns: { squat: 0.6, v_push: 0.4 }, plane: S, unit: "reps",
     primary: ["quads", "glutes", "shoulders"], secondary: ["triceps", "abs"], equipment: ["medicine_ball"],
     aliases: ["wb", "wbs", "wall ball shot", "wallball"], note: "Spec example." },
@@ -105,8 +109,8 @@ export const CORE_EXERCISES: CoreExercise[] = [
   // --- Lunge & single leg ---------------------------------------------------
   { name: "Walking lunge", category: "lunge", kind: "movement", patterns: { lunge: 1 }, plane: S, unit: "reps", unilateral: true,
     primary: ["quads", "glutes"], secondary: ["adductors", "hamstrings"],
-    aliases: ["lunge", "db walking lunge", "kb walking lunge"],
-    note: "\"lunge\" on its own maps here. Load (DB/KB/barbell) goes on the workout line." },
+    aliases: ["db walking lunge", "kb walking lunge"],
+    note: "Load (DB/KB/barbell) goes on the workout line." },
   { name: "Reverse lunge", category: "lunge", kind: "movement", patterns: { lunge: 1 }, plane: S, unit: "reps", unilateral: true,
     primary: ["quads", "glutes"], secondary: ["adductors", "hamstrings"],
     aliases: ["back lunge", "rev lunge", "db reverse lunge"] },
@@ -119,6 +123,9 @@ export const CORE_EXERCISES: CoreExercise[] = [
   { name: "Step-up", category: "lunge", kind: "movement", patterns: { lunge: 1 }, plane: S, unit: "reps", unilateral: true,
     primary: ["quads", "glutes"], secondary: ["hamstrings"], equipment: ["box"],
     aliases: ["box step up", "db step up", "db box step up"] },
+  { name: "Box step-over", category: "lunge", kind: "movement", patterns: { lunge: 1 }, plane: S, unit: "reps", unilateral: true,
+    primary: ["quads", "glutes"], secondary: ["hamstrings"], equipment: ["box"],
+    aliases: ["step over"] },
   { name: "Pistol", category: "lunge", kind: "movement", patterns: { lunge: 1 }, plane: S, unit: "reps", unilateral: true,
     primary: ["quads", "glutes"], secondary: ["abs", "calves"],
     aliases: ["pistol squat", "single leg squat"], note: "Single-leg, so lunge (spec §2.1), not squat." },
@@ -132,6 +139,9 @@ export const CORE_EXERCISES: CoreExercise[] = [
   { name: "Deadlift", category: "hinge", kind: "movement", patterns: { hinge: 1 }, plane: S, unit: "reps",
     primary: ["hamstrings", "glutes", "lower_back"], secondary: ["forearms_grip", "upper_back", "quads"], equipment: ["barbell"],
     aliases: ["dl", "barbell deadlift", "conventional deadlift"] },
+  { name: "Trap bar deadlift", category: "hinge", kind: "movement", patterns: { hinge: 1 }, plane: S, unit: "reps",
+    primary: ["glutes", "hamstrings", "quads"], secondary: ["lower_back", "forearms_grip", "upper_back"], equipment: ["trap_bar"],
+    aliases: ["trap bar dl", "hex bar deadlift", "hex bar dl"], note: "Hinge, with more quads than a barbell deadlift." },
   { name: "Sumo deadlift", category: "hinge", kind: "movement", patterns: { hinge: 1 }, plane: S, unit: "reps",
     primary: ["glutes", "adductors", "hamstrings"], secondary: ["lower_back", "quads", "forearms_grip"], equipment: ["barbell"],
     aliases: ["sumo dl"] },
@@ -165,6 +175,10 @@ export const CORE_EXERCISES: CoreExercise[] = [
   { name: "Back extension", category: "hinge", kind: "movement", patterns: { hinge: 1 }, plane: S, unit: "reps",
     primary: ["lower_back", "glutes", "hamstrings"], equipment: ["ghd"],
     aliases: ["hyperextension", "back ext", "ghd back extension", "hip extension", "ghd hip extension"] },
+  { name: "Nordic hamstring curl", category: "hinge", kind: "movement", patterns: { hinge: 1 }, plane: S, unit: "reps",
+    primary: ["hamstrings"], secondary: ["glutes", "calves"],
+    aliases: ["nordic curl", "nordic", "nordic ham curl"],
+    note: "Knee flexion, not a hip hinge; hinge is the closest pattern (posterior chain). Please confirm." },
 
   // --- Olympic lifts & ballistics -------------------------------------------
   { name: "Power clean", category: "olympic", kind: "movement", patterns: { hinge: 0.7, v_pull: 0.3 }, plane: S, unit: "reps",
@@ -172,13 +186,13 @@ export const CORE_EXERCISES: CoreExercise[] = [
     aliases: ["pc"], note: "Same split as the spec's DB snatch." },
   { name: "Squat clean", category: "olympic", kind: "movement", patterns: { hinge: 0.5, squat: 0.3, v_pull: 0.2 }, plane: S, unit: "reps",
     primary: ["glutes", "hamstrings", "quads"], secondary: ["upper_back", "lower_back", "forearms_grip"], equipment: ["barbell"],
-    aliases: ["clean", "full clean"], note: "\"clean\" on its own maps here. The catch in a full squat adds squat." },
+    aliases: ["full clean"], note: "The catch in a full squat adds squat." },
   { name: "Hang power clean", category: "olympic", kind: "movement", patterns: { hinge: 0.7, v_pull: 0.3 }, plane: S, unit: "reps",
     primary: ["glutes", "hamstrings", "quads"], secondary: ["upper_back", "lower_back", "forearms_grip"], equipment: ["barbell"],
     aliases: ["hpc"] },
   { name: "Hang squat clean", category: "olympic", kind: "movement", patterns: { hinge: 0.5, squat: 0.3, v_pull: 0.2 }, plane: S, unit: "reps",
     primary: ["glutes", "hamstrings", "quads"], secondary: ["upper_back", "lower_back", "forearms_grip"], equipment: ["barbell"],
-    aliases: ["hang clean", "hsc"] },
+    aliases: ["hsc"] },
   { name: "Clean and jerk", category: "olympic", kind: "movement", patterns: { hinge: 0.5, squat: 0.2, v_push: 0.3 }, plane: S, unit: "reps",
     primary: ["glutes", "hamstrings", "quads"], secondary: ["shoulders", "triceps", "upper_back"], equipment: ["barbell"],
     aliases: ["cj", "c and j"] },
@@ -186,7 +200,7 @@ export const CORE_EXERCISES: CoreExercise[] = [
     primary: ["glutes", "hamstrings", "quads"], secondary: ["shoulders", "upper_back", "lower_back"], equipment: ["barbell"] },
   { name: "Squat snatch", category: "olympic", kind: "movement", patterns: { hinge: 0.5, squat: 0.3, v_pull: 0.2 }, plane: S, unit: "reps",
     primary: ["glutes", "hamstrings", "quads"], secondary: ["shoulders", "upper_back", "lower_back"], equipment: ["barbell"],
-    aliases: ["snatch", "full snatch"], note: "\"snatch\" on its own maps here." },
+    aliases: ["full snatch"] },
   { name: "Hang power snatch", category: "olympic", kind: "movement", patterns: { hinge: 0.7, v_pull: 0.3 }, plane: S, unit: "reps",
     primary: ["glutes", "hamstrings", "quads"], secondary: ["shoulders", "upper_back", "lower_back"], equipment: ["barbell"],
     aliases: ["hps"] },
@@ -195,7 +209,7 @@ export const CORE_EXERCISES: CoreExercise[] = [
     note: "The leg drive is a dip, not a squat: v_push only." },
   { name: "Push jerk", category: "olympic", kind: "movement", patterns: { v_push: 1 }, plane: S, unit: "reps",
     primary: ["shoulders", "triceps"], secondary: ["quads", "upper_back", "abs"], equipment: ["barbell"],
-    aliases: ["pj", "jerk"], note: "\"jerk\" on its own maps here." },
+    aliases: ["pj"] },
   { name: "Split jerk", category: "olympic", kind: "movement", patterns: { v_push: 1 }, plane: S, unit: "reps",
     primary: ["shoulders", "triceps"], secondary: ["quads", "glutes", "abs"], equipment: ["barbell"] },
   { name: "Shoulder-to-overhead", category: "olympic", kind: "movement", patterns: { v_push: 1 }, plane: S, unit: "reps",
@@ -232,7 +246,7 @@ export const CORE_EXERCISES: CoreExercise[] = [
   // --- Vertical push --------------------------------------------------------
   { name: "Strict press", category: "v_push", kind: "movement", patterns: { v_push: 1 }, plane: S, unit: "reps",
     primary: ["shoulders", "triceps"], secondary: ["upper_back", "abs"], equipment: ["barbell"],
-    aliases: ["press", "shoulder press", "overhead press", "ohp", "military press"] },
+    aliases: ["overhead press", "ohp", "military press"] },
   { name: "Dumbbell shoulder press", category: "v_push", kind: "movement", patterns: { v_push: 1 }, plane: S, unit: "reps",
     primary: ["shoulders", "triceps"], secondary: ["upper_back"], equipment: ["dumbbell"],
     aliases: ["db press", "db shoulder press", "db strict press", "db ohp"] },
@@ -255,7 +269,7 @@ export const CORE_EXERCISES: CoreExercise[] = [
     note: "Dips counted as vertical push (pressing along the body's long axis)." },
   { name: "Bar dip", category: "v_push", kind: "movement", patterns: { v_push: 1 }, plane: S, unit: "reps",
     primary: ["triceps", "chest"], secondary: ["shoulders"], equipment: ["dip_station"],
-    aliases: ["dip", "parallel bar dip"] },
+    aliases: ["parallel bar dip"] },
 
   // --- Horizontal push & burpees --------------------------------------------
   { name: "Bench press", category: "h_push", kind: "movement", patterns: { h_push: 1 }, plane: S, unit: "reps",
@@ -274,6 +288,9 @@ export const CORE_EXERCISES: CoreExercise[] = [
   { name: "Burpee box jump-over", category: "h_push", kind: "movement", patterns: { h_push: 0.5, jump: 0.5 }, plane: S, unit: "reps",
     primary: ["chest", "quads", "glutes"], secondary: ["calves", "triceps", "abs"], equipment: ["box"],
     aliases: ["bbjo", "burpee box jump"] },
+  { name: "Burpee pull-up", category: "h_push", kind: "movement", patterns: { h_push: 0.4, jump: 0.3, v_pull: 0.3 }, plane: S, unit: "reps",
+    primary: ["chest", "quads", "lats"], secondary: ["glutes", "biceps", "triceps"], equipment: ["pull_up_bar"],
+    aliases: ["burpee pullup", "burpee to pull up"], note: "Burpee split plus the pull-up." },
 
   // --- Vertical pull --------------------------------------------------------
   { name: "Pull-up", category: "v_pull", kind: "movement", patterns: { v_pull: 1 }, plane: S, unit: "reps",
@@ -285,12 +302,15 @@ export const CORE_EXERCISES: CoreExercise[] = [
   { name: "Chin-up", category: "v_pull", kind: "movement", patterns: { v_pull: 1 }, plane: S, unit: "reps",
     primary: ["lats", "biceps"], secondary: ["forearms_grip"], equipment: ["pull_up_bar"],
     aliases: ["chinup"] },
+  { name: "Lat pulldown", category: "v_pull", kind: "movement", patterns: { v_pull: 1 }, plane: S, unit: "reps",
+    primary: ["lats", "biceps"], secondary: ["upper_back"], equipment: ["cable_machine"],
+    aliases: ["pulldown", "lat pull down"] },
   { name: "Bar muscle-up", category: "v_pull", kind: "movement", patterns: { v_pull: 0.6, v_push: 0.4 }, plane: S, unit: "reps",
     primary: ["lats", "triceps"], secondary: ["chest", "abs", "forearms_grip"], equipment: ["pull_up_bar"],
     aliases: ["bmu"] },
   { name: "Ring muscle-up", category: "v_pull", kind: "movement", patterns: { v_pull: 0.6, v_push: 0.4 }, plane: S, unit: "reps",
     primary: ["lats", "triceps"], secondary: ["chest", "biceps", "abs"], equipment: ["rings"],
-    aliases: ["rmu", "muscle up"], note: "\"muscle up\" on its own maps here." },
+    aliases: ["rmu"] },
   { name: "Rope climb", category: "v_pull", kind: "movement", patterns: { v_pull: 1 }, plane: S, unit: "reps",
     primary: ["lats", "biceps", "forearms_grip"], secondary: ["abs"], equipment: ["climbing_rope"],
     aliases: ["legless rope climb"] },
@@ -310,43 +330,48 @@ export const CORE_EXERCISES: CoreExercise[] = [
   { name: "Band pull-apart", category: "h_pull", kind: "movement", patterns: { h_pull: 1 }, plane: S, unit: "reps",
     primary: ["upper_back", "shoulders"], equipment: ["resistance_band"],
     aliases: ["pull apart", "banded pull apart"] },
+  { name: "Face pull", category: "h_pull", kind: "movement", patterns: { h_pull: 1 }, plane: S, unit: "reps",
+    primary: ["upper_back", "shoulders"], equipment: ["cable_machine", "resistance_band"],
+    aliases: ["band face pull", "cable face pull"] },
 
   // --- Core & rotation ------------------------------------------------------
   { name: "Toes-to-bar", category: "core", kind: "movement", patterns: { core: 0.7, v_pull: 0.3 }, plane: S, unit: "reps",
-    primary: ["abs"], secondary: ["lats", "forearms_grip"], equipment: ["pull_up_bar"],
+    primary: ["abs", "hip_flexors"], secondary: ["lats", "forearms_grip"], equipment: ["pull_up_bar"],
     aliases: ["t2b", "ttb"], note: "Spec example." },
   { name: "Knees-to-elbows", category: "core", kind: "movement", patterns: { core: 0.7, v_pull: 0.3 }, plane: S, unit: "reps",
-    primary: ["abs"], secondary: ["lats", "forearms_grip"], equipment: ["pull_up_bar"],
+    primary: ["abs", "hip_flexors"], secondary: ["lats", "forearms_grip"], equipment: ["pull_up_bar"],
     aliases: ["k2e", "kte"] },
   { name: "Hanging knee raise", category: "core", kind: "movement", patterns: { core: 0.7, v_pull: 0.3 }, plane: S, unit: "reps",
-    primary: ["abs"], secondary: ["lats", "forearms_grip"], equipment: ["pull_up_bar"],
+    primary: ["hip_flexors", "abs"], secondary: ["lats", "forearms_grip"], equipment: ["pull_up_bar"],
     aliases: ["knee raise", "hkr"] },
   { name: "Sit-up", category: "core", kind: "movement", patterns: { core: 1 }, plane: S, unit: "reps",
-    primary: ["abs"], equipment: ["ab_mat"],
+    primary: ["abs"], secondary: ["hip_flexors"], equipment: ["ab_mat"],
     aliases: ["situp", "abmat sit up", "abmat situp"] },
   { name: "GHD sit-up", category: "core", kind: "movement", patterns: { core: 1 }, plane: S, unit: "reps",
-    primary: ["abs"], secondary: ["quads"], equipment: ["ghd"],
+    primary: ["abs", "hip_flexors"], secondary: ["quads"], equipment: ["ghd"],
     aliases: ["ghd situp"] },
   { name: "V-up", category: "core", kind: "movement", patterns: { core: 1 }, plane: S, unit: "reps",
-    primary: ["abs"],
+    primary: ["abs", "hip_flexors"],
     aliases: ["vup"] },
   { name: "Hollow hold", category: "core", kind: "movement", patterns: { core: 1 }, plane: S, unit: "time_s",
-    primary: ["abs"],
-    aliases: ["hollow"] },
+    primary: ["abs"], secondary: ["hip_flexors"] },
   { name: "Hollow rock", category: "core", kind: "movement", patterns: { core: 1 }, plane: S, unit: "reps",
-    primary: ["abs"] },
+    primary: ["abs"], secondary: ["hip_flexors"] },
   { name: "Plank", category: "core", kind: "movement", patterns: { core: 1 }, plane: S, unit: "time_s",
     primary: ["abs"], secondary: ["shoulders", "obliques"],
     aliases: ["front plank", "forearm plank", "plank hold"] },
   { name: "Side plank", category: "core", kind: "movement", patterns: { core: 1 }, plane: F, unit: "time_s", unilateral: true,
     primary: ["obliques"], secondary: ["abs", "shoulders"] },
+  { name: "Copenhagen plank", category: "core", kind: "movement", patterns: { core: 1 }, plane: F, unit: "time_s", unilateral: true,
+    primary: ["adductors", "obliques"], secondary: ["abs"], equipment: ["bench"],
+    aliases: ["copenhagen", "copenhagen side plank", "copenhagen adductor plank"] },
   { name: "Dead bug", category: "core", kind: "movement", patterns: { core: 1 }, plane: S, unit: "reps",
     primary: ["abs"] },
   { name: "L-sit", category: "core", kind: "movement", patterns: { core: 1 }, plane: S, unit: "time_s",
-    primary: ["abs"], secondary: ["triceps", "quads"], equipment: ["parallettes"],
+    primary: ["abs", "hip_flexors"], secondary: ["triceps", "quads"], equipment: ["parallettes"],
     aliases: ["lsit", "l sit hold"] },
   { name: "Mountain climber", category: "core", kind: "movement", patterns: { core: 1 }, plane: S, unit: "reps",
-    primary: ["abs"], secondary: ["shoulders", "quads"] },
+    primary: ["abs", "hip_flexors"], secondary: ["shoulders", "quads"] },
   { name: "Bear crawl", category: "core", kind: "movement", patterns: { core: 0.6, h_push: 0.4 }, plane: S, unit: "distance_m",
     primary: ["abs", "shoulders"], secondary: ["quads", "triceps"] },
   { name: "Ball slam", category: "core", kind: "movement", patterns: { core: 0.6, hinge: 0.4 }, plane: S, unit: "reps",
@@ -408,10 +433,10 @@ export const CORE_EXERCISES: CoreExercise[] = [
   { name: "Sandbag carry", category: "carry", kind: "movement", patterns: { carry: 1 }, plane: S, unit: "distance_m",
     primary: ["upper_back", "abs"], secondary: ["glutes", "quads", "forearms_grip"], equipment: ["sandbag"],
     aliases: ["bear hug carry", "sandbag bear hug carry"] },
-  { name: "Sled push", category: "carry", kind: "movement", patterns: { carry: 0.6, h_push: 0.4 }, plane: S, unit: "distance_m",
-    primary: ["quads", "glutes", "calves"], secondary: ["chest", "triceps", "shoulders"], equipment: ["sled"],
+  { name: "Sled push", category: "carry", kind: "movement", patterns: { lunge: 0.6, carry: 0.4 }, plane: S, unit: "distance_m",
+    primary: ["quads", "glutes", "calves"], secondary: ["abs", "shoulders", "hamstrings"], equipment: ["sled"],
     aliases: ["prowler push", "prowler"],
-    note: "From your example (h_push / carry): proposed carry 0.6 / h_push 0.4 because the legs drive it. Please confirm." },
+    note: "Arms are a brace, not a press: no h_push (Daniel, 2026-10-21)." },
   { name: "Sled drag", category: "carry", kind: "movement", patterns: { carry: 1 }, plane: S, unit: "distance_m",
     primary: ["quads", "glutes"], secondary: ["calves", "hamstrings"], equipment: ["sled"],
     aliases: ["backward sled drag", "reverse sled drag"], note: "Walking with the sled behind or in front (harness or straps)." },
@@ -419,13 +444,19 @@ export const CORE_EXERCISES: CoreExercise[] = [
     primary: ["upper_back", "lats", "biceps"], secondary: ["forearms_grip", "abs"], equipment: ["sled"],
     aliases: ["rope sled pull", "hand over hand sled pull"], note: "Hand-over-hand rope pull while standing still." },
 
+  // --- Isolation (no pattern fits) -----------------------------------------
+  { name: "Calf raise", category: "isolation", kind: "movement", patterns: {}, plane: S, unit: "reps",
+    primary: ["calves"],
+    aliases: ["standing calf raise", "heel raise"],
+    note: "Ankle work fits none of the 11 patterns: no pattern, counted in muscle analytics only. Please confirm." },
+
   // --- Monostructural (modality, no patterns or muscles) ---------------------
   { name: "Run", category: "mono", kind: "monostructural", modality: "run", plane: S, unit: "distance_m",
-    aliases: ["running", "jog"] },
+    aliases: ["running", "jog", "shuttle run"] },
   { name: "Row", category: "mono", kind: "monostructural", modality: "row", plane: S, unit: "distance_m", equipment: ["rower"],
     aliases: ["rowing", "rower"] },
   { name: "Air bike", category: "mono", kind: "monostructural", modality: "bike", plane: S, unit: "calories", equipment: ["air_bike"],
-    aliases: ["bike", "assault bike", "echo bike", "airbike"], note: "\"bike\" on its own maps here." },
+    aliases: ["assault bike", "echo bike", "airbike"] },
   { name: "Bike erg", category: "mono", kind: "monostructural", modality: "bike", plane: S, unit: "calories", equipment: ["bike_erg"],
     aliases: ["bikeerg", "c2 bike", "concept2 bike"], note: "Separate from the air bike: calories come much easier." },
   { name: "Ski erg", category: "mono", kind: "monostructural", modality: "ski", plane: S, unit: "distance_m", equipment: ["ski_erg"],
