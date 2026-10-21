@@ -23,6 +23,7 @@ import type {
   ByPattern,
   EngineConfig,
   Exercise,
+  Issue,
   Item,
   Lenses,
   Measure,
@@ -122,23 +123,34 @@ function sum(measures: Measure[]): Measure | undefined {
 
 /**
  * How often each of n lines is done when they take turns over `count`
- * intervals (tabata, alternating EMOM): the first lines get one more when the
- * count does not divide evenly.
+ * intervals (tabata): the first lines get one more when the count does not
+ * divide evenly.
  */
 function rotation(count: number, n: number): (index: number) => Measure {
   return (index) => exact(Math.floor(count / n) + (index < count % n ? 1 : 0));
 }
 
+/** Alternating EMOM: number of slots in the rotation. Lines without a slot count as a slot each. */
+function slotCount(items: Item[]): number {
+  const slots = new Set(items.flatMap((item) => (item.slot ? [item.slot] : [])));
+  return Math.max(1, slots.size + items.filter((item) => !item.slot).length);
+}
+
 export function computeBlock(block: Block, config: EngineConfig): BlockResult {
-  const warnings: string[] = [];
+  const issues: Issue[] = [];
+  const position = new Map(block.items.map((item, index) => [item, index]));
+  const warn = (message: string, lines: Item[] = []) =>
+    issues.push({ message, items: lines.map((item) => position.get(item) ?? -1).filter((i) => i >= 0) });
   const effort = resolveBlockEffort(block, config);
 
   const items = block.items.filter((item): item is MatchedItem => {
     if (item.exercise) return true;
-    warnings.push(`unmatched line skipped: "${item.rawLine ?? "?"}"`);
+    warn(`unmatched line skipped: "${item.rawLine ?? "?"}"`, [item]);
     return false;
   });
   const n = items.length;
+  const alternating = block.format === "every" && block.params.alternating === true;
+  const slots = alternating ? slotCount(block.items) : 1;
 
   // Time window for max-effort lines.
   let windowSec: number | null = null;
@@ -151,7 +163,7 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   // tabata: rounds × work), otherwise by their window.
   let maxEffortFatigueSec = windowSec;
   if (block.format === "intervals") maxEffortFatigueSec = block.params.rounds * block.params.stations * block.params.work_s;
-  if (block.format === "every") maxEffortFatigueSec = block.params.rounds * block.params.interval_s;
+  if (block.format === "every") maxEffortFatigueSec = block.params.rounds * slots * block.params.interval_s;
   if (block.format === "tabata") maxEffortFatigueSec = block.params.rounds * block.params.work_s;
 
   /** Per-line amount and time, given the fatigue factor of the piece. */
@@ -174,10 +186,14 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   let rows = buildRows(block.format === "amrap" ? fatigueFactor(block.params.time_s / 60, config) : 1);
 
   for (const row of rows) {
-    if (!row.amount) warnings.push(`${row.item.exercise.name}: max effort needs a time window and a pace; not counted`);
+    if (!row.amount) warn(`${row.item.exercise.name}: max effort needs a time window and a pace; not counted`, [row.item]);
   }
-  const missingPace = rows.filter((r) => r.amount && !r.time).map((r) => r.item.exercise.name);
-  const needsPace = () => warnings.push(`no pace for ${missingPace.join(", ")}; duration cannot be estimated`);
+  const missingPace = rows.filter((r) => r.amount && !r.time);
+  const needsPace = () =>
+    warn(
+      `no pace for ${missingPace.map((r) => r.item.exercise.name).join(", ")}; duration cannot be estimated`,
+      missingPace.map((r) => r.item),
+    );
   const transitions = (count: number): Measure => (count > 0 ? estimated(count * config.transitionSec) : exact(0));
 
   // How many times each line is performed, and how long the block takes (calc spec §4.3, §5).
@@ -200,18 +216,11 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
       break;
     }
     case "every": {
-      const { interval_s, rounds: count, alternating } = block.params;
+      // Alternating: `rounds` rotations through the slots, one slot per
+      // interval; each line is done once per rotation (calc spec §4.3).
+      const { interval_s, rounds: count } = block.params;
       rounds = exact(count);
-      durationSec = exact(interval_s * count);
-      if (alternating && n > 0) {
-        // Lines take turns, one per interval: minute 1 line 1, minute 2 line 2, …
-        performances = rotation(count, n);
-        completedSets = rotation(count, n);
-        if (count < n) {
-          const missed = n - count === 1 ? "the last line is" : `the last ${n - count} lines are`;
-          warnings.push(`${count} ${count === 1 ? "interval" : "intervals"} for ${n} alternating lines: ${missed} never reached`);
-        }
-      }
+      durationSec = exact(interval_s * count * slots);
       break;
     }
     case "amrap": {
@@ -326,13 +335,22 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   // Lens 4: planned session load = planned RPE × duration (min).
   lenses.durationMin = durationSec ? scale(durationSec, 1 / 60) : null;
   if (effort.plannedRpe === null) {
-    warnings.push("no pace or load effort; planned load not computed");
+    warn("no pace or load effort; planned load not computed");
   } else if (lenses.durationMin) {
     const load = scale(lenses.durationMin, effort.plannedRpe);
     lenses.sRpe = { ...load, confidence: combine(load.confidence, effort.source === "default" ? "estimated" : "exact") };
   }
 
-  return { ...lenses, label: block.label, plannedRpe: effort.plannedRpe, effortSource: effort.source, rounds, capped, warnings };
+  return {
+    ...lenses,
+    label: block.label,
+    plannedRpe: effort.plannedRpe,
+    effortSource: effort.source,
+    rounds,
+    capped,
+    issues,
+    warnings: issues.map((issue) => issue.message),
+  };
 }
 
 /** Adds `source` into `target` (durations and loads are handled by sumLenses). */
@@ -392,6 +410,7 @@ export function computeWorkout(workout: Workout, config: EngineConfig): WorkoutR
     sessionMin: sessionLength(workout, totals.durationMin),
     blocks,
     ratios: computeRatios(totals.exposure.reps),
+    issues: blocks.flatMap((b, block) => b.issues.map((issue) => ({ ...issue, block }))),
     warnings: blocks.flatMap((b) => b.warnings.map((w) => `${b.label}: ${w}`)),
   };
 }

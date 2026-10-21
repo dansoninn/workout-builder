@@ -83,6 +83,11 @@ export interface Item {
   loadEffort?: EffortKey | null;
   /** Overrides exercise.implementCount for this line. */
   implementCount?: number | null;
+  /**
+   * Alternating EMOM only: the slot (interval of the rotation) this line
+   * belongs to, 1, 2, …; several lines can share one (block_items.slot).
+   */
+  slot?: number | null;
 }
 
 export type BlockIntent = "strength" | "conditioning" | "skill" | "mobility";
@@ -108,7 +113,10 @@ export type Block = BlockBase &
     | { format: "sets"; params: { sets: number; rest_s?: number } }
     | {
         format: "every";
-        /** alternating: the lines take turns, one per interval ("minute 1: X, minute 2: Y …"). */
+        /**
+         * alternating: ordered slots, one per interval, each with one or more
+         * lines (Item.slot); `rounds` then counts rotations through the slots.
+         */
         params: { interval_s: number; rounds: number; alternating?: boolean };
       }
     | { format: "amrap"; params: { time_s: number } }
@@ -186,6 +194,12 @@ export interface Lenses {
 
 export type EffortSource = "coach" | "default" | "none";
 
+/** Something the coach should know, and the lines it is about (indexes into Block.items; empty = the whole block). */
+export interface Issue {
+  message: string;
+  items: number[];
+}
+
 export interface BlockResult extends Lenses {
   label: string;
   /** Planned RPE = the higher of pace and load effort (calc spec §4.4). */
@@ -195,6 +209,8 @@ export interface BlockResult extends Lenses {
   rounds: Measure | null;
   /** For time: the estimated finish hit the time cap. */
   capped: boolean;
+  issues: Issue[];
+  /** The issues' messages. */
   warnings: string[];
 }
 
@@ -216,5 +232,8 @@ export interface WorkoutResult extends Lenses {
   sessionMin: Measure | null;
   blocks: BlockResult[];
   ratios: Ratios;
+  /** Every block's issues, with the block's index. */
+  issues: (Issue & { block: number })[];
+  /** "A: message" for every issue. */
   warnings: string[];
 }
