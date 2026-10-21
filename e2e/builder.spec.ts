@@ -145,6 +145,21 @@ test("unsaved work is kept in the browser and offered back", async ({ page }) =>
   await expect(page.getByLabel("A1 exercise")).toHaveValue("Front squat");
 });
 
+test("keys typed right after picking an exercise are the amount, never lost", async ({ page }) => {
+  await ownerWithGym(page);
+  // The list fades out slowly, as on a busy page: focus cannot move to the amount until it is gone.
+  await page.addStyleTag({ content: "[data-ending-style] { opacity: 0 !important; transition: opacity 400ms !important; }" });
+  await page.getByLabel("A1 exercise").focus();
+  // No waiting between the pick and the amount: the list is still closing.
+  await page.keyboard.type("air squat");
+  await expect(page.getByRole("option").first()).toBeVisible();
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("21-15-9");
+  await expect(page.getByLabel("A1 exercise")).toHaveValue("Air squat");
+  await expect(page.getByLabel("A1 amount")).toHaveValue("21-15-9");
+  await expect(page.getByLabel("A1 amount")).toBeFocused();
+});
+
 test("a viewer sees a workout but cannot change it", async ({ page, browser }) => {
   const { slug } = await ownerWithGym(page);
   await page.getByLabel("Workout title").fill("Viewer check");

@@ -111,7 +111,14 @@ export function LineRow({
         disabled={readOnly}
         invalid={unmatched}
         onChange={(exerciseId) => onChange({ exerciseId })}
-        onPicked={() => item.quantity.trim() === "" && onFocusField("quantity")}
+        onPicked={
+          item.quantity.trim() === ""
+            ? (typed) => {
+                if (typed) onChange({ quantity: typed });
+                onFocusField("quantity");
+              }
+            : undefined
+        }
         onKeyDown={onKeyDown}
       />
       <input

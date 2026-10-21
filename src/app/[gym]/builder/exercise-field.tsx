@@ -30,8 +30,12 @@ export function ExerciseField({
   value: string | null;
   onChange: (exerciseId: string | null) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>, open: boolean) => void;
-  /** After an exercise is picked and the list has closed (e.g. to move on to the amount). */
-  onPicked?: () => void;
+  /**
+   * After an exercise is picked and the list has closed, to move on to the
+   * amount. Keys typed in between (a fast coach, a busy page) are kept and
+   * passed along instead of landing in the search.
+   */
+  onPicked?: (typedAhead: string) => void;
   disabled?: boolean;
   invalid?: boolean;
   label: string;
@@ -41,6 +45,7 @@ export function ExerciseField({
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const picked = useRef(false);
+  const typedAhead = useRef("");
   const highlighted = useRef<Option | undefined>(undefined);
 
   const options = useMemo<Option[]>(() => {
@@ -66,6 +71,7 @@ export function ExerciseField({
         onChange(option?.exercise.id ?? null);
         setQuery("");
         picked.current = option !== null;
+        typedAhead.current = "";
       }}
       onInputValueChange={(text, { reason }) => {
         if (reason !== "item-press") setQuery(text);
@@ -84,7 +90,9 @@ export function ExerciseField({
         // Move on only once the list has closed and returned focus to the input.
         if (!isOpen && picked.current) {
           picked.current = false;
-          onPicked?.();
+          const typed = typedAhead.current;
+          typedAhead.current = "";
+          onPicked?.(typed);
         }
       }}
       disabled={disabled}
@@ -96,6 +104,14 @@ export function ExerciseField({
         data-line={lineId}
         data-field="exercise"
         onKeyDown={(event: React.KeyboardEvent<HTMLInputElement> & { preventBaseUIHandler?: () => void }) => {
+          // Picked, but the list is still closing (focus cannot move yet): what is typed now is the amount.
+          const typing = event.key.length === 1 || event.key === "Backspace";
+          if (picked.current && onPicked && typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+            event.preventDefault();
+            event.preventBaseUIHandler?.();
+            typedAhead.current = event.key === "Backspace" ? typedAhead.current.slice(0, -1) : typedAhead.current + event.key;
+            return;
+          }
           // A generic word: Enter waits until the coach has picked one (↑ ↓), keeping what they typed.
           if (event.key === "Enter" && open && isAmbiguous && !highlighted.current) {
             event.preventDefault();
