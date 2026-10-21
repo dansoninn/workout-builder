@@ -44,7 +44,7 @@ export function GymForm() {
       <Field data-invalid={state.fieldErrors?.slug ? true : undefined} className="gap-1.5">
         <FieldLabel htmlFor={slugId}>Address</FieldLabel>
         <InputGroup>
-          <InputGroupAddon className="pr-0 font-normal text-subtle-foreground">{host}/</InputGroupAddon>
+          <InputGroupAddon className="pr-0 font-normal text-muted-foreground">{host}/</InputGroupAddon>
           <InputGroupInput
             id={slugId}
             name="slug"

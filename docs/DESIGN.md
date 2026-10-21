@@ -1,6 +1,6 @@
 # Design system
 
-**Status:** v1, Step 4a (2026-10-21). Shown live on `/design` (local and preview deployments only).
+**Status:** v1.1, Step 4a (2026-10-21): first screens built on it. Shown live on `/design` (local and preview deployments only).
 **Source of truth:** tokens in `src/app/globals.css`; components in `src/components/ui` (shadcn/ui on Base UI, restyled) and `src/components/design`. Contrast is checked by `src/lib/design/tokens.test.ts` on every push.
 
 Earlier prototypes are not a reference for anything here (CLAUDE.md). Every decision below comes from how coaches program.
@@ -63,14 +63,23 @@ Components: `PatternTag`, `IntentTag`, `EffortTag` (`src/components/design/tags.
 
 ## 5. Components
 
-shadcn/ui components live in `src/components/ui` and are ours to change. Restyled so far: Button (variants default / outline / secondary / ghost / destructive / link; sizes xs 24, sm 28, default 32, lg 36), Input (32 px, 3:1 border, coloured focus border with a soft ring), Kbd, Badge (square), Skeleton. Dialogs, menus, select, tooltip and command palette follow the tokens.
+shadcn/ui components live in `src/components/ui` and are ours to change. Restyled: Button (variants default / outline / secondary / ghost / destructive / link; sizes xs 24, sm 28, default 32, lg 36) and ButtonLink (a real link that looks like a button), Input, Select and InputGroup (32 px, 3:1 border, coloured focus border with a soft ring), Kbd, Badge (square), Skeleton, Table (32 px header in small muted text, 40 px rows, hairline separators), Dialog, Sheet, menus and popovers (hairline border + `shadow-raised`), and the command palette (a plain search row, 32 px results with their shortcuts).
+
+App building blocks (`src/components/app`, `src/components/forms.tsx`):
+- **PageHeader / PageBody**: title (`text-xl`), one line of context, at most one primary action; content column up to 1024 px.
+- **SettingsSection**: `text-lg` heading, one line of context, optional action on the right; a labelled region for screen readers.
+- **TextField / FormError / FormSuccess / SubmitButton**: label, field, help text and error wired together (`aria-describedby`, `aria-invalid`); form-level messages are announced; the submit button says what it is doing ("Saving…").
+- **Empty states**: dashed border, what will be here, and the action to start ("Create the first track").
 
 Rules:
 - One **primary** button per view; everything else outline, secondary or ghost.
 - **Focus:** a 2 px ring in `--ring`, offset 2 px, on every focusable element; inputs show it as a coloured border plus a soft ring.
 - **Loading:** skeletons that keep the layout; toasts (bottom right) confirm background saves; no blocking spinners.
 - **Empty states** say what will be here and the shortcut to start.
-- **Destructive actions** use the destructive variant and confirm with what will happen in words.
+- **Destructive actions** use the destructive variant and confirm with what will happen in words ("Cara Coach loses access to Afrek right away. Their past work stays.").
+- **Forms** check on submit and keep what was typed; each problem is shown under its field, in words a coach would use.
+- **Changes in lists** (roles, removals, archive) update instantly and are confirmed with a toast; if the server refuses, the list goes back and the toast says why.
+- **Read-only** views (a coach on Members, a viewer on Tracks) show the same information without controls, plus one line saying who can change it.
 
 ## 6. Honest numbers
 
@@ -88,6 +97,7 @@ Rules:
 |---|---|---|
 | ⌘ K | Command palette: every page and action | 4a |
 | G then B / C / A / E / S | Builder / Calendar / Analytics / Exercises / Settings | 4a |
+| G then P | Your profile | 4a |
 | ? | All shortcuts | 4a |
 | ⌘ S | Save workout | 4b |
 | Enter / ⌘ Enter | New line / new block | 4b |
@@ -101,4 +111,4 @@ WCAG 2.2 AA as the floor: contrast as above (tested), full keyboard use, visible
 
 ## 9. Layout
 
-App shell: sidebar (240 px, collapsible) with gym switcher, navigation with shortcuts, user menu; content area with a page header (title, one primary action). The builder (4b) is two panes: workout on the left, live load panel on the right. Desktop and tablet for programming; phones for viewing and logging results.
+App shell: sidebar (240 px) with gym switcher, "Go to or do… ⌘K", navigation (shortcut keys appear on hover and focus) and user menu; content area with a page header (title, one primary action). Below 1024 px the sidebar becomes a sheet opened from a slim top bar. The frame renders instantly; the sidebar and each page show skeletons of their own shape while data arrives. Settings pages share a tab row (Gym · Members · Tracks · Profile). The builder (4b) is two panes: workout on the left, live load panel on the right. Desktop and tablet for programming; phones for viewing and logging results.

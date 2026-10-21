@@ -122,7 +122,7 @@ export default function DesignPage() {
             </a>
           ))}
         </nav>
-        <span className="ml-auto text-xs text-subtle-foreground">Local and preview only</span>
+        <span className="ml-auto text-xs text-muted-foreground">Local and preview only</span>
         <ThemeToggle />
       </header>
 
@@ -136,7 +136,7 @@ export default function DesignPage() {
             ["One system", "Every colour, size and space comes from the tokens on this page, in light and dark."],
           ].map(([title, body], i) => (
             <li key={title} className="rounded-lg border border-border bg-surface p-4">
-              <p className="text-xs text-subtle-foreground tabular">0{i + 1}</p>
+              <p className="text-xs text-muted-foreground tabular">0{i + 1}</p>
               <p className="mt-1 font-medium">{title}</p>
               <p className="mt-1 text-muted-foreground">{body}</p>
             </li>
@@ -149,7 +149,7 @@ export default function DesignPage() {
           {TYPE_SCALE.map(([token, size, use, cls]) => (
             <div key={token} className="grid grid-cols-[7rem_5rem_1fr] items-baseline gap-4 px-4 py-3 max-sm:grid-cols-1 max-sm:gap-1">
               <code className="text-xs text-muted-foreground">{token}</code>
-              <span className="text-xs text-subtle-foreground tabular">{size}</span>
+              <span className="text-xs text-muted-foreground tabular">{size}</span>
               <span className={cn(cls, "truncate")}>{use}</span>
             </div>
           ))}
@@ -334,7 +334,7 @@ export default function DesignPage() {
                 ))}
               </KbdGroup>
               <span className="flex-1">{action}</span>
-              <span className="text-xs text-subtle-foreground">from {step}</span>
+              <span className="text-xs text-muted-foreground">from {step}</span>
             </div>
           ))}
         </div>

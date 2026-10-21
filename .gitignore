@@ -35,3 +35,8 @@ yarn-debug.log*
 yarn-error.log*
 .DS_Store
 *.pem
+
+# Playwright
+.next-e2e/
+playwright-report/
+test-results/

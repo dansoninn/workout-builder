@@ -161,17 +161,17 @@ function GymSwitcher({ gyms, current, section }: { gyms: GymMembership[]; curren
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className="flex h-10 w-full items-center gap-2 rounded-md px-1.5 text-left transition-colors duration-100 hover:bg-hover aria-expanded:bg-hover"
-        aria-label={current ? `${current.name}, switch gym` : "Choose a gym"}
-      >
+      <DropdownMenuTrigger className="flex h-10 w-full items-center gap-2 rounded-md px-1.5 text-left transition-colors duration-100 hover:bg-hover aria-expanded:bg-hover">
         {current ? (
           <>
             <GymMark name={current.name} />
             <span className="grid min-w-0 flex-1 leading-tight">
               <span className="truncate text-sm font-semibold">{current.name}</span>
-              <span className="truncate text-xs text-muted-foreground">{roleLabel(current.role)}</span>
+              <span className="truncate text-xs text-muted-foreground" data-testid="current-role">
+                {roleLabel(current.role)}
+              </span>
             </span>
+            <span className="sr-only">, switch gym</span>
           </>
         ) : (
           <span className="flex-1 px-1 text-sm font-medium text-muted-foreground">Choose a gym</span>
@@ -213,10 +213,7 @@ function UserMenu({ user, current }: { user: CurrentUser; current: GymMembership
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger
-        className="flex h-9 w-full items-center gap-2 rounded-md px-1.5 text-left transition-colors duration-100 hover:bg-hover aria-expanded:bg-hover"
-        aria-label={`Account: ${user.displayName ?? user.email}`}
-      >
+      <DropdownMenuTrigger className="flex h-9 w-full items-center gap-2 rounded-md px-1.5 text-left transition-colors duration-100 hover:bg-hover aria-expanded:bg-hover">
         <span
           aria-hidden
           className="flex size-6 shrink-0 items-center justify-center rounded-full bg-border text-2xs font-semibold text-foreground"
@@ -224,6 +221,7 @@ function UserMenu({ user, current }: { user: CurrentUser; current: GymMembership
           {initials(user)}
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{user.displayName ?? user.email}</span>
+        <span className="sr-only">, account menu</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-60" side="top" align="start">
         <DropdownMenuGroup>
@@ -318,6 +316,11 @@ function useGlobalShortcuts(current: GymMembership | null) {
       }
     }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    // Lets end-to-end tests wait until the shortcuts are live instead of guessing.
+    document.documentElement.dataset.shortcuts = "ready";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      delete document.documentElement.dataset.shortcuts;
+    };
   }, [current, router, setPaletteOpen, setShortcutsOpen]);
 }
