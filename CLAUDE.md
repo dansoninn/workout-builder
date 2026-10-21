@@ -11,7 +11,10 @@ Owner: Daniel — 25+ years coaching (athletes, teams, individuals, older adults
 If code and spec disagree, the spec wins. If the spec is silent or ambiguous, **stop and ask** — never guess a domain rule.
 
 ## History (context only — do not port code)
-Earlier versions exist (Python/Streamlit prototype, a Lovable React app). This is a clean rebuild on a solid foundation. The Lovable app is a reference for features and UX only. No data or code is migrated from them.
+Earlier versions exist (Python/Streamlit prototype, a Lovable React app). They only served to explore the idea. **This product does not follow them in any way** — not design, not UX, not data model, not logic. The Lovable screenshots in `docs/reference/lovable/` are a feature checklist, nothing more. No data or code is migrated.
+
+## Quality bar
+Quality is priority 1, 2 and 3. This is a professional tool coaches pay for, built to be several levels above anything in its category in quality, speed, correctness and coaching depth. When speed of delivery and quality conflict, choose quality and say so in STATUS.md.
 
 ## Stack
 - Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui
