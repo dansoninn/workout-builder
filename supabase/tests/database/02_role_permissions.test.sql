@@ -4,14 +4,14 @@
 --   Edit gym exercise bank        ✓        ✓
 --   Create / edit workouts        ✓        ✓         ✓
 --   Read everything in the gym    ✓        ✓         ✓       ✓
--- Tracks count as gym setup (owner only). Nobody hard-deletes workouts or
--- exercises; they are soft-deleted.
+--   Manage tracks                 ✓        ✓                      (approved 2026-10-21)
+-- Nobody hard-deletes workouts or exercises; they are soft-deleted.
 
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(56);
+select plan(60);
 
 -- ---------------------------------------------------------------------------
 -- Viewer: reads everything, writes nothing (except their own profile)
@@ -110,6 +110,11 @@ select is_empty($$ delete from public.exercise_aliases where id = tests.id('alia
   'Coach cannot delete an alias');
 select throws_ok($$ insert into public.tracks (org_id, name) values (tests.id('gym_a'), 'C') $$,
   '42501', null, 'Coach cannot create a track');
+select is_empty($$ update public.tracks set name = 'x' where id = tests.id('track_a') returning 1 $$,
+  'Coach cannot edit a track');
+select throws_ok($$
+  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('core_wallball'), 'fixture_kb')
+$$, '42501', null, 'Coach cannot tag equipment on an exercise');
 select throws_ok($$
   insert into public.memberships (org_id, user_id, role) values (tests.id('gym_a'), tests.id('outsider'), 'coach')
 $$, '42501', null, 'Coach cannot add members');
@@ -142,8 +147,14 @@ $$, 'Head coach can add an alias');
 select lives_ok($$
   insert into public.workouts (org_id, kind, title) values (tests.id('gym_a'), 'template', 'Head coach template')
 $$, 'Head coach can create a workout');
-select throws_ok($$ insert into public.tracks (org_id, name) values (tests.id('gym_a'), 'H') $$,
-  '42501', null, 'Head coach cannot create a track');
+select lives_ok($$
+  insert into public.exercise_equipment (exercise_id, equipment_key)
+  select id, 'fixture_kb' from public.exercises where slug = 'head-coach-lunge'
+$$, 'Head coach can tag equipment on a gym exercise');
+select lives_ok($$ insert into public.tracks (org_id, name, color) values (tests.id('gym_a'), 'Endurance', '#0891B2') $$,
+  'Head coach can create a track');
+select isnt_empty($$ update public.tracks set archived_at = now() where id = tests.id('track_a') returning 1 $$,
+  'Head coach can edit (archive) a track');
 select throws_ok($$
   insert into public.memberships (org_id, user_id, role) values (tests.id('gym_a'), tests.id('outsider'), 'coach')
 $$, '42501', null, 'Head coach cannot add members');

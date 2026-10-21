@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(55);
+select plan(59);
 
 -- ---------------------------------------------------------------------------
 -- Reads: nothing of gym B is visible
@@ -26,6 +26,8 @@ select is_empty($$ select 1 from public.exercise_patterns where exercise_id = te
   'A owner cannot see gym B exercise patterns');
 select is_empty($$ select 1 from public.exercise_muscles where exercise_id = tests.id('ex_b') $$,
   'A owner cannot see gym B exercise muscles');
+select is_empty($$ select 1 from public.exercise_equipment where exercise_id = tests.id('ex_b') $$,
+  'A owner cannot see gym B exercise equipment');
 select is_empty($$ select 1 from public.exercise_aliases where id = tests.id('alias_b') $$,
   'A owner cannot see gym B aliases');
 select is_empty($$ select 1 from public.workouts where org_id = tests.id('gym_b') $$,
@@ -92,6 +94,10 @@ $$, '23514', null, 'A owner cannot use a gym B exercise in a gym A workout');
 select throws_ok($$
   insert into public.exercise_patterns (exercise_id, pattern_key, weight) values (tests.id('ex_b'), 'core', 0.50)
 $$, '42501', null, 'A owner cannot change pattern weights of a gym B exercise');
+
+select throws_ok($$
+  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('ex_b'), 'fixture_kb')
+$$, '42501', null, 'A owner cannot change equipment of a gym B exercise');
 
 select throws_ok($$
   insert into public.workout_metrics (workout_id, org_id, calc_version, taxonomy_version, metrics)
@@ -164,6 +170,7 @@ select results_eq($$ select m.role::text from public.memberships m join public.o
 select tests.login_anon();
 
 select throws_ok($$ select 1 from public.movement_patterns $$, '42501', null, 'Anonymous cannot read the taxonomy');
+select throws_ok($$ select 1 from public.equipment $$, '42501', null, 'Anonymous cannot read the equipment list');
 select throws_ok($$ select 1 from public.exercises $$, '42501', null, 'Anonymous cannot read exercises');
 select throws_ok($$ select 1 from public.organizations $$, '42501', null, 'Anonymous cannot read gyms');
 select throws_ok($$ select public.create_organization('Anon Gym', 'anon-gym') $$, '42501', null, 'Anonymous cannot create a gym');
@@ -184,6 +191,12 @@ select results_eq($$
        + (select count(*) from public.exercise_aliases where org_id = tests.id('gym_b'))
        + (select count(*) from public.workout_metrics where org_id = tests.id('gym_b'))
 $$, array[6::bigint], 'Gym B rows all still there (2 members, 1 block, 1 item, 1 alias, 1 metrics row)');
+
+-- Guard for the future: every table in the API schema must have RLS on.
+select is_empty($$
+  select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
+$$, 'Every table in the public schema has Row Level Security enabled');
 
 select * from finish();
 rollback;

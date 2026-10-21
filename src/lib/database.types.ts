@@ -133,6 +133,20 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"equipment": {
+                  Row: {
+                    "key": string,"label_en": string,"label_is": string,"position": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "key": string,"label_en": string,"label_is": string,"position": number
+                  }
+                  Update: {
+                    "key"?: string,"label_en"?: string,"label_is"?: string,"position"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"exercise_aliases": {
                   Row: {
                     "alias_normalized": string,"created_at": string,"created_by": string | null,"exercise_id": string,"id": string,"org_id": string | null
@@ -162,6 +176,32 @@ isOneToOne: false
       columns: ["org_id"]
 isOneToOne: false
       referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"exercise_equipment": {
+                  Row: {
+                    "equipment_key": string,"exercise_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "equipment_key": string,"exercise_id": string
+                  }
+                  Update: {
+                    "equipment_key"?: string,"exercise_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "exercise_equipment_equipment_key_fkey"
+      columns: ["equipment_key"]
+isOneToOne: false
+      referencedRelation: "equipment"
+      referencedColumns: ["key"]
+    },{
+      foreignKeyName: "exercise_equipment_exercise_id_fkey"
+      columns: ["exercise_id"]
+isOneToOne: false
+      referencedRelation: "exercises"
       referencedColumns: ["id"]
     }
                   ]
@@ -219,14 +259,14 @@ isOneToOne: false
                   ]
                 },"exercises": {
                   Row: {
-                    "created_at": string,"created_by": string | null,"default_unit": Database["public"]['Enums']["measure_unit"],"deleted_at": string | null,"equipment": (string)[],"id": string,"kind": Database["public"]['Enums']["exercise_kind"],"modality": string | null,"name": string,"org_id": string | null,"pace_default": Json | null,"plane": string | null,"slug": string,"status": Database["public"]['Enums']["exercise_status"],"unilateral": boolean,"updated_at": string
+                    "created_at": string,"created_by": string | null,"default_unit": Database["public"]['Enums']["measure_unit"],"deleted_at": string | null,"id": string,"kind": Database["public"]['Enums']["exercise_kind"],"modality": string | null,"name": string,"org_id": string | null,"pace_default": Json | null,"plane": string | null,"slug": string,"status": Database["public"]['Enums']["exercise_status"],"unilateral": boolean,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by"?: string | null,"default_unit": Database["public"]['Enums']["measure_unit"],"deleted_at"?: string | null,"equipment"?: (string)[],"id"?: string,"kind": Database["public"]['Enums']["exercise_kind"],"modality"?: string | null,"name": string,"org_id"?: string | null,"pace_default"?: Json | null,"plane"?: string | null,"slug": string,"status"?: Database["public"]['Enums']["exercise_status"],"unilateral"?: boolean,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string | null,"default_unit": Database["public"]['Enums']["measure_unit"],"deleted_at"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["exercise_kind"],"modality"?: string | null,"name": string,"org_id"?: string | null,"pace_default"?: Json | null,"plane"?: string | null,"slug": string,"status"?: Database["public"]['Enums']["exercise_status"],"unilateral"?: boolean,"updated_at"?: string
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string | null,"default_unit"?: Database["public"]['Enums']["measure_unit"],"deleted_at"?: string | null,"equipment"?: (string)[],"id"?: string,"kind"?: Database["public"]['Enums']["exercise_kind"],"modality"?: string | null,"name"?: string,"org_id"?: string | null,"pace_default"?: Json | null,"plane"?: string | null,"slug"?: string,"status"?: Database["public"]['Enums']["exercise_status"],"unilateral"?: boolean,"updated_at"?: string
+                    "created_at"?: string,"created_by"?: string | null,"default_unit"?: Database["public"]['Enums']["measure_unit"],"deleted_at"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["exercise_kind"],"modality"?: string | null,"name"?: string,"org_id"?: string | null,"pace_default"?: Json | null,"plane"?: string | null,"slug"?: string,"status"?: Database["public"]['Enums']["exercise_status"],"unilateral"?: boolean,"updated_at"?: string
                   }
                   Relationships: [
                     {

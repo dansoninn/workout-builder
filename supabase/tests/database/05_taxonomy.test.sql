@@ -5,19 +5,21 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(29);
+select plan(32);
 
 -- ---------------------------------------------------------------------------
--- Seed matches the calc spec (§2, §4.4), taxonomy version 1
+-- Seed matches the calc spec (§2, §4.4); version 2 removed sled (2026-10-21)
 -- ---------------------------------------------------------------------------
-select results_eq($$ select version from public.taxonomy_versions $$, array[1], 'Taxonomy version 1 is published');
+select results_eq($$ select version from public.taxonomy_versions order by version $$, array[1, 2],
+  'Taxonomy versions 1 and 2 are published');
 select results_eq($$ select key from public.movement_patterns order by position $$,
   array['squat', 'lunge', 'hinge', 'h_push', 'v_push', 'h_pull', 'v_pull', 'carry', 'core', 'rotation', 'jump'],
   'Movement patterns (§2.1)');
 select results_eq($$ select key from public.planes order by position $$,
   array['sagittal', 'frontal', 'transverse', 'multiplanar'], 'Planes (§2.2)');
-select results_eq($$ select key from public.modalities order by position $$,
-  array['run', 'row', 'bike', 'ski', 'jump_rope', 'swim', 'sled'], 'Monostructural modalities (§2.3)');
+select results_eq($$ select key || ' ' || default_unit from public.modalities order by position $$,
+  array['run distance_m', 'row distance_m', 'bike calories', 'ski distance_m', 'jump_rope reps', 'swim distance_m'],
+  'Monostructural modalities and default units (§2.3; no sled)');
 select results_eq($$ select key from public.muscles order by position $$,
   array['quads', 'hamstrings', 'glutes', 'adductors', 'calves', 'chest', 'lats', 'upper_back',
         'shoulders', 'biceps', 'triceps', 'forearms_grip', 'abs', 'obliques', 'lower_back'],
@@ -49,6 +51,10 @@ select throws_ok($$
   values (tests.id('gym_a'), 'X', 'x', 'monostructural', 'kayak', 'distance_m')
 $$, '23503', null, 'Unknown modality is rejected');
 select throws_ok($$
+  insert into public.exercises (org_id, name, slug, kind, modality, default_unit)
+  values (tests.id('gym_a'), 'Sled push', 'sled-push', 'monostructural', 'sled', 'distance_m')
+$$, '23503', null, 'Sled is no longer a modality (sled work is a movement)');
+select throws_ok($$
   insert into public.exercises (org_id, name, slug, kind, default_unit)
   values (tests.id('gym_a'), 'X', 'x', 'monostructural', 'distance_m')
 $$, '23514', null, 'Monostructural exercise without a modality is rejected');
@@ -69,6 +75,9 @@ $$, '23503', null, 'Unknown muscle is rejected');
 select throws_ok($$
   insert into public.exercise_muscles (exercise_id, muscle_key, role) values (tests.id('ex_a'), 'quads', 'tertiary')
 $$, '22P02', null, 'Unknown muscle role is rejected');
+select throws_ok($$
+  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('ex_a'), 'hula_hoop')
+$$, '23503', null, 'Unknown equipment is rejected');
 
 select tests.login_as('coach_a');
 
@@ -118,6 +127,8 @@ select throws_ok($$ insert into public.modalities (key, default_unit, label_en, 
   '42501', null, 'Owner cannot add a modality');
 select throws_ok($$ insert into public.muscles (key, region, label_en, label_is, position) values ('traps', 'upper', 'Traps', 'Sjalvöðvi', 99) $$,
   '42501', null, 'Owner cannot add a muscle');
+select throws_ok($$ insert into public.equipment (key, label_en, label_is, position) values ('hula_hoop', 'Hula hoop', 'Húllahringur', 99) $$,
+  '42501', null, 'Owner cannot add equipment');
 select throws_ok($$ update public.effort_levels set rpe_calc = 5 where key = 'moderate' $$,
   '42501', null, 'Owner cannot change the effort mapping');
 select throws_ok($$ delete from public.planes where key = 'frontal' $$,

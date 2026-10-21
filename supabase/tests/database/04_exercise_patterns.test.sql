@@ -1,5 +1,7 @@
--- Pattern weights per exercise must sum to exactly 1.00 (SPEC-data-model §5).
--- The check is deferred to commit, so weights can be written in several
+-- Movement patterns on exercises (SPEC-data-model §5):
+--   * weights per exercise must sum to exactly 1.00
+--   * monostructural exercises have no patterns (approved 2026-10-21)
+-- The sum check is deferred to commit, so weights can be written in several
 -- statements. Tests never commit, so after the first test the check is made
 -- IMMEDIATE: each statement is then checked as if it were committed alone.
 
@@ -7,14 +9,16 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(17);
+select plan(21);
 
-insert into tests.ids (name) values ('w1'), ('w2'), ('w3'), ('w4');
+insert into tests.ids (name) values ('w1'), ('w2'), ('w3'), ('w4'), ('w5');
 insert into public.exercises (id, org_id, name, slug, kind, default_unit) values
   (tests.id('w1'), tests.id('gym_a'), 'Weights 1', 'weights-1', 'movement', 'reps'),
   (tests.id('w2'), tests.id('gym_a'), 'Weights 2', 'weights-2', 'movement', 'reps'),
   (tests.id('w3'), tests.id('gym_a'), 'Weights 3', 'weights-3', 'movement', 'reps'),
   (tests.id('w4'), tests.id('gym_a'), 'Weights 4', 'weights-4', 'movement', 'reps');
+insert into public.exercises (id, org_id, name, slug, kind, modality, default_unit) values
+  (tests.id('w5'), tests.id('gym_a'), 'Gym bike', 'gym-bike', 'monostructural', 'bike', 'calories');
 
 -- Deferred: a valid split written in two statements passes at commit time.
 insert into public.exercise_patterns (exercise_id, pattern_key, weight) values (tests.id('w1'), 'squat', 0.60);
@@ -88,6 +92,24 @@ select results_eq($$
   select pattern_key || ' ' || weight from public.exercise_patterns
   where exercise_id = tests.id('w4') order by pattern_key
 $$, array['hinge 0.70', 'v_pull 0.30'], 'Only the valid weights were stored');
+
+-- ---------------------------------------------------------------------------
+-- Monostructural exercises have no movement patterns
+-- ---------------------------------------------------------------------------
+select throws_ok($$
+  insert into public.exercise_patterns (exercise_id, pattern_key, weight) values (tests.id('core_row'), 'h_pull', 1.00)
+$$, '23514', null, 'A monostructural core exercise cannot get patterns, not even from the service role');
+
+select tests.login_as('head_a');
+select throws_ok($$
+  insert into public.exercise_patterns (exercise_id, pattern_key, weight) values (tests.id('w5'), 'squat', 1.00)
+$$, '23514', null, 'Head coach: a monostructural gym exercise cannot get patterns');
+select throws_ok($$
+  update public.exercises set kind = 'monostructural', modality = 'row' where id = tests.id('ex_a')
+$$, '23514', null, 'An exercise with patterns cannot be turned monostructural');
+select lives_ok($$
+  update public.exercises set kind = 'monostructural', modality = 'row', default_unit = 'distance_m' where id = tests.id('w2')
+$$, 'An exercise without patterns can be turned monostructural');
 
 select * from finish();
 rollback;

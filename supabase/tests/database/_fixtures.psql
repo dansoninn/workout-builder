@@ -5,8 +5,11 @@
 --   Gym A: owner_a, head_a, coach_a, viewer_a       Gym B: owner_b, coach_b
 --   outsider: signed in, member of no gym
 --
---   Core library: core_squat (squat 1.0), core_wallball (squat 0.6 / v_push 0.4)
+--   Core library: core_squat (squat 1.0), core_wallball (squat 0.6 / v_push 0.4),
+--                 core_row (monostructural, no patterns)
 --   Gym exercises: ex_a (gym A), ex_b (gym B), both hinge 1.0
+--   Equipment: one test-only item, fixture_kb, on core_squat, ex_a and ex_b
+--              (the real equipment list arrives in Step 2)
 --   Aliases: alias_core (core), alias_a (gym A), alias_b (gym B)
 --   workout_a: draft, block_a with item_a_matched + item_a_unmatched
 --   workout_b: published, block_b with item_b
@@ -21,7 +24,7 @@ insert into tests.ids (name)
 select unnest(array[
   'owner_a', 'head_a', 'coach_a', 'viewer_a', 'owner_b', 'coach_b', 'outsider',
   'gym_a', 'gym_b', 'track_a', 'track_b',
-  'core_squat', 'core_wallball', 'ex_a', 'ex_b',
+  'core_squat', 'core_wallball', 'core_row', 'ex_a', 'ex_b',
   'alias_core', 'alias_a', 'alias_b',
   'workout_a', 'block_a', 'item_a_matched', 'item_a_unmatched',
   'workout_b', 'block_b', 'item_b'
@@ -95,6 +98,17 @@ insert into public.exercises (id, org_id, name, slug, kind, plane, default_unit)
   (tests.id('core_wallball'), null,             'Fixture wall ball',  'fixture-wall-ball',  'movement', 'sagittal', 'reps'),
   (tests.id('ex_a'),          tests.id('gym_a'), 'Gym A sandbag clean', 'sandbag-clean',    'movement', null,       'reps'),
   (tests.id('ex_b'),          tests.id('gym_b'), 'Gym B sandbag clean', 'sandbag-clean',    'movement', null,       'reps');
+
+insert into public.exercises (id, org_id, name, slug, kind, modality, default_unit) values
+  (tests.id('core_row'), null, 'Fixture row', 'fixture-row', 'monostructural', 'row', 'distance_m');
+
+insert into public.equipment (key, label_en, label_is, position) values
+  ('fixture_kb', 'Fixture kettlebell', 'Prófunarketilbjalla', 1);
+
+insert into public.exercise_equipment (exercise_id, equipment_key) values
+  (tests.id('core_squat'), 'fixture_kb'),
+  (tests.id('ex_a'),       'fixture_kb'),
+  (tests.id('ex_b'),       'fixture_kb');
 
 insert into public.exercise_patterns (exercise_id, pattern_key, weight) values
   (tests.id('core_squat'),    'squat',  1.00),

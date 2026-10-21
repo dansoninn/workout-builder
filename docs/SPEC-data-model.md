@@ -1,6 +1,7 @@
 # Workout Builder — Data Model Spec
 
 **Status:** v0.2 — approved
+**Amended:** 2026-10-21 — Step 1 review decisions ✅: tracks managed by owner + head coach (§3); sled removed from modalities, equipment becomes a locked list (§4, §5); monostructural exercises have no patterns (§5). Taxonomy version 2.
 **Date:** 2026-10-20
 **Depends on:** `SPEC-calculation-model.md` v0.2
 **Stack:** Supabase (Postgres 15+), EU region (Frankfurt). Schema lives in git as Supabase migrations.
@@ -27,12 +28,13 @@ organizations ─┬─ memberships ── profiles (auth.users)
                ├─ exercises (org-owned)  ◄── exercise_aliases
                └─ workout_metrics (cache)
 
-exercises (core, org_id NULL) ─┬─ exercise_patterns ──► movement_patterns
-                                ├─ exercise_muscles  ──► muscles
+exercises (core, org_id NULL) ─┬─ exercise_patterns  ──► movement_patterns
+                                ├─ exercise_muscles   ──► muscles
+                                ├─ exercise_equipment ──► equipment
                                 └─ exercise_aliases
 
 reference (global, read-only): movement_patterns, planes, modalities,
-muscles, effort_levels, taxonomy_versions
+muscles, effort_levels, equipment, taxonomy_versions
 ```
 
 ---
@@ -65,11 +67,12 @@ Role rights (enforced in RLS):
 |---|---|---|---|---|
 | Manage members & settings | ✓ | | | |
 | Edit gym exercise bank | ✓ | ✓ | | |
+| Manage tracks ✅ | ✓ | ✓ | | |
 | Create / edit workouts | ✓ | ✓ | ✓ | |
 | Read everything in the gym | ✓ | ✓ | ✓ | ✓ |
 
 ### `tracks`
-Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endurance*). `id`, `org_id`, `name`, `color`, `position`, `archived_at`.
+Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endurance*). `id`, `org_id`, `name`, `color`, `position`, `archived_at`. Created and edited by owners and head coaches, not coaches — approved 2026-10-21. Archived, never deleted.
 
 ---
 
@@ -79,9 +82,10 @@ Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endura
 |---|---|---|
 | `movement_patterns` | squat, lunge, hinge, h_push, v_push, h_pull, v_pull, carry, core, rotation, jump | region, label_en, label_is |
 | `planes` | sagittal, frontal, transverse, multiplanar | labels |
-| `modalities` | run, row, bike, ski, jump_rope, swim, sled | default_unit |
+| `modalities` | run, row, bike, ski, jump_rope, swim (cyclical cardio only; sled removed ✅ 2026-10-21) | default_unit |
 | `muscles` | quads, hamstrings, glutes, … | region, labels |
 | `effort_levels` | easy, moderate, hard, max | rpe_calc, rir_min, rir_max |
+| `equipment` ✅ | list proposed in Step 2 for approval | labels |
 | `taxonomy_versions` | 1, 2, … | published_at, notes |
 
 Bilingual labels (IS/EN) from the start: the product is sold internationally but used in Icelandic gyms.
@@ -101,17 +105,19 @@ Bilingual labels (IS/EN) from the start: the product is sold internationally but
 | modality | FK NULL | required when kind = monostructural |
 | plane | FK NULL | NULL = not yet curated (flagged, never defaulted) |
 | unilateral | bool | |
-| equipment | text[] | KB, DB, BB, BW, … |
 | default_unit | enum | reps · distance_m · calories · time_s |
 | pace_default | jsonb | e.g. `{ "sec_per_rep": 2 }` or `{ "sec_per_500m": 120 }` |
 | status | enum | `active` · `needs_review` · `archived` |
 | created_by, created_at, updated_at, deleted_at | | |
 
 ### `exercise_patterns`
-`exercise_id`, `pattern_key` FK, `weight numeric(3,2)`. **Weights per exercise must sum to 1.00** (deferred constraint trigger).
+`exercise_id`, `pattern_key` FK, `weight numeric(3,2)`. **Weights per exercise must sum to 1.00** (deferred constraint trigger). **Monostructural exercises have no patterns** (enforced; they are tracked by modality) — approved 2026-10-21.
 
 ### `exercise_muscles`
 `exercise_id`, `muscle_key` FK, `role` (`primary` · `secondary`).
+
+### `exercise_equipment` ✅
+`exercise_id`, `equipment_key` FK → `equipment`. Replaces a free-text equipment array — approved 2026-10-21.
 
 ### `exercise_aliases`
 | column | notes |

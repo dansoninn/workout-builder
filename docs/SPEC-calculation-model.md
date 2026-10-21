@@ -41,7 +41,9 @@ Monostructural (cyclical) work is **not** a pattern. It is tracked by **modality
 `sagittal`, `frontal`, `transverse`, `multiplanar` — set per exercise, curated. No default value: an untagged exercise is flagged for review, not silently set to sagittal.
 
 ### 2.3 Monostructural modalities
-`run`, `row`, `bike` (incl. assault/echo), `ski`, `jump_rope`, `swim`, `sled`.
+`run`, `row`, `bike` (incl. assault/echo), `ski`, `jump_rope`, `swim`.
+
+✅ Approved 2026-10-21 (taxonomy v2): monostructural = cyclical cardio only, and monostructural exercises have no movement patterns. Sled push/pull/drag are movements with patterns (e.g. `h_push`, `carry`), not a modality.
 
 ### 2.4 Muscle groups
 Fixed list (to be finalised in Step 2): quads, hamstrings, glutes, adductors, calves, chest, lats, upper_back, shoulders, biceps, triceps, forearms_grip, abs, obliques, lower_back.
@@ -53,7 +55,7 @@ Fixed list (to be finalised in Step 2): quads, hamstrings, glutes, adductors, ca
 Each canonical exercise has:
 - `name` (canonical) + **aliases in a separate table** (aliases never create new exercises)
 - `patterns`: list of `{pattern, weight}`, weights sum to 1.0 (compound movements split)
-- `plane`, `primary_muscles[]`, `secondary_muscles[]`, `equipment[]`
+- `plane`, `primary_muscles[]`, `secondary_muscles[]`, `equipment[]` (from a locked equipment list, approved in Step 2)
 - `unilateral: boolean`
 - `default_unit`: reps | distance_m | calories | time_s
 - `pace_default` (for estimating max-effort and AMRAP work, §5)

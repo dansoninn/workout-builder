@@ -6,7 +6,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(24);
+select plan(27);
 
 select tests.login_as('head_a');
 
@@ -17,6 +17,8 @@ select isnt_empty($$ select 1 from public.exercise_patterns where exercise_id = 
   '... its pattern weights');
 select isnt_empty($$ select 1 from public.exercise_muscles where exercise_id = tests.id('core_squat') $$,
   '... its muscles');
+select isnt_empty($$ select 1 from public.exercise_equipment where exercise_id = tests.id('core_squat') $$,
+  '... its equipment');
 select isnt_empty($$ select 1 from public.exercise_aliases where id = tests.id('alias_core') $$,
   '... and core aliases');
 
@@ -43,6 +45,11 @@ select throws_ok($$
 $$, '42501', null, 'Head coach cannot add a muscle to a core exercise');
 select is_empty($$ delete from public.exercise_muscles where exercise_id = tests.id('core_squat') returning 1 $$,
   'Head coach cannot remove core muscles');
+select throws_ok($$
+  insert into public.exercise_equipment (exercise_id, equipment_key) values (tests.id('core_wallball'), 'fixture_kb')
+$$, '42501', null, 'Head coach cannot tag equipment on a core exercise');
+select is_empty($$ delete from public.exercise_equipment where exercise_id = tests.id('core_squat') returning 1 $$,
+  'Head coach cannot remove core equipment');
 select throws_ok($$
   insert into public.exercise_aliases (org_id, alias_normalized, exercise_id) values (null, 'squatty', tests.id('core_squat'))
 $$, '42501', null, 'Head coach cannot add a core alias');
