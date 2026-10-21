@@ -120,6 +120,15 @@ function sum(measures: Measure[]): Measure | undefined {
   return measures.reduce<Measure | undefined>((total, m) => add(total, m), undefined);
 }
 
+/**
+ * How often each of n lines is done when they take turns over `count`
+ * intervals (tabata, alternating EMOM): the first lines get one more when the
+ * count does not divide evenly.
+ */
+function rotation(count: number, n: number): (index: number) => Measure {
+  return (index) => exact(Math.floor(count / n) + (index < count % n ? 1 : 0));
+}
+
 export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   const warnings: string[] = [];
   const effort = resolveBlockEffort(block, config);
@@ -191,9 +200,18 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
       break;
     }
     case "every": {
-      const { interval_s, rounds: count } = block.params;
+      const { interval_s, rounds: count, alternating } = block.params;
       rounds = exact(count);
       durationSec = exact(interval_s * count);
+      if (alternating && n > 0) {
+        // Lines take turns, one per interval: minute 1 line 1, minute 2 line 2, …
+        performances = rotation(count, n);
+        completedSets = rotation(count, n);
+        if (count < n) {
+          const missed = n - count === 1 ? "the last line is" : `the last ${n - count} lines are`;
+          warnings.push(`${count} ${count === 1 ? "interval" : "intervals"} for ${n} alternating lines: ${missed} never reached`);
+        }
+      }
       break;
     }
     case "amrap": {
@@ -242,9 +260,8 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
       rounds = exact(count);
       durationSec = exact(count * (work_s + rest_s));
       // Several exercises in one tabata alternate rounds: A, B, A, B, …
-      const share = (index: number) => exact(Math.floor(count / n) + (index < count % n ? 1 : 0));
-      performances = share;
-      completedSets = share;
+      performances = rotation(count, n);
+      completedSets = rotation(count, n);
       break;
     }
   }
@@ -360,11 +377,19 @@ export function computeRatios(reps: ByPattern): Ratios {
   };
 }
 
+/** Block durations plus the rest between blocks (calc spec Lens 4). */
+function sessionLength(workout: Workout, durationMin: Measure | null): Measure | null {
+  if (!durationMin) return null;
+  const restSec = workout.blocks.slice(0, -1).reduce((total, b) => total + (b.restAfterSec ?? 0), 0);
+  return add(durationMin, exact(restSec / 60));
+}
+
 export function computeWorkout(workout: Workout, config: EngineConfig): WorkoutResult {
   const blocks = workout.blocks.map((block) => computeBlock(block, config));
   const totals = sumLenses(blocks);
   return {
     ...totals,
+    sessionMin: sessionLength(workout, totals.durationMin),
     blocks,
     ratios: computeRatios(totals.exposure.reps),
     warnings: blocks.flatMap((b) => b.warnings.map((w) => `${b.label}: ${w}`)),

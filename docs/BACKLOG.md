@@ -8,10 +8,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 
 ## Open questions (need Daniel)
 - [ ] Calc spec §9.4: the remaining default efforts (strength = Load Hard / Pace Easy; AMRAP & intervals = Pace Moderate; chipper = Pace Hard) are still provisional. Validate against real data. (tabata/EMOM/skill/mobility approved 2026-10-21.) (2026-10-20, chat)
-- [ ] 4b: alternating EMOM ("min 1: X, min 2: Y") — add an "alternating" option to `every`, or model as stations? (2026-10-21, Claude Code)
-- [ ] 4b: rest between blocks — should it count anywhere (e.g. session length on the calendar)? Planned load uses block durations only. (2026-10-21, Claude Code)
-- [ ] Should a new gym start with one track (e.g. "Class") automatically? Today the owner creates the first one; every workout needs a track. (2026-10-21, Claude Code)
-- [ ] Members page is visible read-only to coaches and viewers (names and roles, no emails). Keep, or owners only as in the plan? (2026-10-21, Claude Code)
+- [ ] Alternating EMOM with two movements in one minute (e.g. "min 1: 10 cal row + 5 burpees, min 2: 12 wall balls"): today each line is one minute of the rotation. Group lines into one minute (e.g. by station label), or never needed? Settle before the 4b builder. (2026-10-21, Claude Code)
 
 ## Next steps (planned order)
 - [ ] Step 4 — App (plan approved 2026-10-21: docs/PLAN-step-4.md). Four approval-gated sub-steps, each a pull request with a Vercel preview:
@@ -22,6 +19,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
   - [ ] Google sign-in (after email + password). (2026-10-21, Daniel)
   - [ ] **4b** Structured builder with the live load panel; `save_workout` transaction; save stores engine output in `workout_metrics` (with `calc_version`, `taxonomy_version`), estimates as ranges, warnings next to their lines; simple week list; Exercises page; gym pace overrides for owner and head coach (own table or narrow function; spec update). (2026-10-21, Daniel)
     - [ ] Line shows the implement count as "2 × load" (e.g. "2 × 22.5 kg") with a per-line override. (2026-10-21, Daniel)
+    - [ ] Builder: "alternating" option on EMOM / every blocks, and "rest after this block" on every block (database and engine done in 4a). Calendar shows session length (blocks + rest). (2026-10-21, Daniel)
   - [ ] **4c** Paste text → parser → check-and-confirm screen; raw text stored. Daniel provides 20–50 real workouts as text before 4c starts. (2026-10-21, Daniel)
     - [ ] Look up exercises with `normalizeAlias` and strip plurals ("kb swings" → "kb swing"); lookup order gym alias → core alias → ambiguous term → unmatched. (2026-10-21, Claude Code)
     - [ ] Ambiguous terms asked once and saved as a gym alias: any coach may save the answer; owner/head coach edit or delete; audit trigger on `exercise_aliases`; RLS change (coach insert limited to ambiguous terms). (2026-10-21, Daniel)
@@ -30,6 +28,8 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] Step 5 — Calendar (day / week / month, details in cells, colour by type, drag and drop), templates (apply to several dates at once), analytics.
   - [ ] Weekly/period analytics over `workout_metrics` (the engine's `weekSummary` already computes total, monotony, strain, week-on-week change). (2026-10-21, Claude Code)
 - [ ] Later — Plyometric foot contacts metric (jumps, DU/SU, landings) — Lens candidate. (2026-10-21, Daniel)
+- [ ] Decide after 4b, with real data: split the `core` pattern into anti-extension / anti-rotation / anti-lateral-flexion / flexion. A taxonomy change (new taxonomy version, pattern weights reviewed). (2026-10-21, Daniel)
+- [ ] Decide after 4b, with real data: gait / locomotion as its own pattern (crawls, sprints, shuttles). A taxonomy change (new taxonomy version, pattern weights reviewed). (2026-10-21, Daniel)
 - [ ] Later — Per-gym pace calibration from logged `block_results`: suggest pace adjustments only once a gym has ≥ 5 comparable results; never silently override a pace the coach set. (2026-10-21, Daniel)
 
 ## Infrastructure / ops
@@ -56,6 +56,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] `npm audit` reports 5 high-severity issues in ESLint's dev-only dependency chain (braces/micromatch via eslint-config-next). Not shipped to users; the suggested fix downgrades Next's lint config. Re-check when eslint-config-next updates. (2026-10-21, Claude Code)
 
 ## Done
+- [x] 4a answers (2026-10-21, Daniel): a new gym starts with a "Class" track (built); Members page read-only for coaches and viewers (approved); alternating EMOM = option of `every`, lines take turns one per interval (database + engine built, calc spec §4.3); rest between blocks stored per block, in session length, never in planned load (database + engine built, calc spec Lens 4).
 - [x] Step 4 plan approved with the design-direction correction and answers to all ten questions (see docs/PLAN-step-4.md, Decisions). Long EMOMs and tabata take max-effort fatigue from total work time (calc spec §5.1). (2026-10-21, Daniel)
 - [x] Step 3 approved, with the fix: max-effort windows in an intervals block take fatigue from the block's total work time (calc spec §5.1); §7 recomputed. (2026-10-21, Daniel)
 - [x] Step 3 — Calculation engine (src/lib/engine): four lenses, weekly load, estimate ranges, pace model (effort scaling, fatigue, pace band), worked WODs as acceptance tests; pace table seeded (122 exercises); implement counts. 88 Vitest + 328 pgTAP passing; pushed to the remote project. (2026-10-21)

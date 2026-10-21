@@ -98,10 +98,10 @@ Rules (enforced in the database, tested in pgTAP):
 - Anyone holding the link can see what it is for (`invitation_preview`: gym, role, email, status).
 - Only a signed-in user whose **confirmed** email matches can accept (`accept_invitation`), once, before it expires; they get exactly the invited role.
 - Not in the audit log: the audit log is readable by every member, and the invitee's email is for owners only. Joining is audited (it creates a membership).
-- The member list (`list_gym_members`) is visible to every member; emails only to owners.
+- The member list (`list_gym_members`) is visible to every member, read-only; emails only to owners ✅ (approved 2026-10-21).
 
 ### `tracks`
-Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endurance*). `id`, `org_id`, `name`, `color`, `position`, `archived_at`. Created and edited by owners and head coaches, not coaches — approved 2026-10-21. Archived, never deleted.
+Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endurance*). `id`, `org_id`, `name`, `color`, `position`, `archived_at`. Created and edited by owners and head coaches, not coaches — approved 2026-10-21. Archived, never deleted. **A new gym starts with one track, "Class"**, which can be renamed or archived like any other ✅ (approved 2026-10-21).
 
 ---
 
@@ -199,11 +199,12 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 | load_effort | FK effort_levels NULL | |
 | partner | bool | |
 | target_rounds | numeric NULL | coach's AMRAP estimate, overrides pace estimate |
+| rest_after_s | int NULL | ✅ rest after this block, before the next (s, ≥ 0). Counts in session length on the calendar, never in planned load — approved 2026-10-21 |
 | notes | text | |
 
 `params` shape per format (validated by a CHECK + shared Zod schema in the app):
 - `sets`: `{ sets, rest_s }`
-- `every`: `{ interval_s, rounds }`
+- `every`: `{ interval_s, rounds, alternating? }` — `alternating: true` ✅ = the lines take turns, one per interval ("minute 1: X, minute 2: Y …"; calc spec §4.3), approved 2026-10-21
 - `amrap`: `{ time_s }`
 - `for_time`: `{ rounds, time_cap_s }`
 - `intervals`: `{ rounds, work_s, rest_s, rest_between_rounds_s, stations }`
