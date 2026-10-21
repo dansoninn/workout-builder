@@ -11,7 +11,7 @@ export function authPath(page: "/sign-in" | "/sign-up", next?: string | null): s
 }
 
 /** Pages that work without signing in. Everything else needs a session. */
-const PUBLIC_PREFIXES = ["/sign-in", "/sign-up", "/forgot-password", "/auth", "/invite", "/design"];
+const PUBLIC_PREFIXES = ["/sign-in", "/sign-up", "/forgot-password", "/auth", "/invite", "/design", "/api/version"];
 
 export function isPublicPath(pathname: string): boolean {
   return pathname === "/" || PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));

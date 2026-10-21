@@ -3,6 +3,8 @@ name: CI
 on:
   push:
   pull_request:
+  # Lets the production check re-run CI for a commit whose push event GitHub lost.
+  workflow_dispatch:
 
 permissions:
   contents: read
