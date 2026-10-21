@@ -189,11 +189,14 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
     if (!row.amount) warn(`${row.item.exercise.name}: max effort needs a time window and a pace; not counted`, [row.item]);
   }
   const missingPace = rows.filter((r) => r.amount && !r.time);
-  const needsPace = () =>
+  // With no readable line at all, the unmatched-line issues already say why.
+  const needsPace = () => {
+    if (missingPace.length === 0) return;
     warn(
       `no pace for ${missingPace.map((r) => r.item.exercise.name).join(", ")}; duration cannot be estimated`,
       missingPace.map((r) => r.item),
     );
+  };
   const transitions = (count: number): Measure => (count > 0 ? estimated(count * config.transitionSec) : exact(0));
 
   // How many times each line is performed, and how long the block takes (calc spec §4.3, §5).
