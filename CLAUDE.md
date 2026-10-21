@@ -30,7 +30,7 @@ Quality is priority 1, 2 and 3. This is a professional tool coaches pay for, bui
 4. Workout builder (structured entry first, free-text parser after)
 5. Calendar, templates, analytics
 
-**Stop after each step, summarise what was built and how it was verified, and wait for Daniel's explicit approval.**
+**Approval:** Steps 1–3 and 4a–4b were approved one by one. From 2026-10-21 the continuous working mode below applies (see "Working agreement").
 
 ## Non-negotiables
 - Every tenant table has `org_id` and RLS. Gym A can never read or write gym B — proven by tests.
@@ -53,4 +53,9 @@ Social features, notifications, athlete/client-facing app, AI recommendations, b
 - **Files are the contract, not conversations.** Any decision made in either place is written to a spec or `docs/BACKLOG.md` before work continues.
 - At the **start** of every step: read `docs/BACKLOG.md` and both specs.
 - Anything discovered but out of scope for the current step → add to `docs/BACKLOG.md`, do not build it.
-- At the **end** of every step: overwrite `docs/STATUS.md` with: what was built, test results, decisions made or interpreted, open questions for Daniel, and the recommended next step. Then stop and wait for approval.
+- At the **end** of every step: overwrite `docs/STATUS.md` with: what was built, test results, decisions made or interpreted, open questions for Daniel, and the recommended next step.
+
+### Continuous working mode (Daniel, 2026-10-21)
+- Continue through the build order **without waiting for approval between sub-steps**, as long as CI is fully green. Each sub-step: its own branch and pull request; **merge when green**; production deploys automatically from `main`.
+- **Stop only for domain or coaching decisions** (calculation rules, what a coach sees, taxonomy). Collect them in `docs/STATUS.md` under **"Questions for Daniel"** and continue with work that does not depend on them.
+- Daniel reviews **in batches on production**. Keep `docs/STATUS.md` current with **what changed since his last review**.

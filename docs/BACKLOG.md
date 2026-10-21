@@ -35,6 +35,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] Later — Per-gym pace calibration from logged `block_results`: suggest pace adjustments only once a gym has ≥ 5 comparable results; never silently override a pace the coach set. (2026-10-21, Daniel)
 
 ## Infrastructure / ops
+- [ ] Security before first real gym: re-enable Vercel Authentication on previews (disabled 2026-10-21 for testing), separate production database, add CAPTCHA / bot protection on sign-up (Supabase Auth). (2026-10-21, chat)
 - [ ] Before the first real gym: buy/choose a domain, set up a custom email sender (e.g. Resend) in Supabase Auth, send invitation emails automatically (4a shares links), and make sure "Confirm email" is on (turned off for testing in 4a). Supabase's built-in email only reaches members of the Supabase team. Point the email templates at `/auth/confirm?token_hash=…` (already built) so links work in any browser. (2026-10-21, Daniel)
 - [ ] Before the first real gym: a Content-Security-Policy header (nonce-based). 4a sends the other security headers. (2026-10-21, Claude Code)
 - [ ] Next.js 16.4 dev-server bug: a route handler at `/` makes pages reload endlessly in development. `/` is routed in the proxy instead. Re-check on the next Next.js upgrade (and report upstream if still present). (2026-10-21, Claude Code)
