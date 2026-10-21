@@ -146,7 +146,7 @@ Block planned RPE = the higher of pace and load effort for that block. The coach
 - **Pace table:** the working pace of an **intermediate adult class member** at Pace **Hard**, including the short breaks such a member takes (`docs/pace-defaults.md`, seeded into `exercises.pace_default`). Approved as the starting point; every gym can override any pace (`organizations.settings.paces`).
 - **Effective pace** = table pace × pace-effort factor × fatigue factor.
 - **Pace-effort factor** (time per rep): Easy ×1.4 · Moderate ×1.15 · Hard ×1.0 · Max ×0.9.
-- **Fatigue factor** for continuous pieces (AMRAP, For Time, max-effort windows), by the piece's estimated duration: under 10 min ×1.0 · 10–20 min ×1.1 · over 20 min ×1.2. The duration is the AMRAP's length, the max-effort window, or for For Time the finish estimated *before* fatigue (so the band choice is stable). Fixed amounts in sets, EMOMs, intervals and tabata (rest between efforts) get no fatigue factor.
+- **Fatigue factor** for continuous pieces (AMRAP, For Time, max-effort windows), by the piece's estimated duration: under 10 min ×1.0 · 10–20 min ×1.1 · over 20 min ×1.2. The duration is the AMRAP's length; for a max-effort line, its window — except inside an **intervals block, where it is the block's total work time** (rounds × stations × work; approved 2026-10-21); for For Time, the finish estimated *before* fatigue (so the band choice is stable). Fixed amounts in sets, EMOMs, intervals and tabata (rest between efforts) get no fatigue factor.
 - **Transitions:** 5 s between exercises in a round or chipper. **Rest between sets** when the coach gives none: strength 120 s, other blocks 60 s.
 - **Estimate ranges** ✅: every estimated duration, round count and rep count is `{low, mid, high}`. A pace band gives the range: fast = effective pace × 0.85, slow = effective pace × 1.2. Low and high are the smallest and largest results (a fast pace gives more rounds but a shorter finish). Prescribed ranges (8–10 reps, 8–12 cal) carry their own min–max. Ranges add through sums (block → session → week). Exact values have low = mid = high.
 - These rules live in `src/lib/engine/config.ts`; changing any of them bumps the calculation version (§8).
@@ -203,14 +203,14 @@ Exposure: squat 30, v_push 20, jump 45, hinge 21, v_pull 15, core 14, h_push 5. 
 
 ### WOD 3 — Intervals 4 × 3 stations, 90/30, 90 s between rounds
 Max row, max cal bike, max lunges. Block duration 28.5 min (18 min work), Pace Hard (RPE 8) → **228 AU**.
-Estimated (90 s windows, no fatigue): row **~1,348 m (1,124–1,586)**, bike **~72 cal (60–85)**, lunges **~120 reps (100–141)** [initial estimate: ~1,500 m, ~80 cal, ~72 reps].
+Estimated (90 s windows; 18 min of total work → fatigue ×1.1): row **~1,226 m (1,021–1,442)**, bike **~65 cal (55–77)**, lunges **~109 reps (91–128)** [initial estimate: ~1,500 m, ~80 cal, ~72 reps].
 
 ### If these three were one week
 | Metric | Value | What a coach sees |
 |---|---|---|
 | Hard sets | squat 5, h_push 4, h_pull 4, **hinge 0, vertical 0** | No heavy hinge or vertical work this week |
 | Exposure push:pull | 61 : 47 = **1.3** (1.2–1.4) | Fine |
-| Exposure knee:hip | ~252 : ~59 = **~4.2** [initial estimate: 227 : 71 = 3.2] | Knee-dominant week |
+| Exposure knee:hip | ~241 : ~59 = **~4.1** [initial estimate: 227 : 71 = 3.2] | Knee-dominant week |
 | Weekly planned sRPE | **~593 AU (569–625)** (202 / ~163 / 228) [initial estimate: 643] | Even distribution, low monotony (0.85) |
 
 This is the case for separate lenses: on exposure alone, hinge looks covered (~59 reps of swings and snatches). On the strength lens it is zero. A single combined index hides exactly that.

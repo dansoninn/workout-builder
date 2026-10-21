@@ -212,7 +212,16 @@ describe("pace model (approved 2026-10-21, calc spec §5)", () => {
     expectRange(r, 720 / (20 * 1.1 * 1.2 + 5), 720 / 27, 720 / (20 * 1.1 * 0.85 + 5));
   });
 
-  it("max effort: fatigue by the window, so 90 s stations are not slowed", () => {
+  it("max effort in an intervals block: fatigue by the block's total work time", () => {
+    const intervals = (rounds: number) => computeBlock(block({ intent: "conditioning", format: "intervals", paceEffort: "hard",
+      params: { rounds, stations: 2, work_s: 60, rest_s: 30 },
+      items: [item("Air bike", { type: "max_effort", unit: "calories" }), item("Burpee", { type: "max_effort", unit: "reps" })] }), ENGINE_CONFIG);
+    // 4 × 2 × 60 s = 8 min of work → ×1.0; 6 × 2 × 60 s = 12 min → ×1.1, even though each window is 60 s.
+    expect(intervals(4).monostructural.bike?.calories?.mid).toBeCloseTo(4 * (60 / 4), 6);
+    expect(intervals(6).monostructural.bike?.calories?.mid).toBeCloseTo(6 * (60 / (4 * 1.1)), 6);
+  });
+
+  it("max effort elsewhere: fatigue by the window", () => {
     const maxCal = (seconds: number) => computeBlock(block({ intent: "conditioning", format: "amrap", params: { time_s: seconds },
       paceEffort: "hard", items: [item("Air bike", { type: "max_effort", unit: "calories" })] }), ENGINE_CONFIG);
     expect(maxCal(90).monostructural.bike?.calories?.mid).toBeCloseTo(90 / 4, 6);

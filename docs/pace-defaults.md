@@ -30,9 +30,9 @@ Estimates shown as middle (low–high). "Initial estimate" is the first rough gu
 | WOD 1 C — AMRAP 8 rounds (Pace Hard) | ~10 | ~7.7 (6.7–8.7) |
 | WOD 2 — chipper finish, min (Pace Hard, 25 min cap) | ~22 | ~20.4 (17.4–24.4) |
 | WOD 2 — planned load, AU | ~198 | ~163 (139–195) |
-| WOD 3 — row m, 4 × 90 s (Pace Hard) | ~1,500 | ~1,348 (1,124–1,586) |
-| WOD 3 — air bike cal, 4 × 90 s | ~80 | ~72 (60–85) |
-| WOD 3 — lunges, 4 × 90 s | ~72 | ~120 (100–141) |
+| WOD 3 — row m, 4 × 90 s (Pace Hard) | ~1,500 | ~1,226 (1,021–1,442) |
+| WOD 3 — air bike cal, 4 × 90 s | ~80 | ~65 (55–77) |
+| WOD 3 — lunges, 4 × 90 s | ~72 | ~109 (91–128) |
 | Week planned load, AU | 643 | ~593 (569–625) |
 
 ## Paces by exercise

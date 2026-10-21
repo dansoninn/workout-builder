@@ -119,12 +119,13 @@ describe("WOD 3 — intervals 4 × 3 stations, 90/30, 90 s between rounds, Pace 
     expectExact(wod3.monostructural.bike?.workSec, 360);
   });
 
-  it("max effort in 4 × 90 s windows (no fatigue under 10 min): row ~1,348 m, bike ~72 cal, lunges ~120", () => {
-    const perWindow = (secPerUnit: number, factor: number) => 4 * (90 / (secPerUnit * factor));
+  it("max effort in 4 × 90 s windows; 18 min of total work → fatigue ×1.1: row ~1,226 m, bike ~65 cal, lunges ~109", () => {
+    // Total work = 4 rounds × 3 stations × 90 s = 18 min → 10–20 min band → ×1.1 (Daniel, 2026-10-21).
+    const perWindow = (secPerUnit: number, factor: number) => 4 * (90 / (secPerUnit * 1.1 * factor));
     expectRange(wod3.monostructural.row?.distanceM, perWindow(0.267, SLOW), perWindow(0.267, 1), perWindow(0.267, FAST));
     expectRange(wod3.monostructural.bike?.calories, perWindow(5.0, SLOW), perWindow(5.0, 1), perWindow(5.0, FAST));
     expectRange(wod3.exposure.reps.lunge, perWindow(3.0, SLOW), perWindow(3.0, 1), perWindow(3.0, FAST));
-    expect(wod3.monostructural.row?.distanceM?.mid).toBeCloseTo(1348.3, 1);
+    expect(wod3.monostructural.row?.distanceM?.mid).toBeCloseTo(1225.7, 1);
   });
 });
 
@@ -151,8 +152,8 @@ describe("If these three were one week", () => {
     expectRange(ratios.pushPull, 57 / 47, 61 / 47, 65 / 47);
   });
 
-  it("exposure knee:hip ~4.2: knee-dominant week", () => {
-    expect(ratios.kneeHip?.mid).toBeCloseTo(4.24, 2);
+  it("exposure knee:hip ~4.1: knee-dominant week", () => {
+    expect(ratios.kneeHip?.mid).toBeCloseTo(4.06, 2);
   });
 
   it("weekly planned load ~593 AU (569–625), low monotony", () => {
