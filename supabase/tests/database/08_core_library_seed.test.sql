@@ -7,7 +7,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(32);
+select plan(39);
 
 -- Only the seeded library, not the fixture's core rows.
 create view tests.seeded as
@@ -107,6 +107,26 @@ select results_eq($$
 $$, array['dumbbell-snatch 1', 'dumbbell-thruster 2'], 'Implement counts follow calc spec §9.8: DB thruster 2, DB snatch 1');
 select results_eq($$ select count(*) from tests.seeded where implement_count = 2 $$, array[16::bigint],
   '16 core exercises use two implements; all others one');
+
+-- Approved pace defaults (calc spec §9.5)
+select results_eq($$ select count(*) from tests.seeded where pace_default is not null $$, array[122::bigint],
+  '122 core exercises have a pace default');
+select is_empty($$ select name from tests.seeded where pace_default is null and default_unit <> 'time_s' $$,
+  'Only timed holds are without a pace');
+select results_eq($$ select pace_default from tests.seeded where slug in ('row', 'kettlebell-swing') order by slug $$,
+  array['{"sec_per_rep": 2.5}'::jsonb, '{"sec_per_m": 0.267, "sec_per_cal": 4.5}'::jsonb],
+  'Paces are stored as sec_per_rep / sec_per_m / sec_per_cal (KB swing 2.5 s/rep; row 2:13/500 m, 4.5 s/cal)');
+
+select tests.login_as('head_a');
+select lives_ok($$ update public.exercises set pace_default = '{"sec_per_rep": 2.5}' where id = tests.id('ex_a') $$,
+  'A gym exercise can carry its own pace');
+select throws_ok($$ update public.exercises set pace_default = '{"speed": 3}' where id = tests.id('ex_a') $$,
+  '23514', null, 'Pace keys are limited to sec_per_rep, sec_per_m, sec_per_cal');
+select throws_ok($$ update public.exercises set pace_default = '{"sec_per_rep": -1}' where id = tests.id('ex_a') $$,
+  '23514', null, 'Pace values must be positive numbers');
+select throws_ok($$ update public.exercises set pace_default = '{}' where id = tests.id('ex_a') $$,
+  '23514', null, 'An empty pace is rejected (use NULL for none)');
+select tests.logout();
 
 -- ---------------------------------------------------------------------------
 -- Ambiguous terms: the coach is asked, never auto-matched

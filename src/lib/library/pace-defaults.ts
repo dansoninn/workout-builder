@@ -1,18 +1,20 @@
-// PROPOSED pace defaults (Step 3, for Daniel's approval; calc spec §9.5).
+// Pace defaults, approved by Daniel on 2026-10-21 as the starting point (calc
+// spec §9.5). Seeded into exercises.pace_default by a generated migration;
+// every gym can override any pace in organizations.settings.paces.
 //
 // Who: an intermediate adult class member. What: the working pace at Pace
 // "Hard" (fast, near limit) including the short breaks such a member takes;
-// transitions between exercises are separate (see PROPOSED_PACE_RULES).
-// Anchors from calc spec §9.5, at max effort: row 2:00/500 m, air bike
-// ~20 cal per 90 s (max is 0.9 × the Hard pace below).
+// transitions, pace-effort scaling, fatigue and the estimate band are rules in
+// ENGINE_CONFIG (src/lib/engine/config.ts).
+// Anchors from calc spec §9.5, at max effort (0.9 × Hard): row 2:00/500 m,
+// air bike ~20 cal per 90 s.
 //
-// Not used by the engine's tests or seeded into the database until approved.
 // docs/pace-defaults.md is generated from this file.
 
-import type { EngineConfig, Pace } from "@/lib/engine/types";
+import type { Pace } from "@/lib/engine/types";
 
 /** Pace per core exercise, keyed by canonical name. Hold exercises (time) need none. */
-export const PROPOSED_PACES: Record<string, Pace> = {
+export const PACE_DEFAULTS: Record<string, Pace> = {
   // Squat
   "Back squat": { secPerRep: 3.0 },
   "Front squat": { secPerRep: 3.0 },
@@ -150,10 +152,3 @@ export const PROPOSED_PACES: Record<string, Pace> = {
   "Swim": { secPerM: 1.5 },
 };
 
-/** Proposed rules that are not per exercise. */
-export const PROPOSED_PACE_RULES: Omit<EngineConfig, "effortLevels"> = {
-  transitionSec: 5,
-  defaultRestSec: { strength: 120, other: 60 },
-  // The table is the Hard pace; other pace efforts scale it.
-  paceEffortFactor: { easy: 1.4, moderate: 1.15, hard: 1.0, max: 0.9 },
-};

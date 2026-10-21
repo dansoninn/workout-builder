@@ -1,52 +1,53 @@
-// Checks the proposed pace table itself (complete, positive, anchored to calc
-// spec §9.5). The engine's tests do not use it until Daniel approves it.
+// Checks the approved pace table (complete, positive, anchored to calc spec
+// §9.5) and that its generated migration and document are current.
 
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
+import { ENGINE_CONFIG } from "@/lib/engine/config";
+import type { Pace } from "@/lib/engine/types";
 import { CORE_EXERCISES } from "@/lib/library/core-exercises";
+import { PACE_MIGRATION_PATH, buildPaceDefaultsMigrationSql } from "@/lib/library/generate";
 import { PACE_DOC_PATH, buildPaceMarkdown } from "@/lib/library/pace-doc";
-import { PROPOSED_PACES, PROPOSED_PACE_RULES } from "@/lib/library/pace-defaults";
+import { PACE_DEFAULTS } from "@/lib/library/pace-defaults";
 
 const names = new Set(CORE_EXERCISES.map((e) => e.name));
+const keyForUnit: Record<string, keyof Pace> = { reps: "secPerRep", distance_m: "secPerM", calories: "secPerCal" };
 
-describe("proposed pace table", () => {
+describe("approved pace table", () => {
   it("only lists core exercises, with positive values", () => {
-    for (const [name, pace] of Object.entries(PROPOSED_PACES)) {
+    for (const [name, pace] of Object.entries(PACE_DEFAULTS)) {
       expect(names.has(name), name).toBe(true);
-      for (const value of Object.values(pace)) expect(value, name).toBeGreaterThan(0);
+      for (const value of [pace.secPerRep, pace.secPerM, pace.secPerCal]) {
+        if (value !== undefined) expect(value, name).toBeGreaterThan(0);
+      }
     }
   });
 
   it("covers every core exercise in its default unit (timed holds need none)", () => {
     for (const exercise of CORE_EXERCISES) {
-      const pace = PROPOSED_PACES[exercise.name];
-      if (exercise.unit === "time_s") continue;
-      const key = { reps: "secPerRep", distance_m: "secPerM", calories: "secPerCal" }[exercise.unit] as keyof NonNullable<typeof pace>;
-      expect(pace?.[key], `${exercise.name} needs ${key}`).toBeDefined();
+      const key = keyForUnit[exercise.unit];
+      if (!key) continue;
+      expect(PACE_DEFAULTS[exercise.name]?.[key], `${exercise.name} needs ${key}`).toBeDefined();
     }
   });
 
-  it("rowing and ski ergs, prescribed in metres or calories, have both", () => {
+  it("rowing, ski and bike ergs, prescribed in metres or calories, have both", () => {
     for (const name of ["Row", "Ski erg", "Bike erg"]) {
-      expect(PROPOSED_PACES[name]?.secPerM, name).toBeDefined();
-      expect(PROPOSED_PACES[name]?.secPerCal, name).toBeDefined();
+      expect(PACE_DEFAULTS[name]?.secPerM, name).toBeDefined();
+      expect(PACE_DEFAULTS[name]?.secPerCal, name).toBeDefined();
     }
   });
 
   it("matches the calc spec §9.5 anchors at max effort: row 2:00/500 m, air bike ~20 cal per 90 s", () => {
-    const max = PROPOSED_PACE_RULES.paceEffortFactor.max;
-    expect(500 * (PROPOSED_PACES.Row?.secPerM ?? 0) * max).toBeCloseTo(120, 0);
-    expect(90 / ((PROPOSED_PACES["Air bike"]?.secPerCal ?? 0) * max)).toBeCloseTo(20, 0);
+    const max = ENGINE_CONFIG.paceEffortFactor.max;
+    expect(500 * (PACE_DEFAULTS.Row?.secPerM ?? 0) * max).toBeCloseTo(120, 0);
+    expect(90 / ((PACE_DEFAULTS["Air bike"]?.secPerCal ?? 0) * max)).toBeCloseTo(20, 0);
   });
 
-  it("pace effort factors slow down easier efforts and never go below zero", () => {
-    const f = PROPOSED_PACE_RULES.paceEffortFactor;
-    expect(f.easy).toBeGreaterThan(f.moderate);
-    expect(f.moderate).toBeGreaterThan(f.hard);
-    expect(f.hard).toBeGreaterThan(f.max);
-    expect(f.max).toBeGreaterThan(0);
+  it("the pace migration is up to date with the source", () => {
+    expect(readFileSync(PACE_MIGRATION_PATH, "utf8"), "run npm run library:generate").toBe(buildPaceDefaultsMigrationSql());
   });
 
   it("docs/pace-defaults.md is up to date with the source", () => {

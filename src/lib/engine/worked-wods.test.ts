@@ -1,75 +1,88 @@
-// Calc spec §7: the three worked WODs are the engine's acceptance tests.
-// Exact values must match exactly; estimates within 5% of what §7 states.
+// Calc spec §7: the three worked WODs are the engine's acceptance tests, with
+// the approved paces (docs/pace-defaults.md) and rules (ENGINE_CONFIG).
+// Expected numbers are written as the arithmetic behind them; §7 shows the
+// same numbers. Change a pace or rule and these fail until §7 is updated.
 
 import { describe, expect, it } from "vitest";
 
-import { WOD_1, WOD_2, WOD_3, FIXTURE_CONFIG } from "@/lib/engine/fixtures/worked-wods";
-import type { Block, Measure, WorkoutResult } from "@/lib/engine/types";
+import { ENGINE_CONFIG } from "@/lib/engine/config";
+import { WOD_1, WOD_2, WOD_3 } from "@/lib/engine/fixtures/worked-wods";
+import type { Block, Measure } from "@/lib/engine/types";
 import { weekSummary } from "@/lib/engine/weekly";
 import { computeBlock, computeRatios, computeWorkout, sumLenses } from "@/lib/engine/workout";
 
+const FAST = 0.85;
+const SLOW = 1.2;
+
 function expectExact(measure: Measure | null | undefined, value: number) {
   expect(measure?.confidence).toBe("exact");
-  expect(measure?.value).toBeCloseTo(value, 6);
+  expect(measure?.mid).toBeCloseTo(value, 6);
 }
 
-function expectAbout(measure: Measure | null | undefined, value: number, tolerance = 0.05) {
+function expectRange(measure: Measure | null | undefined, low: number, mid: number, high: number) {
   expect(measure?.confidence).toBe("estimated");
-  expect(Math.abs((measure?.value ?? Infinity) - value) / value).toBeLessThanOrEqual(tolerance);
+  expect(measure?.low).toBeCloseTo(low, 6);
+  expect(measure?.mid).toBeCloseTo(mid, 6);
+  expect(measure?.high).toBeCloseTo(high, 6);
 }
 
-const wod1 = computeWorkout(WOD_1, FIXTURE_CONFIG);
-const wod2 = computeWorkout(WOD_2, FIXTURE_CONFIG);
-const wod3 = computeWorkout(WOD_3, FIXTURE_CONFIG);
+const wod1 = computeWorkout(WOD_1, ENGINE_CONFIG);
+const wod2 = computeWorkout(WOD_2, ENGINE_CONFIG);
+const wod3 = computeWorkout(WOD_3, ENGINE_CONFIG);
 
 describe("WOD 1 — strength + accessory + AMRAP", () => {
-  const [a, b, c] = wod1.blocks as [WorkoutResult["blocks"][number], WorkoutResult["blocks"][number], WorkoutResult["blocks"][number]];
+  const [a, b, c] = wod1.blocks;
 
-  it("A. E3M×5: 5 back squat @75–80% → 15 min, 5 hard sets squat, 25 reps", () => {
-    expectExact(a.durationMin, 15);
-    expect(a.plannedRpe).toBe(8);
-    expect(a.effortSource).toBe("default");
-    expectAbout(a.sRpe, 120, 0);
-    expectExact(a.hardSets.byPattern.squat, 5);
-    expectExact(a.exposure.reps.squat, 25);
-    expect(a.intensityZones).toEqual([
-      expect.objectContaining({ exercise: "Back squat", minPercent: 75, maxPercent: 80, sets: { value: 5, confidence: "exact" } }),
-    ]);
+  it("A. E3M×5: 5 back squat @75–80%, Load Moderate → 15 min × RPE 6 = 90 AU; 5 hard sets squat, 25 reps", () => {
+    expectExact(a?.durationMin, 15);
+    expect(a?.plannedRpe).toBe(6);
+    expectExact(a?.sRpe, 90);
+    expectExact(a?.hardSets.byPattern.squat, 5);
+    expectExact(a?.exposure.reps.squat, 25);
+    expect(a?.intensityZones).toEqual([expect.objectContaining({ exercise: "Back squat", minPercent: 75, maxPercent: 80 })]);
   });
 
-  it("B. E2M×4: 8–10 DB bench, 8/8 SA DB row → 4 hard sets each, ~36 and 32 reps", () => {
-    expectExact(b.durationMin, 8);
-    expect(b.plannedRpe).toBe(6);
-    expectExact(b.sRpe, 48);
-    expectExact(b.hardSets.byPattern.h_push, 4);
-    expectExact(b.hardSets.byPattern.h_pull, 4);
-    expectAbout(b.exposure.reps.h_push, 36, 0);
-    expectExact(b.exposure.reps.h_pull, 32);
+  it("B. E2M×4: 8–10 DB bench, 8/8 SA DB row → 48 AU; 4 hard sets each; 32–40 and 32 reps", () => {
+    expectExact(b?.sRpe, 48);
+    expectExact(b?.hardSets.byPattern.h_push, 4);
+    expectExact(b?.hardSets.byPattern.h_pull, 4);
+    expectRange(b?.exposure.reps.h_push, 32, 36, 40);
+    expectExact(b?.exposure.reps.h_pull, 32);
   });
 
-  it("C. AMRAP 8: 5 KB swing, 10 air squat, 15 DU → ~10 rounds, ~50 hinge, ~100 squat, ~150 DU", () => {
-    expectExact(c.durationMin, 8);
-    expect(c.plannedRpe).toBe(8);
-    expectExact(c.sRpe, 64);
-    expectAbout(c.rounds, 10);
-    expectAbout(c.exposure.reps.hinge, 50);
-    expectAbout(c.exposure.reps.squat, 100);
-    expectAbout(c.monostructural.jump_rope?.reps, 150);
-    expect(c.hardSets.byPattern).toEqual({});
+  it("C. AMRAP 8: 5 KB swing, 10 air squat, 15 DU, Pace Hard → ~7.7 rounds (6.7–8.7)", () => {
+    // Round at Pace Hard, under 10 min (no fatigue): 5 × 2.5 s + 10 × 2.0 s + 15 × 1.0 s = 47.5 s, plus 3 × 5 s transitions.
+    const work = 5 * 2.5 + 10 * 2.0 + 15 * 1.0;
+    const rounds = (factor: number) => 480 / (work * factor + 15);
+    expectRange(c?.rounds, rounds(SLOW), rounds(1), rounds(FAST));
+    expect(c?.rounds?.mid).toBeCloseTo(7.68, 2);
+    expectRange(c?.exposure.reps.hinge, 5 * rounds(SLOW), 5 * rounds(1), 5 * rounds(FAST));
+    expectRange(c?.exposure.reps.squat, 10 * rounds(SLOW), 10 * rounds(1), 10 * rounds(FAST));
+    expectRange(c?.monostructural.jump_rope?.reps, 15 * rounds(SLOW), 15 * rounds(1), 15 * rounds(FAST));
+    expectExact(c?.sRpe, 64);
+    expect(c?.hardSets.byPattern).toEqual({});
   });
 
-  it("session planned load: 120 + 48 + 64 = 232 AU", () => {
-    expectAbout(wod1.sRpe, 232, 0);
+  it("session planned load: 90 + 48 + 64 = 202 AU, exact (all efforts set by the coach)", () => {
+    expectExact(wod1.sRpe, 202);
     expect(wod1.warnings).toEqual([]);
   });
 });
 
-describe("WOD 2 — chipper, 25 min cap", () => {
-  it("finishes in ~22 min, RPE 9.5 → ~209 AU", () => {
-    expectAbout(wod2.durationMin, 22);
-    expect(wod2.blocks[0]?.plannedRpe).toBe(9.5);
+describe("WOD 2 — chipper, 25 min cap, Pace Hard", () => {
+  // Paces: run 0.36 s/m, wall ball 3.5, DB snatch 3.0, T2B 4.5, box jump-over 4.5, burpee 5.0 s/rep, row 0.267 s/m.
+  const work = 800 * 0.36 + 50 * 3.5 + 30 * 3.0 + 20 * 4.5 + 40 * 4.5 + 10 * 5.0 + 800 * 0.267;
+  const transitions = 6 * 5;
+  // Before fatigue: 1,116.6 s = 18.6 min → 10–20 min band → fatigue ×1.1.
+  const finishMin = (factor: number) => (work * 1.1 * factor + transitions) / 60;
+
+  it("finishes in ~20.4 min (17.4–24.4) → RPE 8 → ~163 AU (139–195), under the cap", () => {
+    expect((work + transitions) / 60).toBeCloseTo(18.61, 2);
+    expectRange(wod2.durationMin, finishMin(FAST), finishMin(1), finishMin(SLOW));
+    expect(wod2.durationMin?.mid).toBeCloseTo(20.42, 2);
+    expect(wod2.blocks[0]?.plannedRpe).toBe(8);
     expect(wod2.blocks[0]?.capped).toBe(false);
-    expectAbout(wod2.sRpe, 209);
+    expectRange(wod2.sRpe, 8 * finishMin(FAST), 8 * finishMin(1), 8 * finishMin(SLOW));
   });
 
   it("exposure (all exact): squat 30, v_push 20, jump 45, hinge 21, v_pull 15, core 14, h_push 5", () => {
@@ -87,7 +100,7 @@ describe("WOD 2 — chipper, 25 min cap", () => {
 
   it("volume load on the first Rx: wall ball 450 kg, DB snatch 675 kg", () => {
     const block = WOD_2.blocks[0] as Block;
-    const only = (name: string) => computeBlock({ ...block, items: block.items.filter((i) => i.exercise?.name === name) }, FIXTURE_CONFIG);
+    const only = (name: string) => computeBlock({ ...block, items: block.items.filter((i) => i.exercise?.name === name) }, ENGINE_CONFIG);
     expectExact(only("Wall ball").volumeLoadKg, 450);
     expectExact(only("Dumbbell snatch").volumeLoadKg, 675);
     expectExact(wod2.volumeLoadKg, 1125);
@@ -98,18 +111,20 @@ describe("WOD 2 — chipper, 25 min cap", () => {
   });
 });
 
-describe("WOD 3 — intervals 4 × 3 stations, 90/30, 90 s between rounds", () => {
-  it("28.5 min block (18 min work), RPE 8 → 228 AU", () => {
+describe("WOD 3 — intervals 4 × 3 stations, 90/30, 90 s between rounds, Pace Hard", () => {
+  it("28.5 min block (18 min work), RPE 8 → 228 AU, exact", () => {
     expectExact(wod3.durationMin, 28.5);
     expectExact(wod3.sRpe, 228);
     expectExact(wod3.monostructural.row?.workSec, 360);
     expectExact(wod3.monostructural.bike?.workSec, 360);
   });
 
-  it("all estimated: row ~1,500 m, bike ~80 cal, lunges ~72 reps", () => {
-    expectAbout(wod3.monostructural.row?.distanceM, 1500);
-    expectAbout(wod3.monostructural.bike?.calories, 80);
-    expectAbout(wod3.exposure.reps.lunge, 72);
+  it("max effort in 4 × 90 s windows (no fatigue under 10 min): row ~1,348 m, bike ~72 cal, lunges ~120", () => {
+    const perWindow = (secPerUnit: number, factor: number) => 4 * (90 / (secPerUnit * factor));
+    expectRange(wod3.monostructural.row?.distanceM, perWindow(0.267, SLOW), perWindow(0.267, 1), perWindow(0.267, FAST));
+    expectRange(wod3.monostructural.bike?.calories, perWindow(5.0, SLOW), perWindow(5.0, 1), perWindow(5.0, FAST));
+    expectRange(wod3.exposure.reps.lunge, perWindow(3.0, SLOW), perWindow(3.0, 1), perWindow(3.0, FAST));
+    expect(wod3.monostructural.row?.distanceM?.mid).toBeCloseTo(1348.3, 1);
   });
 });
 
@@ -118,11 +133,10 @@ describe("If these three were one week", () => {
   const ratios = computeRatios(week.exposure.reps);
 
   it("hard sets: squat 5, h_push 4, h_pull 4 — and no hinge or vertical work", () => {
-    expect(week.hardSets.byPattern).toEqual({
-      squat: { value: 5, confidence: "exact" },
-      h_push: { value: 4, confidence: "exact" },
-      h_pull: { value: 4, confidence: "exact" },
-    });
+    expect(Object.keys(week.hardSets.byPattern).sort()).toEqual(["h_pull", "h_push", "squat"]);
+    expectExact(week.hardSets.byPattern.squat, 5);
+    expectExact(week.hardSets.byPattern.h_push, 4);
+    expectExact(week.hardSets.byPattern.h_pull, 4);
   });
 
   it("hard sets per muscle: primary 1.0 set, secondary 0.5 set", () => {
@@ -133,29 +147,30 @@ describe("If these three were one week", () => {
     expect(week.hardSets.byMuscle.hamstrings).toBeUndefined();
   });
 
-  it("exposure push:pull 61 : 47 = 1.3", () => {
-    expect(ratios.pushPull?.value).toBeCloseTo(61 / 47, 6);
+  it("exposure push:pull 61 : 47 = 1.3 (1.2–1.4)", () => {
+    expectRange(ratios.pushPull, 57 / 47, 61 / 47, 65 / 47);
   });
 
-  it("exposure knee:hip ~227 : ~71 = 3.2", () => {
-    expectAbout(ratios.kneeHip, 227 / 71);
+  it("exposure knee:hip ~4.2: knee-dominant week", () => {
+    expect(ratios.kneeHip?.mid).toBeCloseTo(4.24, 2);
   });
 
-  it("weekly planned load ~669 AU (232 / ~209 / 228), even distribution, low monotony", () => {
+  it("weekly planned load ~593 AU (569–625), low monotony", () => {
     const summary = weekSummary(
       [
-        { date: "2026-10-19", sRpe: wod1.sRpe?.value ?? 0 },
-        { date: "2026-10-21", sRpe: wod2.sRpe?.value ?? 0 },
-        { date: "2026-10-23", sRpe: wod3.sRpe?.value ?? 0 },
+        { date: "2026-10-19", sRpe: wod1.sRpe ?? { low: 0, mid: 0, high: 0, confidence: "exact" } },
+        { date: "2026-10-21", sRpe: wod2.sRpe ?? { low: 0, mid: 0, high: 0, confidence: "exact" } },
+        { date: "2026-10-23", sRpe: wod3.sRpe ?? { low: 0, mid: 0, high: 0, confidence: "exact" } },
       ],
       "2026-10-19",
     );
-    expect(Math.abs(summary.total - 669) / 669).toBeLessThan(0.03);
-    expect(summary.monotony).not.toBeNull();
-    expect(summary.monotony ?? Infinity).toBeLessThan(1.5);
+    expect(summary.total.mid).toBeCloseTo(593.4, 1);
+    expect(summary.total.low).toBeCloseTo(569.5, 1);
+    expect(summary.total.high).toBeCloseTo(625.2, 1);
+    expect(summary.monotony).toBeCloseTo(0.85, 2);
   });
 
   it("is deterministic: the same input gives the same output", () => {
-    expect(computeWorkout(WOD_1, FIXTURE_CONFIG)).toEqual(wod1);
+    expect(computeWorkout(WOD_1, ENGINE_CONFIG)).toEqual(wod1);
   });
 });

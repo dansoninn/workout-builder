@@ -7,15 +7,18 @@ import {
   IMPLEMENT_COUNT_MIGRATION_PATH,
   LIBRARY_DOC_PATH,
   MIGRATION_PATH,
+  PACE_MIGRATION_PATH,
   buildImplementCountMigrationSql,
   buildLibraryMarkdown,
   buildMigrationSql,
+  buildPaceDefaultsMigrationSql,
 } from "@/lib/library/generate";
 import { PACE_DOC_PATH, buildPaceMarkdown } from "@/lib/library/pace-doc";
 
 const outputs: [string, string][] = [
   [MIGRATION_PATH, buildMigrationSql()],
   [IMPLEMENT_COUNT_MIGRATION_PATH, buildImplementCountMigrationSql()],
+  [PACE_MIGRATION_PATH, buildPaceDefaultsMigrationSql()],
   [LIBRARY_DOC_PATH, buildLibraryMarkdown()],
   [PACE_DOC_PATH, buildPaceMarkdown()],
 ];

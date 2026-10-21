@@ -19,8 +19,15 @@ import type {
 /** Every computed number says whether it is exact or an estimate (calc spec §1.3). */
 export type Confidence = "exact" | "estimated";
 
+/**
+ * A computed number. Estimates are ranges (calc spec §5): `low` and `high`
+ * come from the pace band and from prescribed ranges (8–10 reps); `mid` is
+ * the central estimate. Exact values have low = mid = high.
+ */
 export interface Measure {
-  value: number;
+  low: number;
+  mid: number;
+  high: number;
   confidence: Confidence;
 }
 
@@ -110,15 +117,23 @@ export interface Workout {
   blocks: Block[];
 }
 
-/** Rules that are not per exercise. Proposed values: docs/pace-defaults.md. */
+/** Rules that are not per exercise (calc spec §5). Approved values: ENGINE_CONFIG. */
 export interface EngineConfig {
   effortLevels: Record<EffortKey, EffortLevel>;
   /** Seconds between exercises within a round or chipper. */
   transitionSec: number;
   /** Rest between sets when a `sets` block gives none. */
   defaultRestSec: { strength: number; other: number };
-  /** Pace multiplier by pace effort (1 = the listed pace). */
+  /** Time-per-rep multiplier by pace effort (1 = the table's Hard pace). */
   paceEffortFactor: Record<EffortKey, number>;
+  /**
+   * Fatigue in continuous pieces (AMRAP, For Time, max-effort windows), by the
+   * piece's estimated duration: under mediumFromMin ×1, up to longAboveMin
+   * ×medium, longer ×long.
+   */
+  fatigue: { mediumFromMin: number; longAboveMin: number; medium: number; long: number };
+  /** Pace band for estimate ranges: fast = pace × fast, slow = pace × slow. */
+  paceBand: { fast: number; slow: number };
 }
 
 // ---------------------------------------------------------------------------

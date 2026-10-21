@@ -1,48 +1,26 @@
-// Calc spec §7: Daniel's three real WODs as engine input.
+// Calc spec §7: Daniel's three real WODs as engine input, with the approved
+// pace table (PACE_DEFAULTS) and rules (ENGINE_CONFIG).
 //
-// Exercises come from the approved core library. Paces are TEST-ONLY values
-// that reproduce the estimates stated in §7 and §9.5 (row 2:00/500 m and air
-// bike 20 cal per 90 s at max effort; ~10 AMRAP rounds; ~22 min chipper;
-// ~72 lunges in 4 × 90 s). They are not the proposed pace table
-// (docs/pace-defaults.md), which needs Daniel's approval before tests use it.
-//
-// Efforts follow the approved two-axis model (§4.4). §7 was written with RPE
-// numbers; where a block's RPE has no exact level, the nearest word is used:
-//   WOD 1 A  "RPE 7": not set → strength default Load Hard (RPE 8)
-//   WOD 1 B  "RPE 6": Load Moderate (RPE 6), set by the coach (accessory)
-//   WOD 1 C  "RPE 8": Pace Hard (RPE 8)
-//   WOD 2    "RPE 9": Pace Max (RPE 9.5)
-//   WOD 3    "RPE 8": Pace Hard (RPE 8)
+// Efforts as decided by Daniel on 2026-10-21:
+//   WOD 1 A  Load Moderate (RPE 6)     WOD 1 B  Load Moderate (RPE 6)
+//   WOD 1 C  Pace Hard (RPE 8)         WOD 2    Pace Hard (RPE 8)
+//   WOD 3    Pace Hard (RPE 8)
 
+import { ENGINE_CONFIG } from "@/lib/engine/config";
 import type { EngineConfig, Exercise, Pace, Workout } from "@/lib/engine/types";
 import { exerciseByName, exerciseId, implementCountOf, musclesOf, patternsOf } from "@/lib/library/generate";
-import { EFFORT_LEVELS } from "@/lib/taxonomy";
+import { PACE_DEFAULTS } from "@/lib/library/pace-defaults";
 
-export const FIXTURE_PACES: Record<string, Pace> = {
-  "Kettlebell swing": { secPerRep: 2.0 },
-  "Air squat": { secPerRep: 1.5 },
-  "Double-under": { secPerRep: 0.6 },
-  "Wall ball": { secPerRep: 4.5 },
-  "Dumbbell snatch": { secPerRep: 4.0 },
-  "Toes-to-bar": { secPerRep: 5.5 },
-  "Box jump-over": { secPerRep: 6.0 },
-  "Burpee": { secPerRep: 7.0 },
-  "Run": { secPerM: 0.375 },
-  "Row": { secPerM: 0.24 },
-  "Air bike": { secPerCal: 4.5 },
-  "Walking lunge": { secPerRep: 5.0 },
-};
-
-/** Neutral rules: pace effort does not scale the fixture paces. */
-export const FIXTURE_CONFIG: EngineConfig = {
-  effortLevels: EFFORT_LEVELS,
-  transitionSec: 5,
-  defaultRestSec: { strength: 120, other: 60 },
+/** For rule tests: no effort scaling, no fatigue, no band, so each rule shows alone. */
+export const NEUTRAL_CONFIG: EngineConfig = {
+  ...ENGINE_CONFIG,
   paceEffortFactor: { easy: 1, moderate: 1, hard: 1, max: 1 },
+  fatigue: { ...ENGINE_CONFIG.fatigue, medium: 1, long: 1 },
+  paceBand: { fast: 1, slow: 1 },
 };
 
-/** An engine exercise from the core library, with an optional pace. */
-export function coreExercise(name: string, pace: Pace | null = FIXTURE_PACES[name] ?? null): Exercise {
+/** An engine exercise from the core library, with its approved pace unless one is given. */
+export function coreExercise(name: string, pace: Pace | null = PACE_DEFAULTS[name] ?? null): Exercise {
   const core = exerciseByName(name);
   const { primary, secondary } = musclesOf(core);
   return {
@@ -63,7 +41,7 @@ export function coreExercise(name: string, pace: Pace | null = FIXTURE_PACES[nam
 export const WOD_1: Workout = {
   blocks: [
     {
-      label: "A", intent: "strength", format: "every", params: { interval_s: 180, rounds: 5 },
+      label: "A", intent: "strength", format: "every", params: { interval_s: 180, rounds: 5 }, loadEffort: "moderate",
       items: [
         { exercise: coreExercise("Back squat"), rawLine: "5 back squat @75-80%",
           quantity: { type: "reps", value: 5 }, load: { type: "percent_1rm", min: 75, max: 80 } },
@@ -88,15 +66,14 @@ export const WOD_1: Workout = {
 };
 
 /**
- * WOD 2 — Chipper, 25 min cap. §7 lists only its totals; the movements are
- * reconstructed from them: 800 m run, 50 wall balls (9/6 kg), 30 alternating
- * DB snatches (22.5/15 kg), 20 toes-to-bar, 40 box jump-overs, 10 burpees
- * over the rower, 800 m row.
+ * WOD 2 — Chipper, 25 min cap: 800 m run, 50 wall balls (9/6 kg), 30
+ * alternating DB snatches (22.5/15 kg), 20 toes-to-bar, 40 box jump-overs,
+ * 10 burpees over the rower, 800 m row (reconstructed from §7's totals).
  */
 export const WOD_2: Workout = {
   blocks: [
     {
-      label: "A", intent: "conditioning", format: "for_time", params: { rounds: 1, time_cap_s: 1500 }, paceEffort: "max",
+      label: "A", intent: "conditioning", format: "for_time", params: { rounds: 1, time_cap_s: 1500 }, paceEffort: "hard",
       items: [
         { exercise: coreExercise("Run"), rawLine: "800 m run", quantity: { type: "distance_m", value: 800 } },
         { exercise: coreExercise("Wall ball"), rawLine: "50 wall balls 9/6 kg",
@@ -112,7 +89,7 @@ export const WOD_2: Workout = {
   ],
 };
 
-/** WOD 3 — Intervals 4 × 3 stations, 90/30, 90 s between rounds. */
+/** WOD 3 — Intervals 4 × 3 stations, 90/30, 90 s between rounds: max row, max cal bike, max lunges. */
 export const WOD_3: Workout = {
   blocks: [
     {

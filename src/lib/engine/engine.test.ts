@@ -1,16 +1,20 @@
-// One test per calculation rule (calc spec §4–§6). Paces here are simple
-// test numbers, not proposed defaults.
+// One test per calculation rule (calc spec §4–§6). Most tests use the neutral
+// config (no effort scaling, fatigue or band) so each rule shows on its own;
+// the "pace model" tests use the approved ENGINE_CONFIG. Paces here are simple
+// test numbers.
 
 import { describe, expect, it } from "vitest";
 
+import { ENGINE_CONFIG, fatigueFactor } from "@/lib/engine/config";
 import { countsAsHardSet, defaultEfforts, resolveBlockEffort } from "@/lib/engine/effort";
-import { FIXTURE_CONFIG, coreExercise } from "@/lib/engine/fixtures/worked-wods";
+import { NEUTRAL_CONFIG, coreExercise } from "@/lib/engine/fixtures/worked-wods";
+import { estimated, exact } from "@/lib/engine/measure";
 import { paceFromJson, paceToJson, resolvePace } from "@/lib/engine/pace";
-import type { Block, EngineConfig, Item } from "@/lib/engine/types";
+import type { Block, EngineConfig, Item, Measure } from "@/lib/engine/types";
 import { weekOnWeekChange, weekSummary } from "@/lib/engine/weekly";
 import { computeBlock, computeRatios, computeWorkout } from "@/lib/engine/workout";
 
-const config = FIXTURE_CONFIG;
+const config = NEUTRAL_CONFIG;
 const item = (name: string, quantity: Item["quantity"], extra: Partial<Item> = {}): Item => ({
   exercise: coreExercise(name, { secPerRep: 2, secPerM: 0.5, secPerCal: 4 }),
   quantity,
@@ -18,12 +22,24 @@ const item = (name: string, quantity: Item["quantity"], extra: Partial<Item> = {
 });
 const block = (b: Omit<Block, "label"> & { label?: string }): Block => ({ label: "X", ...b }) as Block;
 
+function expectRange(m: Measure | null | undefined, low: number, mid: number, high: number) {
+  expect(m?.confidence).toBe("estimated");
+  expect(m?.low).toBeCloseTo(low, 6);
+  expect(m?.mid).toBeCloseTo(mid, 6);
+  expect(m?.high).toBeCloseTo(high, 6);
+}
+
 describe("effort (calc spec §4.4, §9.4)", () => {
-  it("uses the provisional defaults when the coach sets nothing", () => {
+  it("uses the default efforts when the coach sets nothing", () => {
     expect(defaultEfforts({ intent: "strength", format: "sets" })).toEqual({ pace: "easy", load: "hard" });
     expect(defaultEfforts({ intent: "conditioning", format: "amrap" })).toEqual({ pace: "moderate", load: null });
     expect(defaultEfforts({ intent: "conditioning", format: "intervals" })).toEqual({ pace: "moderate", load: null });
     expect(defaultEfforts({ intent: "conditioning", format: "for_time" })).toEqual({ pace: "hard", load: null });
+    // Approved 2026-10-21: tabata and EMOM like intervals; skill and mobility easy.
+    expect(defaultEfforts({ intent: "conditioning", format: "tabata" })).toEqual({ pace: "moderate", load: null });
+    expect(defaultEfforts({ intent: "conditioning", format: "every" })).toEqual({ pace: "moderate", load: null });
+    expect(defaultEfforts({ intent: "skill", format: "every" })).toEqual({ pace: "easy", load: null });
+    expect(defaultEfforts({ intent: "mobility", format: "sets" })).toEqual({ pace: "easy", load: null });
   });
 
   it("planned RPE is the higher of the two axes; the coach's word wins over a default", () => {
@@ -45,43 +61,41 @@ describe("effort (calc spec §4.4, §9.4)", () => {
       intent: "conditioning", format: "amrap", params: { time_s: 600 }, targetRounds: 6.5,
       items: [item("Kettlebell swing", { type: "reps", value: 10 }, { loadEffort: "hard" })],
     });
-    expect(computeBlock(amrap, config).hardSets.byPattern.hinge).toEqual({ value: 6, confidence: "estimated" });
+    expect(computeBlock(amrap, config).hardSets.byPattern.hinge).toEqual(estimated(6));
   });
 });
 
 describe("quantities (calc spec §4.1, §5)", () => {
   const every = (items: Item[]) => computeBlock(block({ intent: "strength", format: "every", params: { interval_s: 60, rounds: 3 }, items }), config);
 
-  it("rep ranges use the midpoint, as an estimate", () => {
-    expect(every([item("Push-up", { type: "reps_range", min: 8, max: 12 })]).exposure.reps.h_push).toEqual({ value: 30, confidence: "estimated" });
+  it("rep ranges are an estimate from min to max, middle = midpoint", () => {
+    expect(every([item("Push-up", { type: "reps_range", min: 8, max: 12 })]).exposure.reps.h_push).toEqual(estimated(30, 24, 36));
   });
 
   it("rep schemes are summed (21-15-9 = 45), exactly", () => {
     const r = computeBlock(block({ intent: "conditioning", format: "for_time", params: { rounds: 1 },
       items: [item("Thruster", { type: "reps_scheme", scheme: [21, 15, 9] })] }), config);
-    expect(r.exposure.reps.squat?.value).toBeCloseTo(27, 6);
-    expect(r.exposure.reps.v_push?.value).toBeCloseTo(18, 6);
+    expect(r.exposure.reps.squat?.mid).toBeCloseTo(27, 6);
+    expect(r.exposure.reps.v_push?.mid).toBeCloseTo(18, 6);
     expect(r.exposure.reps.squat?.confidence).toBe("exact");
   });
 
   it("unilateral 8/8 = 8 reps of exposure and one set per round; 16 reps are lifted", () => {
     const r = every([item("Single-arm dumbbell row", { type: "reps_per_side", value: 8 }, { load: { type: "absolute_kg", rx: [20] } })]);
-    expect(r.exposure.reps.h_pull).toEqual({ value: 24, confidence: "exact" });
-    expect(r.hardSets.byPattern.h_pull).toEqual({ value: 3, confidence: "exact" });
-    expect(r.volumeLoadKg).toEqual({ value: 3 * 16 * 20, confidence: "exact" });
+    expect(r.exposure.reps.h_pull).toEqual(exact(24));
+    expect(r.hardSets.byPattern.h_pull).toEqual(exact(3));
+    expect(r.volumeLoadKg).toEqual(exact(3 * 16 * 20));
   });
 
-  it("calories: a single value is exact, a range uses the midpoint", () => {
-    const r = every([item("Air bike", { type: "calories", min: 10, max: 10 })]);
-    expect(r.monostructural.bike?.calories).toEqual({ value: 30, confidence: "exact" });
-    const range = every([item("Air bike", { type: "calories", min: 8, max: 12 })]);
-    expect(range.monostructural.bike?.calories).toEqual({ value: 30, confidence: "estimated" });
+  it("calories: a single value is exact, a range is an estimate", () => {
+    expect(every([item("Air bike", { type: "calories", min: 10, max: 10 })]).monostructural.bike?.calories).toEqual(exact(30));
+    expect(every([item("Air bike", { type: "calories", min: 8, max: 12 })]).monostructural.bike?.calories).toEqual(estimated(30, 24, 36));
   });
 
   it("carries count exposure in metres and holds in seconds, not reps", () => {
     const r = every([item("Farmer carry", { type: "distance_m", value: 40 }), item("Plank", { type: "time_s", value: 30 })]);
-    expect(r.exposure.distanceM.carry).toEqual({ value: 120, confidence: "exact" });
-    expect(r.exposure.timeSec.core).toEqual({ value: 90, confidence: "exact" });
+    expect(r.exposure.distanceM.carry).toEqual(exact(120));
+    expect(r.exposure.timeSec.core).toEqual(exact(90));
     expect(r.exposure.reps).toEqual({});
   });
 });
@@ -92,11 +106,11 @@ describe("volume load (calc spec §9.6, §9.8)", () => {
       items: [item("Dumbbell thruster", { type: "reps", value: 10 }, extra)] }), config);
 
   it("uses the first Rx, per implement × the exercise's implement count", () => {
-    expect(sets({ load: { type: "absolute_kg", rx: [22.5, 15] } }).volumeLoadKg).toEqual({ value: 3 * 10 * 22.5 * 2, confidence: "exact" });
+    expect(sets({ load: { type: "absolute_kg", rx: [22.5, 15] } }).volumeLoadKg).toEqual(exact(3 * 10 * 22.5 * 2));
   });
 
   it("a line can override the implement count (single-DB thruster)", () => {
-    expect(sets({ load: { type: "absolute_kg", rx: [22.5] }, implementCount: 1 }).volumeLoadKg?.value).toBe(675);
+    expect(sets({ load: { type: "absolute_kg", rx: [22.5] }, implementCount: 1 }).volumeLoadKg?.mid).toBe(675);
   });
 
   it("percent of 1RM gives an intensity zone, never kg", () => {
@@ -109,58 +123,101 @@ describe("volume load (calc spec §9.6, §9.8)", () => {
 describe("durations and rounds per format (calc spec §4.3)", () => {
   it("every: interval × rounds, exact", () => {
     const r = computeBlock(block({ intent: "strength", format: "every", params: { interval_s: 120, rounds: 6 }, items: [] }), config);
-    expect(r.durationMin).toEqual({ value: 12, confidence: "exact" });
+    expect(r.durationMin).toEqual(exact(12));
   });
 
   it("sets: sets × (work + rest), estimated; strength rest defaults to 120 s", () => {
     const r = computeBlock(block({ intent: "strength", format: "sets", params: { sets: 5 },
       items: [item("Back squat", { type: "reps", value: 5 })] }), config);
-    expect(r.durationMin).toEqual({ value: (5 * (5 * 2 + 120)) / 60, confidence: "estimated" });
+    expect(r.durationMin).toEqual(estimated((5 * (5 * 2 + 120)) / 60));
   });
 
   it("intervals: rounds × stations × (work + rest) + rest between rounds, exact", () => {
     const r = computeBlock(block({ intent: "conditioning", format: "intervals",
       params: { rounds: 3, stations: 2, work_s: 40, rest_s: 20, rest_between_rounds_s: 60 }, items: [] }), config);
-    expect(r.durationMin).toEqual({ value: (3 * 2 * 60 + 2 * 60) / 60, confidence: "exact" });
+    expect(r.durationMin).toEqual(exact((3 * 2 * 60 + 2 * 60) / 60));
   });
 
   it("tabata: 8 × 20/10 = 4 min; several exercises alternate rounds", () => {
     const r = computeBlock(block({ intent: "conditioning", format: "tabata", params: { rounds: 8, work_s: 20, rest_s: 10 },
       items: [item("Air squat", { type: "max_effort", unit: "reps" }), item("Push-up", { type: "max_effort", unit: "reps" })] }), config);
-    expect(r.durationMin).toEqual({ value: 4, confidence: "exact" });
+    expect(r.durationMin).toEqual(exact(4));
     // 4 rounds each, 20 s ÷ 2 s per rep = 10 reps a round.
-    expect(r.exposure.reps.squat).toEqual({ value: 40, confidence: "estimated" });
-    expect(r.exposure.reps.h_push).toEqual({ value: 40, confidence: "estimated" });
+    expect(r.exposure.reps.squat).toEqual(estimated(40));
+    expect(r.exposure.reps.h_push).toEqual(estimated(40));
   });
 
   it("AMRAP: rounds = time ÷ (paces + transitions); completed rounds count as sets", () => {
     const r = computeBlock(block({ intent: "conditioning", format: "amrap", params: { time_s: 300 }, loadEffort: "moderate",
       items: [item("Kettlebell swing", { type: "reps", value: 10 }), item("Push-up", { type: "reps", value: 10 })] }), config);
     // Round = 10 × 2 s + 10 × 2 s + 2 × 5 s = 50 s → 6 rounds.
-    expect(r.rounds).toEqual({ value: 6, confidence: "estimated" });
-    expect(r.hardSets.byPattern.hinge).toEqual({ value: 6, confidence: "estimated" });
+    expect(r.rounds).toEqual(estimated(6));
+    expect(r.hardSets.byPattern.hinge).toEqual(estimated(6));
   });
 
   it("AMRAP: the coach's target rounds override the pace estimate", () => {
     const r = computeBlock(block({ intent: "conditioning", format: "amrap", params: { time_s: 300 }, targetRounds: 4,
       items: [item("Kettlebell swing", { type: "reps", value: 10 })] }), config);
-    expect(r.rounds).toEqual({ value: 4, confidence: "estimated" });
-    expect(r.exposure.reps.hinge?.value).toBe(40);
+    expect(r.rounds).toEqual(estimated(4));
+    expect(r.exposure.reps.hinge?.mid).toBe(40);
   });
 
   it("for time: sum of paces, capped at the time cap", () => {
     const r = computeBlock(block({ intent: "conditioning", format: "for_time", params: { rounds: 1, time_cap_s: 120 },
       items: [item("Burpee", { type: "reps", value: 100 })] }), config);
     expect(r.capped).toBe(true);
-    expect(r.durationMin).toEqual({ value: 2, confidence: "estimated" });
+    expect(r.durationMin).toEqual(estimated(2));
+  });
+});
+
+describe("pace model (approved 2026-10-21, calc spec §5)", () => {
+  const forTime = (reps: number, paceEffort: Block["paceEffort"] = "hard", c: EngineConfig = ENGINE_CONFIG) =>
+    computeBlock(block({ intent: "conditioning", format: "for_time", params: { rounds: 1 }, paceEffort,
+      items: [item("Burpee", { type: "reps", value: reps })] }), c);
+
+  it("the approved rules", () => {
+    expect(ENGINE_CONFIG.paceEffortFactor).toEqual({ easy: 1.4, moderate: 1.15, hard: 1, max: 0.9 });
+    expect(ENGINE_CONFIG.paceBand).toEqual({ fast: 0.85, slow: 1.2 });
+    expect([9.99, 10, 15, 20, 20.01, 40].map((m) => fatigueFactor(m, ENGINE_CONFIG))).toEqual([1, 1.1, 1.1, 1.1, 1.2, 1.2]);
   });
 
-  it("pace effort scales the pace by the configured factor", () => {
-    const slow: EngineConfig = { ...config, paceEffortFactor: { ...config.paceEffortFactor, easy: 1.5 } };
-    const b = block({ intent: "conditioning", format: "for_time", params: { rounds: 1 }, paceEffort: "easy",
-      items: [item("Burpee", { type: "reps", value: 30 })] });
-    expect(computeBlock(b, config).durationMin?.value).toBeCloseTo(1, 6);
-    expect(computeBlock(b, slow).durationMin?.value).toBeCloseTo(1.5, 6);
+  it("every estimate is a range: fast = pace × 0.85, slow = pace × 1.2", () => {
+    // 30 burpees × 2 s = 60 s (Pace Hard, under 10 min: no fatigue).
+    expectRange(forTime(30).durationMin, 0.85, 1, 1.2);
+  });
+
+  it("pace effort scales the pace: Easy ×1.4 … Max ×0.9", () => {
+    expect(forTime(30, "easy").durationMin?.mid).toBeCloseTo(1.4, 6);
+    expect(forTime(30, "moderate").durationMin?.mid).toBeCloseTo(1.15, 6);
+    expect(forTime(30, "max").durationMin?.mid).toBeCloseTo(0.9, 6);
+  });
+
+  it("for time: fatigue is chosen from the estimate before fatigue", () => {
+    // 285 burpees = 9.5 min → under 10 min, no fatigue.
+    expect(forTime(285).durationMin?.mid).toBeCloseTo(9.5, 6);
+    // 300 burpees = 10 min → 10–20 min band, ×1.1 → 11 min.
+    expect(forTime(300).durationMin?.mid).toBeCloseTo(11, 6);
+    // 660 burpees = 22 min → over 20 min, ×1.2 → 26.4 min.
+    expect(forTime(660).durationMin?.mid).toBeCloseTo(26.4, 6);
+  });
+
+  it("AMRAP: fatigue by the AMRAP's length", () => {
+    const amrap = (minutes: number) => computeBlock(block({ intent: "conditioning", format: "amrap", params: { time_s: minutes * 60 },
+      paceEffort: "hard", items: [item("Burpee", { type: "reps", value: 10 })] }), ENGINE_CONFIG);
+    // Round = 10 × 2 s × fatigue + 5 s transition.
+    expect(amrap(8).rounds?.mid).toBeCloseTo(480 / 25, 6);
+    expect(amrap(12).rounds?.mid).toBeCloseTo(720 / 27, 6);
+    expect(amrap(25).rounds?.mid).toBeCloseTo(1500 / 29, 6);
+    const r = amrap(12).rounds;
+    expectRange(r, 720 / (20 * 1.1 * 1.2 + 5), 720 / 27, 720 / (20 * 1.1 * 0.85 + 5));
+  });
+
+  it("max effort: fatigue by the window, so 90 s stations are not slowed", () => {
+    const maxCal = (seconds: number) => computeBlock(block({ intent: "conditioning", format: "amrap", params: { time_s: seconds },
+      paceEffort: "hard", items: [item("Air bike", { type: "max_effort", unit: "calories" })] }), ENGINE_CONFIG);
+    expect(maxCal(90).monostructural.bike?.calories?.mid).toBeCloseTo(90 / 4, 6);
+    expect(maxCal(720).monostructural.bike?.calories?.mid).toBeCloseTo(720 / (4 * 1.1), 6);
+    expectRange(maxCal(90).monostructural.bike?.calories, 90 / (4 * 1.2), 90 / 4, 90 / (4 * 0.85));
   });
 });
 
@@ -182,12 +239,15 @@ describe("gaps are reported, never guessed", () => {
 
 describe("balance ratios (calc spec Lens 2)", () => {
   it("push:pull, knee:hip, upper:lower from exposure reps; null when a side is empty", () => {
-    const e = (value: number) => ({ value, confidence: "exact" as const });
-    const ratios = computeRatios({ h_push: e(30), v_push: e(10), h_pull: e(20), squat: e(50), lunge: e(10), hinge: e(20) });
-    expect(ratios.pushPull?.value).toBe(2);
-    expect(ratios.kneeHip?.value).toBe(3);
-    expect(ratios.upperLower?.value).toBeCloseTo(60 / 80, 6);
-    expect(computeRatios({ squat: e(10) }).kneeHip).toBeNull();
+    const ratios = computeRatios({ h_push: exact(30), v_push: exact(10), h_pull: exact(20), squat: exact(50), lunge: exact(10), hinge: exact(20) });
+    expect(ratios.pushPull).toEqual(exact(2));
+    expect(ratios.kneeHip).toEqual(exact(3));
+    expect(ratios.upperLower?.mid).toBeCloseTo(60 / 80, 6);
+    expect(computeRatios({ squat: exact(10) }).kneeHip).toBeNull();
+  });
+
+  it("ratios of estimates are ranges: lowest = lowest top ÷ highest bottom", () => {
+    expectRange(computeRatios({ h_push: estimated(36, 32, 40), h_pull: exact(32) }).pushPull, 1, 36 / 32, 1.25);
   });
 });
 
@@ -207,9 +267,12 @@ describe("paces (calc spec §9.5)", () => {
 
 describe("weekly load (calc spec Lens 4)", () => {
   it("total, monotony (mean ÷ SD of daily load) and strain (load × monotony)", () => {
-    const week = weekSummary([{ date: "2026-10-19", sRpe: 300 }, { date: "2026-10-19", sRpe: 100 }, { date: "2026-10-22", sRpe: 300 }], "2026-10-19");
+    const week = weekSummary(
+      [{ date: "2026-10-19", sRpe: exact(300) }, { date: "2026-10-19", sRpe: exact(100) }, { date: "2026-10-22", sRpe: exact(300) }],
+      "2026-10-19",
+    );
     expect(week.dailyLoad).toEqual([400, 0, 0, 300, 0, 0, 0]);
-    expect(week.total).toBe(700);
+    expect(week.total).toEqual(exact(700));
     expect(week.mean).toBe(100);
     const sd = Math.sqrt((300 ** 2 + 200 ** 2 + 5 * 100 ** 2) / 7);
     expect(week.sd).toBeCloseTo(sd, 9);
@@ -217,10 +280,15 @@ describe("weekly load (calc spec Lens 4)", () => {
     expect(week.strain).toBeCloseTo(700 * (100 / sd), 9);
   });
 
+  it("the weekly total carries the sessions' ranges", () => {
+    const week = weekSummary([{ date: "2026-10-20", sRpe: estimated(100, 90, 120) }, { date: "2026-10-21", sRpe: exact(50) }], "2026-10-19");
+    expect(week.total).toEqual(estimated(150, 140, 170));
+  });
+
   it("monotony is undefined when every day is the same; sessions outside the week are ignored", () => {
-    const flat = weekSummary(Array.from({ length: 7 }, (_, i) => ({ date: `2026-10-${19 + i}`, sRpe: 100 })), "2026-10-19");
+    const flat = weekSummary(Array.from({ length: 7 }, (_, i) => ({ date: `2026-10-${19 + i}`, sRpe: exact(100) })), "2026-10-19");
     expect(flat.monotony).toBeNull();
-    expect(weekSummary([{ date: "2026-10-26", sRpe: 500 }], "2026-10-19").total).toBe(0);
+    expect(weekSummary([{ date: "2026-10-26", sRpe: exact(500) }], "2026-10-19").total).toEqual(exact(0));
   });
 
   it("week-on-week change", () => {

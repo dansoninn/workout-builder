@@ -1,39 +1,39 @@
-# Pace defaults — for review
+# Pace defaults
 
-**Status:** proposal for Daniel's approval (Step 3, calc spec §9.5). Not yet used in tests or stored in the database.
+**Status:** approved by Daniel on 2026-10-21 as the starting point (calc spec §9.5). Seeded into `exercises.pace_default` by migration `20261021001300_core_pace_defaults.sql`. Every gym can override any pace in its settings.
 
-Generated from `src/lib/library/pace-defaults.ts` by `npm run library:generate`; do not edit by hand. Mark changes anywhere you like and Claude Code updates the source.
+Generated from `src/lib/library/pace-defaults.ts` and `src/lib/engine/config.ts` by `npm run library:generate`; do not edit by hand.
 
 ## What these paces mean
 
-- **Who:** an intermediate adult class member (approved, §9.5). Every gym can override any pace in its settings.
+- **Who:** an intermediate adult class member.
 - **What:** the working pace at Pace **Hard** ("fast, near limit"), including the short breaks such a member takes in a metcon. Transitions between exercises are added separately.
-- **Anchors** from §9.5, at max effort: row 2:00/500 m and air bike ~20 cal per 90 s. With max = 0.9 × Hard, the Hard paces are row 2:14 /500 m and air bike 5 s/cal.
+- **Anchors** from §9.5, at max effort: row 2:00/500 m and air bike ~20 cal per 90 s (Hard: row 2:14 /500 m, air bike 5 s/cal).
 - Used for: AMRAP rounds, For Time finish, max effort in a window, and set durations (calc spec §5).
 
-## Rules (also for approval)
+## Rules
 
-| Rule | Proposed |
+| Rule | Value |
 |---|---|
+| Pace effort scales the pace (time per rep) | Easy ×1.4 · Moderate ×1.15 · Hard ×1 · Max ×0.9 |
+| Fatigue in continuous pieces (AMRAP, For Time, max-effort windows), by estimated duration | under 10 min ×1.0 · 10–20 min ×1.1 · over 20 min ×1.2 |
+| Estimate range (pace band, after effort and fatigue) | fast = pace ×0.85, slow = pace ×1.2 |
 | Transition between exercises (in a round or chipper) | 5 s |
 | Rest between sets when the coach gives none | strength 120 s, other blocks 60 s |
-| Pace effort scales the pace | Easy ×1.4 · Moderate ×1.15 · Hard ×1 · Max ×0.9 (time per rep; higher = slower) |
 
-The spec does not yet say how pace effort changes the pace; the scaling above is a proposal. Without it, "Easy" and "Max" would give the same AMRAP estimate.
+## Worked WODs with these paces (calc spec §7)
 
-## Effect on your worked WODs (calc spec §7)
+Estimates shown as middle (low–high). "Initial estimate" is the first rough guess in §7, not coach-validated.
 
-Your §7 estimates next to what the engine computes with the proposed paces and rules. Where they differ, either the paces or the §7 estimate should move.
-
-| Worked WOD | §7 estimate | With proposed paces |
+| Worked WOD | Initial estimate | Engine |
 |---|---|---|
-| WOD 1 C — AMRAP 8 rounds (Pace Hard) | ~10 | ~7.7 |
-| WOD 2 — chipper finish (Pace Max, 25 min cap) | ~22 min | ~16.8 min |
-| WOD 2 — planned load | ~209 AU | ~160 AU |
-| WOD 3 — row, 4 × 90 s (Pace Hard) | ~1,500 m | ~1,348 m |
-| WOD 3 — air bike, 4 × 90 s | ~80 cal | ~72 cal |
-| WOD 3 — lunges, 4 × 90 s | ~72 reps | ~120 reps |
-| Week planned load | ~669 AU | ~620 AU |
+| WOD 1 C — AMRAP 8 rounds (Pace Hard) | ~10 | ~7.7 (6.7–8.7) |
+| WOD 2 — chipper finish, min (Pace Hard, 25 min cap) | ~22 | ~20.4 (17.4–24.4) |
+| WOD 2 — planned load, AU | ~198 | ~163 (139–195) |
+| WOD 3 — row m, 4 × 90 s (Pace Hard) | ~1,500 | ~1,348 (1,124–1,586) |
+| WOD 3 — air bike cal, 4 × 90 s | ~80 | ~72 (60–85) |
+| WOD 3 — lunges, 4 × 90 s | ~72 | ~120 (100–141) |
+| Week planned load, AU | 643 | ~593 (569–625) |
 
 ## Paces by exercise
 

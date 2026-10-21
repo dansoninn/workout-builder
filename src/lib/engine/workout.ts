@@ -1,8 +1,22 @@
 // The calculation engine: a pure, deterministic function from a workout to
 // the four lenses of calc spec §6. No database access, no clock, no I/O.
 
+import { fatigueFactor } from "@/lib/engine/config";
 import { countsAsHardSet, resolveBlockEffort } from "@/lib/engine/effort";
-import { add, addTo, combine, estimated, exact, multiply, ratio, scale, sumKeys } from "@/lib/engine/measure";
+import {
+  add,
+  addTo,
+  capAt,
+  combine,
+  divide,
+  estimated,
+  exact,
+  floor,
+  multiply,
+  ratio,
+  scale,
+  sumKeys,
+} from "@/lib/engine/measure";
 import type {
   Block,
   BlockResult,
@@ -50,14 +64,20 @@ function secondsPerUnit(pace: Pace | null, unit: MeasureUnit): number | null {
   return pace.secPerCal ?? null;
 }
 
-/** Calc spec §4.1 and §5: midpoints and max-effort windows are estimates. */
-function amountOf(quantity: Quantity, pace: Pace | null, paceFactor: number, windowSec: number | null): Amount | null {
+/** Effective seconds per unit as a range: table pace × factors, widened by the pace band (calc spec §5). */
+function paceRange(secPerUnit: number, factor: number, config: EngineConfig): Measure {
+  const mid = secPerUnit * factor;
+  return estimated(mid, mid * config.paceBand.fast, mid * config.paceBand.slow);
+}
+
+/** Calc spec §4.1 and §5: prescribed ranges and max-effort windows are estimates. */
+function amountOf(quantity: Quantity, pace: Pace | null, factor: number, windowSec: number | null, config: EngineConfig): Amount | null {
   switch (quantity.type) {
     case "reps":
       return { unit: "reps", value: exact(quantity.value), performed: exact(quantity.value) };
     case "reps_range": {
-      const midpoint = estimated((quantity.min + quantity.max) / 2);
-      return { unit: "reps", value: midpoint, performed: midpoint };
+      const reps = estimated((quantity.min + quantity.max) / 2, quantity.min, quantity.max);
+      return { unit: "reps", value: reps, performed: reps };
     }
     case "reps_scheme": {
       const total = exact(quantity.scheme.reduce((a, b) => a + b, 0));
@@ -71,29 +91,29 @@ function amountOf(quantity: Quantity, pace: Pace | null, paceFactor: number, win
     case "calories":
       return {
         unit: "calories",
-        value: quantity.min === quantity.max ? exact(quantity.min) : estimated((quantity.min + quantity.max) / 2),
+        value: quantity.min === quantity.max ? exact(quantity.min) : estimated((quantity.min + quantity.max) / 2, quantity.min, quantity.max),
       };
     case "time_s":
       return { unit: "time_s", value: exact(quantity.value) };
     case "max_effort": {
       // Max effort in a window = window ÷ pace (calc spec §5).
       if (windowSec === null) return null;
+      if (quantity.unit === "time_s") return { unit: "time_s", value: estimated(windowSec) };
       const secPerUnit = secondsPerUnit(pace, quantity.unit);
       if (secPerUnit === null) return null;
-      const value = estimated(windowSec / (secPerUnit * paceFactor));
+      const value = divide(exact(windowSec), paceRange(secPerUnit, factor, config));
       return { unit: quantity.unit, value, performed: quantity.unit === "reps" ? value : undefined };
     }
   }
 }
 
 /** Seconds one performance of a line takes. */
-function timeOf(item: MatchedItem, amount: Amount, paceFactor: number, windowSec: number | null): Measure | null {
+function timeOf(item: MatchedItem, amount: Amount, factor: number, windowSec: number | null, config: EngineConfig): Measure | null {
   if (item.quantity.type === "max_effort") return windowSec === null ? null : exact(windowSec);
   if (amount.unit === "time_s") return amount.value;
   const secPerUnit = secondsPerUnit(item.exercise.pace, amount.unit);
   if (secPerUnit === null) return null;
-  const work = amount.performed ?? amount.value;
-  return estimated(work.value * secPerUnit * paceFactor);
+  return multiply(amount.performed ?? amount.value, paceRange(secPerUnit, factor, config));
 }
 
 function sum(measures: Measure[]): Measure | undefined {
@@ -117,19 +137,29 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   if (block.format === "intervals" || block.format === "tabata") windowSec = block.params.work_s;
   if (block.format === "amrap" && n === 1) windowSec = block.params.time_s;
 
-  const rows = items.map((item) => {
-    const paceEffort = item.paceEffort ?? effort.pace;
-    const paceFactor = paceEffort ? config.paceEffortFactor[paceEffort] : 1;
-    const amount = amountOf(item.quantity, item.exercise.pace, paceFactor, windowSec);
-    if (!amount) warnings.push(`${item.exercise.name}: max effort needs a time window and a pace; not counted`);
-    const time = amount ? timeOf(item, amount, paceFactor, windowSec) : null;
-    return { item, amount, time, loadEffort: item.loadEffort ?? effort.load };
-  });
+  /** Per-line amount and time, given the fatigue factor of the piece (max-effort lines use their window). */
+  const buildRows = (pieceFatigue: number) =>
+    items.map((item) => {
+      const paceEffort = item.paceEffort ?? effort.pace;
+      const effortFactor = paceEffort ? config.paceEffortFactor[paceEffort] : 1;
+      const fatigue = item.quantity.type === "max_effort" && windowSec !== null ? fatigueFactor(windowSec / 60, config) : pieceFatigue;
+      const factor = effortFactor * fatigue;
+      const amount = amountOf(item.quantity, item.exercise.pace, factor, windowSec, config);
+      const time = amount ? timeOf(item, amount, factor, windowSec, config) : null;
+      return { item, amount, time, loadEffort: item.loadEffort ?? effort.load };
+    });
+  const roundWork = (rows: ReturnType<typeof buildRows>) =>
+    rows.every((r) => !r.amount || r.time) ? sum(rows.flatMap((r) => (r.time ? [r.time] : []))) : undefined;
 
+  // Continuous pieces slow down with their length (calc spec §5).
+  let rows = buildRows(block.format === "amrap" ? fatigueFactor(block.params.time_s / 60, config) : 1);
+
+  for (const row of rows) {
+    if (!row.amount) warnings.push(`${row.item.exercise.name}: max effort needs a time window and a pace; not counted`);
+  }
   const missingPace = rows.filter((r) => r.amount && !r.time).map((r) => r.item.exercise.name);
-  const workPerRound = missingPace.length === 0 ? sum(rows.flatMap((r) => (r.time ? [r.time] : []))) : undefined;
-  const transitions = (count: number): Measure => (count > 0 ? estimated(count * config.transitionSec) : exact(0));
   const needsPace = () => warnings.push(`no pace for ${missingPace.join(", ")}; duration cannot be estimated`);
+  const transitions = (count: number): Measure => (count > 0 ? estimated(count * config.transitionSec) : exact(0));
 
   // How many times each line is performed, and how long the block takes (calc spec §4.3, §5).
   let rounds: Measure | null = null;
@@ -145,7 +175,8 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
       const rest = rest_s !== undefined
         ? exact(rest_s)
         : estimated(block.intent === "strength" ? config.defaultRestSec.strength : config.defaultRestSec.other);
-      if (workPerRound) durationSec = scale(add(add(workPerRound, transitions(n - 1)), rest), sets);
+      const work = roundWork(rows);
+      if (work) durationSec = scale(add(add(work, transitions(n - 1)), rest), sets);
       else needsPace();
       break;
     }
@@ -157,33 +188,33 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
     }
     case "amrap": {
       durationSec = exact(block.params.time_s);
+      const work = roundWork(rows);
       if (block.targetRounds) {
         rounds = estimated(block.targetRounds);
       } else if (n === 1 && items[0]?.quantity.type === "max_effort") {
         rounds = exact(1);
-      } else if (workPerRound) {
+      } else if (work) {
         // Rounds = time ÷ (sum of paces + transitions) (calc spec §5).
-        const roundTime = add(workPerRound, transitions(n));
-        rounds = estimated(block.params.time_s / roundTime.value);
+        rounds = divide(exact(block.params.time_s), add(work, transitions(n)));
       } else {
         needsPace();
       }
       // Each completed round is one set (calc spec Lens 1).
-      completedSets = () => (rounds ? { value: Math.floor(rounds.value), confidence: rounds.confidence } : null);
+      completedSets = () => (rounds ? floor(rounds) : null);
       break;
     }
     case "for_time": {
       const { rounds: count, time_cap_s } = block.params;
       rounds = exact(count);
-      if (workPerRound) {
+      const finish = (work: Measure) => add(scale(work, count), transitions(count * n - 1));
+      const baseWork = roundWork(rows);
+      if (baseWork) {
+        // Fatigue is chosen from the estimate before fatigue, then applied.
+        rows = buildRows(fatigueFactor(finish(baseWork).mid / 60, config));
+        const total = finish(roundWork(rows) ?? baseWork);
         // Sum of paces, capped at the time cap (calc spec §5).
-        const total = add(scale(workPerRound, count), transitions(count * n - 1));
-        if (time_cap_s !== undefined && total.value > time_cap_s) {
-          capped = true;
-          durationSec = estimated(time_cap_s);
-        } else {
-          durationSec = total;
-        }
+        capped = time_cap_s !== undefined && total.mid > time_cap_s;
+        durationSec = time_cap_s !== undefined ? capAt(total, time_cap_s) : total;
       } else {
         needsPace();
         if (time_cap_s !== undefined) durationSec = estimated(time_cap_s);
@@ -270,16 +301,14 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   if (effort.plannedRpe === null) {
     warnings.push("no pace or load effort; planned load not computed");
   } else if (lenses.durationMin) {
-    lenses.sRpe = {
-      value: lenses.durationMin.value * effort.plannedRpe,
-      confidence: combine(lenses.durationMin.confidence, effort.source === "default" ? "estimated" : "exact"),
-    };
+    const load = scale(lenses.durationMin, effort.plannedRpe);
+    lenses.sRpe = { ...load, confidence: combine(load.confidence, effort.source === "default" ? "estimated" : "exact") };
   }
 
   return { ...lenses, label: block.label, plannedRpe: effort.plannedRpe, effortSource: effort.source, rounds, capped, warnings };
 }
 
-/** Adds `source` into `target` (durations and loads only when both are known). */
+/** Adds `source` into `target` (durations and loads are handled by sumLenses). */
 export function mergeLenses(target: Lenses, source: Lenses): void {
   for (const [k, v] of Object.entries(source.hardSets.byPattern)) addTo(target.hardSets.byPattern, k as PatternKey, v);
   for (const [k, v] of Object.entries(source.hardSets.byMuscle)) addTo(target.hardSets.byMuscle, k as keyof typeof target.hardSets.byMuscle, v);

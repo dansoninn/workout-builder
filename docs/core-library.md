@@ -1,6 +1,6 @@
 # Core exercise library
 
-**Status:** approved by Daniel on 2026-10-21 (Step 2). Seeded by migration `20261021001000_core_exercise_library.sql`. The **Implements** column (calc spec §9.8) was added in Step 3 and is a proposal pending review.
+**Status:** approved by Daniel on 2026-10-21 (Step 2). Seeded by migration `20261021001000_core_exercise_library.sql`. The **Implements** column (calc spec §9.8) was approved in Step 3 (migration `20261021001200`); paces are in `docs/pace-defaults.md`.
 
 Generated from `src/lib/library/` by `npm run library:generate`; do not edit by hand. To change the library, edit the source and regenerate. Once the seed is on the remote database, changes need a new migration (see BACKLOG).
 
