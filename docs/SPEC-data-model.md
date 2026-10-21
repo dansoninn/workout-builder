@@ -149,6 +149,9 @@ Labels are English only (`label_en`) — decided 2026-10-21 ✅. A translation l
 ### `exercise_equipment` ✅
 `exercise_id`, `equipment_key` FK → `equipment`. Replaces a free-text equipment array — approved 2026-10-21.
 
+### Gym exercises: `save_gym_exercise` (Step 4b)
+Owners and head coaches add and edit the gym's own exercises with `save_gym_exercise(org, exercise)`: the exercise, its patterns, muscles and equipment in one transaction (the pattern weights are checked at commit and must add up to 1.00). Archiving (`status = archived`) keeps the exercise in old workouts but no longer offers it in the builder.
+
 ### `exercise_pace_overrides` ✅ (Step 4b)
 A gym's own pace for an exercise (calc spec §9.5): `org_id`, `exercise_id` (core or the gym's own), `pace` (same shape as `exercises.pace_default`: one or more of `sec_per_rep`, `sec_per_m`, `sec_per_cal`), `updated_by`, `updated_at`. Primary key (org_id, exercise_id). An override replaces the default for that gym. Every member reads; **owners and head coaches** write (decision 9, 2026-10-21). Audited. Replaces the earlier `organizations.settings.paces` idea, because gym settings are owner-only.
 
@@ -253,6 +256,9 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 `rx` stores every Rx variant; calculations use the first-listed — approved 2026-10-21 ✅ (calc spec §9.6). Load is per implement; the implement count multiplies it for volume load.
 
 A workout can only move to `published` when every item has an `exercise_id`.
+
+### Templates (Step 4b)
+A template is a workout with `kind = template` and no date. "Save as template" and "Use on a date" both make a **copy** with new ids, so a template and the workouts made from it change independently, each with its own audit history.
 
 ### Saving a workout: `save_workout` ✅ (Step 4b)
 The builder saves through one database function, `save_workout(org, workout)`, in a single transaction: the workout, its blocks and their lines, in order. It runs as the signed-in user, so RLS applies. Rows that did not change are not touched; removed blocks and lines are deleted; a line moved to another block is removed and re-added. So the audit log shows only real edits. It returns the workout's id. Right after, the app recomputes the workout with the engine on the server and stores the result in `workout_metrics` (with `calc_version` and `taxonomy_version`).

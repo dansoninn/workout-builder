@@ -1,6 +1,6 @@
 # Step 4 plan — from engine to a working app
 
-**Status:** approved by Daniel on 2026-10-21, with the design-direction correction and answers below. 4a in progress.
+**Status:** approved by Daniel on 2026-10-21, with the design-direction correction and answers below. 4a approved and merged (PR #1). 4b built, ready for review (branch step-4b).
 **Rule:** four sub-steps, each approval-gated, each on its own branch with a pull request and a Vercel preview link. Each ends with a STATUS update and stops.
 
 | Sub-step | What you will be able to do when it is done |

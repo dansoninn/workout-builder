@@ -1,103 +1,60 @@
 # Status
 
 **Updated:** 2026-10-21 by Claude Code
-**Current step:** **4a is built and ready for your review** (branch `step-4a`, pull request #1). It needs your Vercel and Supabase steps below before the preview link works. Your 4a answers (below) are built in. 4b has not started.
+**Current step:** **4b is built and ready for your review** (branch `step-4b`, pull request #2, Vercel preview linked there). 4a is approved and merged.
 
-## Your 4a answers, built in (2026-10-21)
-1. **A new gym starts with a "Class" track** (indigo), which owners and head coaches can rename or archive. Gyms created before this change that had no track got one too, so a gym you create on the preview right now is covered.
-2. **Members page read-only for coaches and viewers:** approved, no change needed.
-3. **4b decisions, ready for the builder:**
-   - **Alternating EMOM** is an option of `every`: the lines take turns, one per interval. EMOM 12 with three lines → each line 4 times. EMOM 10 → 4, 3, 3 (the first lines get the extra minute, exactly like tabata). The duration doesn't change. If there are fewer minutes than lines, the app warns that some lines are never reached.
-   - **Rest between blocks** is stored on each block ("rest after this block"). The engine now gives a **session length** (blocks + rest between them, for the calendar) next to planned load, which still uses block time only. Rest after the last block isn't counted.
-   - Both are in the database, the calculation engine and the specs (calc spec §4.3 and Lens 4, decisions 13–14; data model spec §6). The builder screens for them come in 4b.
-4. **BACKLOG:** splitting `core` into anti-extension / anti-rotation / anti-lateral-flexion / flexion, and gait/locomotion as its own pattern, both to decide after 4b with real data.
+## Before you look: production
+`main` has 4a merged, but **production (https://workout-builder-cyan.vercel.app) still shows the old build**. GitHub never told Vercel (or our CI) about the merge, so nothing was built. I was not allowed to push a trigger commit to `main` (a production deploy), so this one is yours: in Vercel, **Deployments → the latest `main` deployment → ⋯ → Redeploy** (or "Create Deployment" from `main`). After that, the production address shows the app with the font fix. Merging 4b later deploys production again normally.
 
-New question that came up (in BACKLOG): can one minute of an alternating EMOM hold two movements ("min 1: 10 cal row + 5 burpees")? Today each line is one minute of the rotation.
+## What was built in 4b
 
-Tests after these changes: **pgTAP 409/409, Vitest 185/185, Playwright 24/24** (production build). Both migrations are applied to the hosted database. One browser test failed once and then passed in more than 100 runs since. I couldn't reproduce it; CI retries a failed test once and reports it as flaky, and Auto-fix will flag it if it comes back.
+### The builder (Builder in the sidebar; a workout opens at its own address)
+- **Blocks A, B, C…**: intent, format, and only the fields that format needs (EMOM: every 3:00 × 5; AMRAP: time and target rounds; intervals: rounds, stations, work, rest, rest between rounds; …), **Pace and Load in words** (the default for the block is shown as an outlined choice until you pick), partner, notes, and **rest after the block**.
+- **Lines**: pick the exercise by typing (your gym's names first; a generic word like "squat" lists what it could mean and **never picks for you**), then the amount and load the way you write them: `5`, `8-10`, `21-15-9`, `8/8`, `800 m`, `8-12 cal`, `0:30`, `max cal`; `75-80%`, `22.5/15`, `2x22.5`, `bw`. Beside each line the app says what it understood ("8–10 reps · 2 × 22.5 kg"). Per line: own pace or load effort, one or two implements, minute (alternating EMOM), note.
+- **Alternating EMOM** as you decided: tick "Alternating minutes", lines are grouped by minute (several lines per minute allowed), and **rounds count rotations**. EMOM with "min 1: 10 cal row + 5 burpees, min 2: 12 wall balls" × 6 is 12 minutes; every line done 6 times.
+- **Keyboard-first**: Enter new line, ⌘Enter new block, ⌥↑/↓ move a line, ⌘⌫ delete it, ⌘S save; Save, Publish, Add block and template actions are also in ⌘K. **WOD 1 can be built without touching the mouse** (tested).
+- **The live load panel** (right side), recomputed on every keystroke in your browser: session length and planned load as honest ranges, each block's minutes and load (AMRAP rounds too), and three tabs (hard sets by pattern and muscle, volume load, intensity; reps by pattern with push:pull, knee:hip, upper:lower; conditioning by modality). **Warnings name their line ("C2") and jump to it.**
+- **Save** stores the workout in one database transaction and recomputes it on the server into `workout_metrics` (calc and taxonomy version). **Publish** checks that every line has an exercise and, if not, lists those lines with links. **Unsaved work is kept in your browser** and offered back after a reload or crash. Viewers see everything read-only.
 
-## What was built in 4a
+### Calendar, templates
+- **Calendar**: one week, a column per track, each day's workouts with status, session length and planned load (from the stored metrics), the week's planned load per track, and "Add" on any day and track, which opens the builder for that day.
+- **Templates**: "Save as template" from any workout; templates are listed under the calendar; a template's "Use on a date" puts a copy on the calendar. The template stays unchanged.
 
-### Design system (before any screen)
-- `docs/DESIGN.md` and a live `/design` page (local and preview only, hidden in production): type scale on Geist at 13 px, colour tokens for light and dark, semantic colours for the 11 movement patterns, 4 intents and 4 effort levels, spacing, components, honest numbers ("~20 min 17–24"), and the keyboard map.
-- Contrast is tested on every push: body text ≥ 7:1, secondary text ≥ 4.5:1, controls ≥ 3:1, in both themes.
-- Every shadcn component we use is restyled to these tokens: no default shadcn look.
-
-### Accounts and gyms
-- **Sign up, sign in, forgot password, set a new password.** Email + password. Clear messages in plain words ("Email or password is incorrect.").
-- **Create your gym:** name, address (made from the name, e.g. `/afrek-functional-fitness`), country. You become the owner.
-- **Join by invitation link.** An owner invites an email with a role and gets a link to send by message, email or WhatsApp. A new coach opens it, creates an account on the same page and is in the gym in one step. The link works once, for 14 days, only for that email.
-
-### The app shell
-- Sidebar with your gym (switch between gyms), Builder, Calendar, Analytics, Exercises, Settings, and your account menu. On phones it opens from a menu button.
-- **⌘K (Ctrl K)** opens a command palette: every page and action (go to, invite a member, new track, switch gym, theme, sign out).
-- **G then a letter** jumps: G B Builder, G C Calendar, G A Analytics, G E Exercises, G S Settings, G P your profile. **?** lists all shortcuts.
-- Builder, Calendar, Analytics and Exercises say what is coming and in which step.
-- Light, dark or follow the device, remembered.
-
-### Settings
-- **Gym** (owner edits; everyone else sees it).
-- **Members:** everyone sees the team; owners also see emails, invite, change roles, remove people, and see pending invitations (send a fresh link, cancel). The last owner can't step down or leave.
-- **Tracks:** owners and head coaches create, rename, recolour, archive and restore.
-- **Profile:** your name, password and theme.
+### Exercises and paces
+- **Exercises**: the 128 core exercises and your gym's own, searchable by name or alias, filtered by pattern; a detail panel (patterns with weights, muscles, equipment, unit, pace, the names that find it). Owners and head coaches **add gym exercises** (pattern weights must add up to 1.00, live total shown), edit and archive them, and **add your gym's own names** ("bs" → Back squat) that the builder finds first.
+- **Settings → Paces**: every exercise's default pace in coaching terms (2:14 /500 m, 6:00 /km, 3 s/rep) and your gym's own. Owners and head coaches set them; coaches and viewers read them. The builder and the stored metrics use your gym's pace.
 
 ### Under the hood
-- New database table `invitations` (migration `20261021001400`), applied to the hosted database. Only a fingerprint (SHA-256) of each link is stored, never the link itself. Data model spec updated (§3).
-- Every page and action checks who you are and your role on the server; the database's row-level security enforces the same rules underneath. No secret service key anywhere in the app.
-- Vercel config: functions in Frankfurt next to the database, Node 24, security headers on every page.
+- Database (migrations `001700`, `001800`, applied to the hosted project): line slots for alternating EMOM (checked at commit, 1…k without gaps), `exercise_pace_overrides` (owner and head coach, audited), `save_workout` (one transaction; unchanged rows are not touched, so the audit log shows only real edits), `save_gym_exercise`.
+- One list of cases checks both the builder's instant validation and the database's rules, so they cannot drift apart.
+- Specs updated: calc spec §4.3 and decision 13 (slots), data model §3, §5, §6 (slots, pace overrides, save_workout, templates, gym exercises).
 
 ## How it was verified
 | What | Result |
 |---|---|
-| Database tests (pgTAP) | **409 of 409 pass** (64 for invitations, 17 for your answers: only owners invite, see or cancel; gym isolation; wrong email, expired, cancelled or reused links rejected; exactly the invited role; emails only for owners; reserved addresses) |
-| Unit tests (Vitest) | **185 of 185 pass** (new: addresses, safe redirects, reserved names match the database, dates, alternating EMOM, session length) |
-| Browser tests (Playwright, production build) | **24 of 24 pass**: sign up → create gym; sign out/in returns to your gym; invite a coach → they join with coach rights only; link works once and only for its email; viewer can't change anything; role change and removal; gym B is "not found" for gym A; ⌘K and G shortcuts without the mouse; phone navigation; tracks; rename gym |
-| Accessibility (axe, WCAG 2.2 AA) | Every screen and dialog, **light and dark: no problems**. Two real issues it found were fixed (button names that didn't match their visible text; two pieces of text below 4.5:1). |
-| Looked at by eye | Every screen in light, dark and phone width (screenshots); fixed footer alignment, phone table overflow, backdrop blur. |
-| Hosted database | Migration applied; app checked against it (sign-in page, invitation page, protected pages redirect). |
-
-CI on GitHub now runs four jobs on every push: lint + types + unit tests, database tests, and the browser + accessibility tests against a local copy of the database.
+| Database tests (pgTAP) | **509 of 509** (new: save_workout 27, pace overrides 13, gym exercises 12, the shared rule cases 48) |
+| Unit tests (Vitest) | **305 of 305** (new: field shorthand, draft → engine and → save, **WOD 1 typed into the builder = 202 AU and ~7.7 rounds**, alternating slots, weeks, paces, gym exercise rules) |
+| Browser tests (Playwright, production build) | **35 of 35**: WOD 1 by keyboard only → 202 AU, ~7.7 rounds → saved → reloaded → same → the calendar reads 202 AU from the stored metrics; publish blocked by a line without an exercise, with a link to it; browser backup restored; viewer read-only; generic word never picks; template used on a date; gym exercise with pattern weights; gym name found first; gym pace saved, coach read-only; all 4a tests |
+| Accessibility (axe, WCAG 2.2 AA, light and dark) | Builder (with a line, a problem, line options, publish check), calendar, exercises (detail and form), paces, plus all 4a screens: **no problems**. Found and fixed: numbers were silent for screen readers (the spoken label sat where screen readers ignore it); calendar "Add" links' names. |
+| Looked at by eye | Builder, calendar, exercises, paces in light and dark, desktop and tablet. Fixed from that review: "squat" + Enter picked Back squat (now waits for your pick); volume load showed decimals; a two-dumbbell line showed its count twice after a reload; the week total lost its "~". |
 
 ## Decisions made or interpreted (please check)
-1. **Members page for everyone, read-only** (approved): coaches and viewers see who is on the team (names and roles, no emails); only owners can change anything.
-2. **Invitations are not in the gym's audit log.** Every member can read the audit log, and an invitee's email is for owners only. Joining *is* logged (it creates a membership).
-3. **Anyone holding an invitation link sees what it is for** (gym, role, the invited email), even before signing in. That is what lets a new coach sign up and join on one page.
-4. **Accepting needs a confirmed email.** When "Confirm email" is off (testing), Supabase counts every address as confirmed, so this only matters once it is on.
-5. **Passwords: at least 8 characters.**
-6. **The gym address can't be changed yet** (it is in every link). Added to BACKLOG.
-7. **Track names are unique among a gym's active tracks.** A new gym starts with "Class" (your answer 1).
-8. **Quality over speed, noted as asked:** a Next.js 16.4 development bug (a route at `/` made pages reload endlessly) took time to track down. `/` is now routed in the proxy, which is also one redirect faster. The browser tests run against a production build, not the dev server, to test what you will use.
+1. **Alternating EMOM minutes must be whole rotations** (your "rounds = slot rotations"). An "EMOM 10" with three minutes can be written as 9 or 12, not 10. Question 1 below.
+2. **Bare numbers in time fields**: "8" in an AMRAP, EMOM or cap field means 8 minutes; in rest and work fields, seconds. Always shown back as m:ss.
+3. **A line without an exercise can be saved** (as a draft) but not published; the panel counts it as "not counted".
+4. **Default efforts** are shown as an outlined choice ("Easy" for strength pace) and make that block's load an estimate (~), as the calc spec says.
+5. **"Today"** (calendar, new workout) is UTC, right for Iceland; a gym time zone is in BACKLOG.
+6. **Templates are copies**: using a template on a date makes an independent workout.
+7. **Quality over speed, as asked**: browser tests run against production builds. Two real bugs were found only that way: the Exercises actions failed outright, and screen readers heard nothing for numbers.
 
 ## Open questions for Daniel
-1. Alternating EMOM: can one minute hold two movements (e.g. "min 1: 10 cal row + 5 burpees, min 2: 12 wall balls")? Settle before the 4b builder.
+1. Alternating EMOM: allow a shorter last rotation (EMOM 10 with three minutes), or are whole rotations right?
+2. Default efforts for strength (Load Hard / Pace Easy), AMRAP and intervals (Pace Moderate) and chipper (Pace Hard) are still marked provisional in the calc spec (§9.4). The builder now shows them; confirm or change.
 
-## Your steps (about 10 minutes)
-
-### 1. Vercel: connect the repository
-1. Go to vercel.com → **Add New… → Project** → import **dansoninn/workout-builder** (allow the Vercel GitHub app access to this repository only, if asked).
-2. Framework is detected as **Next.js**; leave build settings as they are.
-3. Under **Environment Variables**, add two, for **Production and Preview**:
-   - `NEXT_PUBLIC_SUPABASE_URL` = `https://skanujecpjmhskqqwoqj.supabase.co`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = the **anon public** key (Supabase → Project Settings → API Keys; the same value as in your `.env.local`).
-   Do **not** add the service role key; the app does not use it.
-4. **Deploy.** This first deploy is from `main` (it only has the plan). Then open the `step-4a` pull request on GitHub: Vercel adds a **preview link** to it. If no preview appears within a few minutes, tell me and I will push a commit to trigger it.
-5. Check, in the Vercel project: **Settings → Functions → Function Region** shows **Frankfurt (fra1)**, and **Settings → Build and Deployment → Node.js Version** shows **24.x**. Both come from the repository.
-
-### 2. Supabase: allow the Vercel addresses
-Supabase dashboard → **Authentication → URL Configuration**:
-- **Site URL:** your production address from Vercel (Project → Domains), e.g. `https://workout-builder.vercel.app`.
-- **Redirect URLs**, add three:
-  - `https://<your production domain>/**`
-  - `https://*-<your-vercel-team>.vercel.app/**` (all preview links; the team part is the end of any preview address, e.g. `…-danson.vercel.app`)
-  - `http://localhost:3001/**` (local development)
-
-### 3. Supabase: email while testing
-Supabase's built-in email only reaches people in your Supabase team, so sign-up confirmations to coaches would never arrive. For testing:
-- **Authentication → Sign In / Providers → Email → turn "Confirm email" off.** Already in BACKLOG to turn back on, with our own email sender, before the first real gym.
-- Optional: on the same screen set **Minimum password length to 8** (the app already requires 8).
-
-### 4. Try it on the preview link
-Create an account and your gym, invite a second email of yours as Coach, open the link in a private window and join. Preview links are protected by Vercel login by default, which is fine for you; to let a coach try a preview, use the production link or turn off **Settings → Deployment Protection** for previews.
+## Your steps
+1. **Redeploy production** from `main` in Vercel (see "Before you look" above).
+2. Open the **preview link** on pull request #2 (Vercel login, as before), sign in, and try: build a workout in the builder (try only the keyboard: Enter, ⌘Enter, ⌘S), look at the panel, save, open the calendar, make a template and use it on another day, add a gym exercise and a gym name, set a pace.
+3. The hosted database already has 4b's migrations; nothing to do in Supabase.
 
 ## Recommended next step
-Review the preview. If 4a is approved, merge the pull request (production deploys from `main`) and answer the alternating-EMOM question; then 4b, the structured builder with the live load panel.
+Review 4b. If approved, merge pull request #2, answer the two questions, and send the 20–50 real workouts as text for **4c (paste a workout)**.

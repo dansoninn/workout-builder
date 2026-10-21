@@ -1,6 +1,6 @@
 # Design system
 
-**Status:** v1.1, Step 4a (2026-10-21): first screens built on it. Shown live on `/design` (local and preview deployments only).
+**Status:** v1.2, Step 4b (2026-10-21): the builder, calendar, exercises and paces built on it. Shown live on `/design` (local and preview deployments only).
 **Source of truth:** tokens in `src/app/globals.css`; components in `src/components/ui` (shadcn/ui on Base UI, restyled) and `src/components/design`. Contrast is checked by `src/lib/design/tokens.test.ts` on every push.
 
 Earlier prototypes are not a reference for anything here (CLAUDE.md). Every decision below comes from how coaches program.
@@ -69,7 +69,9 @@ App building blocks (`src/components/app`, `src/components/forms.tsx`):
 - **PageHeader / PageBody**: title (`text-xl`), one line of context, at most one primary action; content column up to 1024 px.
 - **SettingsSection**: `text-lg` heading, one line of context, optional action on the right; a labelled region for screen readers.
 - **TextField / FormError / FormSuccess / SubmitButton**: label, field, help text and error wired together (`aria-describedby`, `aria-invalid`); form-level messages are announced; the submit button says what it is doing ("Saving…").
-- **Empty states**: dashed border, what will be here, and the action to start ("Create the first track").
+- **Empty states**: dashed border, what will be here, and the action to start ("Create a track").
+- **Builder parts** (`src/app/[gym]/builder`): block cards (letter tinted by intent, only the format's own fields, effort in words with the default shown as an outline dot), line rows (exercise · amount · load · what the app understood, e.g. "8–10 reps · 2 × 22.5 kg"), and the load panel (session length and planned load first, then each block, then lenses in tabs; warnings in a quiet warning tone with the line letters as links).
+- **Fields that read coach shorthand**: amounts (8-10, 21-15-9, 8/8, 400 m, 15 cal, 0:30, max cal), loads (75-80%, 22.5/15, 2x22.5, bw), durations (3 = 3 min for AMRAP and EMOM, 90 = 90 s for rest). What the app understood is always shown next to the field.
 
 Rules:
 - One **primary** button per view; everything else outline, secondary or ghost.
@@ -87,21 +89,25 @@ Rules:
 
 - Exact: plain (`202 AU`, `15 min`).
 - Estimate: `~` + middle value, then the range in a quieter, smaller tone (`~20 min 17–24`); the range is hidden when it rounds to a single number, the `~` stays.
-- Precision by unit: minutes 1 decimal under 10, else whole; AU, reps, calories whole; AMRAP rounds 1 decimal; fractional hard sets 1 decimal; **estimated metres round to 10 m**; thousands separators.
-- Screen readers hear "about 20 min, likely between 17 and 24".
-- Every warning names its line and links to it (4b).
+- Precision by unit: minutes 1 decimal under 10, else whole; AU, reps, calories whole; AMRAP rounds 1 decimal; fractional hard sets 1 decimal; **estimated metres round to 10 m**; kilograms keep halves (22.5 kg) below 100, whole above (volume load); thousands separators.
+- Screen readers hear "about 20 min, likely between 17 and 24" (visually hidden text; the visible digits are hidden from them).
+- Every warning names its line ("A2") and jumps to it.
+- Sums of estimates stay estimates (the calendar's week total keeps its "~").
 
 ## 7. Keyboard
 
-| Keys | Action | From |
+| Keys | Action | Where |
 |---|---|---|
-| ⌘ K | Command palette: every page and action | 4a |
-| G then B / C / A / E / S | Builder / Calendar / Analytics / Exercises / Settings | 4a |
-| G then P | Your profile | 4a |
-| ? | All shortcuts | 4a |
-| ⌘ S | Save workout | 4b |
-| Enter / ⌘ Enter | New line / new block | 4b |
-| ⌥ ↑ ↓ | Move a line | 4b |
+| ⌘ K | Command palette: every page and action; the builder adds Save, Publish, Add block, Template | Anywhere |
+| G then B / C / A / E / S | Builder / Calendar / Analytics / Exercises / Settings | Anywhere |
+| G then P | Your profile | Anywhere |
+| ? | All shortcuts | Anywhere |
+| ⌘ S | Save the workout | Builder |
+| Enter | New line below (in an exercise, amount or load field) | Builder |
+| ⌘ Enter | New block below | Builder |
+| ⌥ ↑ / ↓ | Move the line | Builder |
+| ⌘ ⌫ | Delete the line | Builder |
+| ↑ ↓ then Enter | Pick an exercise; a generic word ("squat") waits for a pick, never guesses | Exercise field |
 
 Shortcuts appear next to the actions they trigger (menus, tooltips, palette).
 

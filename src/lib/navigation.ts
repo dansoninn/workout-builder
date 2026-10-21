@@ -61,4 +61,14 @@ export const SHORTCUT_GROUPS: readonly { title: string; items: readonly { keys: 
       label: s.key === "profile" ? "Your profile" : s.label,
     })),
   },
+  {
+    title: "In the builder",
+    items: [
+      { keys: ["⌘", "S"], label: "Save the workout" },
+      { keys: ["Enter"], label: "New line below" },
+      { keys: ["⌘", "Enter"], label: "New block below" },
+      { keys: ["⌥", "↑ ↓"], label: "Move the line" },
+      { keys: ["⌘", "⌫"], label: "Delete the line" },
+    ],
+  },
 ];

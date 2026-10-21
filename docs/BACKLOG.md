@@ -9,15 +9,19 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 ## Open questions (need Daniel)
 - [ ] Calc spec §9.4: the remaining default efforts (strength = Load Hard / Pace Easy; AMRAP & intervals = Pace Moderate; chipper = Pace Hard) are still provisional. Validate against real data. (tabata/EMOM/skill/mobility approved 2026-10-21.) (2026-10-20, chat)
 
+- [ ] Alternating EMOM with minutes that are not whole rotations (e.g. EMOM 10 with 3 minutes): with rounds = rotations, the builder can only make 9 or 12 minutes. Allow a shorter last rotation? (2026-10-21, Claude Code)
+
 ## Next steps (planned order)
 - [ ] Step 4 — App (plan approved 2026-10-21: docs/PLAN-step-4.md). Four approval-gated sub-steps, each a pull request with a Vercel preview:
   - [ ] Change a gym's address (slug) safely: old links redirect to the new one. Read-only for now. (2026-10-21, Claude Code)
   - [ ] Let coaches and viewers leave a gym themselves (today only an owner can remove someone). (2026-10-21, Claude Code)
   - [ ] Reorder tracks (the `position` column exists; new tracks go last). (2026-10-21, Claude Code)
   - [ ] Google sign-in (after email + password). (2026-10-21, Daniel)
-  - [ ] **4b** **In progress (branch step-4b).** Structured builder with the live load panel; `save_workout` transaction; save stores engine output in `workout_metrics` (with `calc_version`, `taxonomy_version`), estimates as ranges, warnings next to their lines; simple week list; Exercises page; gym pace overrides for owner and head coach (own table or narrow function; spec update). (2026-10-21, Daniel)
-    - [ ] Line shows the implement count as "2 × load" (e.g. "2 × 22.5 kg") with a per-line override. (2026-10-21, Daniel)
-    - [ ] Builder: "alternating" option on EMOM / every blocks with ordered slots (one or more lines per slot; rounds = rotations), and "rest after this block" on every block. Calendar shows session length (blocks + rest). (2026-10-21, Daniel)
+  - [ ] **4b** Built, ready for Daniel's review (branch step-4b, pull request #2): the builder with the live load panel, calendar week list, templates, Exercises page, gym paces. (2026-10-21, Daniel)
+    - [ ] Undo / redo in the builder. (2026-10-21, Claude Code)
+    - [ ] Drag and drop for blocks and lines (keyboard and menus today). (2026-10-21, Claude Code)
+    - [ ] Restore an archived gym exercise (archive only today). (2026-10-21, Claude Code)
+    - [ ] Gym time zone: "today" on the calendar and a new workout's default date use UTC (right for Iceland). Needed before gyms elsewhere. (2026-10-21, Claude Code)
   - [ ] **4c** Paste text → parser → check-and-confirm screen; raw text stored. Daniel provides 20–50 real workouts as text before 4c starts. (2026-10-21, Daniel)
     - [ ] Look up exercises with `normalizeAlias` and strip plurals ("kb swings" → "kb swing"); lookup order gym alias → core alias → ambiguous term → unmatched. (2026-10-21, Claude Code)
     - [ ] Ambiguous terms asked once and saved as a gym alias: any coach may save the answer; owner/head coach edit or delete; audit trigger on `exercise_aliases`; RLS change (coach insert limited to ambiguous terms). (2026-10-21, Daniel)
@@ -53,6 +57,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [ ] `npm audit` reports 5 high-severity issues in ESLint's dev-only dependency chain (braces/micromatch via eslint-config-next). Not shipped to users; the suggested fix downgrades Next's lint config. Re-check when eslint-config-next updates. (2026-10-21, Claude Code)
 
 ## Done
+- [x] Step 4b built (2026-10-21): structured builder with the live load panel (keyboard-first, WOD 1 by keyboard gives 202 AU and ~7.7 rounds), save_workout + server-side metrics, publish rule explained, browser backup, templates (save as / use on a date), calendar week list, Exercises page (gym exercises, gym names), gym paces (owner and head coach), alternating EMOM slots, rest after blocks. (2026-10-21, Claude Code)
 - [x] Step 4a approved and merged (PR #1, 2026-10-21). Font fix: production rendered serif because shadcn's `--font-sans` pointed at itself; fixed, with a browser test that fails if Geist is not in use. Vercel connected (production https://workout-builder-cyan.vercel.app). (2026-10-21, Daniel)
 - [x] Alternating EMOM with several movements per minute: ordered slots, each with one or more lines; rounds = rotations through the slots (calc spec §4.3; built in 4b). (2026-10-21, Daniel)
 - [x] 4a answers (2026-10-21, Daniel): a new gym starts with a "Class" track (built); Members page read-only for coaches and viewers (approved); alternating EMOM = option of `every`, lines take turns one per interval (database + engine built, calc spec §4.3); rest between blocks stored per block, in session length, never in planned load (database + engine built, calc spec Lens 4).
