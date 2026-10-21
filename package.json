@@ -15,7 +15,8 @@
     "db:types": "supabase gen types typescript --local > src/lib/database.types.ts",
     "library:generate": "tsx scripts/generate-core-library.ts",
     "test:e2e": "playwright test",
-    "test:e2e:dev": "NEXT_DIST_DIR=.next-e2e node scripts/with-local-supabase.mjs next dev -p 3100"
+    "test:e2e:dev": "NEXT_DIST_DIR=.next-e2e node scripts/with-local-supabase.mjs next dev -p 3100",
+    "rules:generate": "tsx scripts/generate-rule-cases.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
