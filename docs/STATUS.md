@@ -1,60 +1,42 @@
 # Status
 
 **Updated:** 2026-10-21 by Claude Code
-**Current step:** **4b is built and ready for your review** (branch `step-4b`, pull request #2, Vercel preview linked there). 4a is approved and merged.
+**Working mode:** continuous (CLAUDE.md, "Continuous working mode"): each sub-step on its own branch and pull request, merged when CI is green, production deploys by itself. I stop only for coaching decisions; those collect below under "Questions for Daniel".
+**Now:** 4b approved and merged. Next: **4d (block results)**, then 4c (paste a workout), then Step 5.
 
-## Before you look: production
-`main` has 4a merged, but **production (https://workout-builder-cyan.vercel.app) still shows the old build**. GitHub never told Vercel (or our CI) about the merge, so nothing was built. I was not allowed to push a trigger commit to `main` (a production deploy), so this one is yours: in Vercel, **Deployments → the latest `main` deployment → ⋯ → Redeploy** (or "Create Deployment" from `main`). After that, the production address shows the app with the font fix. Merging 4b later deploys production again normally.
+## Questions for Daniel
+None open. Both 4b questions are answered and built (below).
 
-## What was built in 4b
+## Your steps
+1. **Let the production check redeploy by itself** (5 minutes, once): in Vercel, **Project → Settings → Git → Deploy Hooks**, create a hook named `production-check` for branch `main`, copy its address; in GitHub, **dansoninn/workout-builder → Settings → Secrets and variables → Actions → New repository secret**, name `VERCEL_DEPLOY_HOOK`, paste the address. Without it the check still catches a missed deploy, but only tells you (by GitHub email) instead of fixing it.
 
-### The builder (Builder in the sidebar; a workout opens at its own address)
-- **Blocks A, B, C…**: intent, format, and only the fields that format needs (EMOM: every 3:00 × 5; AMRAP: time and target rounds; intervals: rounds, stations, work, rest, rest between rounds; …), **Pace and Load in words** (the default for the block is shown as an outlined choice until you pick), partner, notes, and **rest after the block**.
-- **Lines**: pick the exercise by typing (your gym's names first; a generic word like "squat" lists what it could mean and **never picks for you**), then the amount and load the way you write them: `5`, `8-10`, `21-15-9`, `8/8`, `800 m`, `8-12 cal`, `0:30`, `max cal`; `75-80%`, `22.5/15`, `2x22.5`, `bw`. Beside each line the app says what it understood ("8–10 reps · 2 × 22.5 kg"). Per line: own pace or load effort, one or two implements, minute (alternating EMOM), note.
-- **Alternating EMOM** as you decided: tick "Alternating minutes", lines are grouped by minute (several lines per minute allowed), and **rounds count rotations**. EMOM with "min 1: 10 cal row + 5 burpees, min 2: 12 wall balls" × 6 is 12 minutes; every line done 6 times.
-- **Keyboard-first**: Enter new line, ⌘Enter new block, ⌥↑/↓ move a line, ⌘⌫ delete it, ⌘S save; Save, Publish, Add block and template actions are also in ⌘K. **WOD 1 can be built without touching the mouse** (tested).
-- **The live load panel** (right side), recomputed on every keystroke in your browser: session length and planned load as honest ranges, each block's minutes and load (AMRAP rounds too), and three tabs (hard sets by pattern and muscle, volume load, intensity; reps by pattern with push:pull, knee:hip, upper:lower; conditioning by modality). **Warnings name their line ("C2") and jump to it.**
-- **Save** stores the workout in one database transaction and recomputes it on the server into `workout_metrics` (calc and taxonomy version). **Publish** checks that every line has an exercise and, if not, lists those lines with links. **Unsaved work is kept in your browser** and offered back after a reload or crash. Viewers see everything read-only.
+## What changed since your 4b review
 
-### Calendar, templates
-- **Calendar**: one week, a column per track, each day's workouts with status, session length and planned load (from the stored metrics), the week's planned load per track, and "Add" on any day and track, which opens the builder for that day.
-- **Templates**: "Save as template" from any workout; templates are listed under the calendar; a template's "Use on a date" puts a copy on the calendar. The template stays unchanged.
+### Your answers, built
+- **Alternating EMOM: the minutes set the length.** The field is now "Intervals" (total minutes for EMOM), and the last rotation may be partial: EMOM 10 with three minutes is 3 rotations + minute 1 once more, so minute 1's lines are done 4 times and the others 3. Under the field the builder says how it falls ("3 rotations + minute 1"). Calc spec §4.3 and decision 13 updated.
+- **Default efforts approved**: calc spec §9.4 marked ✅ (strength Load Hard / Pace Easy, AMRAP and intervals Pace Moderate, chipper Pace Hard, plus the earlier ones).
+- **Working mode** added to CLAUDE.md as you wrote it.
 
-### Exercises and paces
-- **Exercises**: the 128 core exercises and your gym's own, searchable by name or alias, filtered by pattern; a detail panel (patterns with weights, muscles, equipment, unit, pace, the names that find it). Owners and head coaches **add gym exercises** (pattern weights must add up to 1.00, live total shown), edit and archive them, and **add your gym's own names** ("bs" → Back squat) that the builder finds first.
-- **Settings → Paces**: every exercise's default pace in coaching terms (2:14 /500 m, 6:00 /km, 3 s/rep) and your gym's own. Owners and head coaches set them; coaches and viewers read them. The builder and the stored metrics use your gym's pace.
+### Why the 4a merge neither ran CI nor deployed, and the fix
+- **Cause:** GitHub had an incident on 2026-10-21, 14:52–19:22 UTC, "Delays for Pull Requests and Webhook deliveries". The 4a merge (15:12 UTC) fell inside it: GitHub never told our CI or Vercel that `main` had changed. Nothing in our setup was wrong, but nothing noticed either.
+- **Fix: a production check** that runs after every CI run on `main` and every 30 minutes:
+  1. If `main`'s latest commit has no CI run, it starts one.
+  2. Once CI has passed, it asks production which commit it runs (new address `/api/version`, public, shows only the commit) and waits up to 5 minutes for the deploy. If production is still behind, it triggers a Vercel deploy (your step 1) and waits again; if that fails too, the check fails and GitHub emails you.
+- **Proof** with the 4b merge: see "Pipeline proof" below (filled in after the merge).
 
-### Under the hood
-- Database (migrations `001700`, `001800`, applied to the hosted project): line slots for alternating EMOM (checked at commit, 1…k without gaps), `exercise_pace_overrides` (owner and head coach, audited), `save_workout` (one transaction; unchanged rows are not touched, so the audit log shows only real edits), `save_gym_exercise`.
-- One list of cases checks both the builder's instant validation and the database's rules, so they cannot drift apart.
-- Specs updated: calc spec §4.3 and decision 13 (slots), data model §3, §5, §6 (slots, pace overrides, save_workout, templates, gym exercises).
+### Found and fixed on the way
+- **Keys typed right after picking an exercise could be lost.** Picking with Enter and typing the amount at once (fast typist, or a busy page): the first keys landed in the exercise search and vanished, because the cursor can only move once the list has closed. Now those keys are kept and go into the amount. Found when the keyboard-only WOD 1 test failed under load; a new test forces a slow close and fails without the fix.
 
 ## How it was verified
 | What | Result |
 |---|---|
-| Database tests (pgTAP) | **509 of 509** (new: save_workout 27, pace overrides 13, gym exercises 12, the shared rule cases 48) |
-| Unit tests (Vitest) | **305 of 305** (new: field shorthand, draft → engine and → save, **WOD 1 typed into the builder = 202 AU and ~7.7 rounds**, alternating slots, weeks, paces, gym exercise rules) |
-| Browser tests (Playwright, production build) | **35 of 35**: WOD 1 by keyboard only → 202 AU, ~7.7 rounds → saved → reloaded → same → the calendar reads 202 AU from the stored metrics; publish blocked by a line without an exercise, with a link to it; browser backup restored; viewer read-only; generic word never picks; template used on a date; gym exercise with pattern weights; gym name found first; gym pace saved, coach read-only; all 4a tests |
-| Accessibility (axe, WCAG 2.2 AA, light and dark) | Builder (with a line, a problem, line options, publish check), calendar, exercises (detail and form), paces, plus all 4a screens: **no problems**. Found and fixed: numbers were silent for screen readers (the spoken label sat where screen readers ignore it); calendar "Add" links' names. |
-| Looked at by eye | Builder, calendar, exercises, paces in light and dark, desktop and tablet. Fixed from that review: "squat" + Enter picked Back squat (now waits for your pick); volume load showed decimals; a two-dumbbell line showed its count twice after a reload; the week total lost its "~". |
+| Unit tests (Vitest) | **306 of 306** (new: alternating EMOM 10 with 3 minutes → 4/3/3 and 10 minutes; 12 intervals with 2 minutes → 12 minutes, 6 each; the rotation hint text) |
+| Database tests (pgTAP) | **509 of 509** (no database change) |
+| Browser tests (Playwright, production build) | **36 of 36** (new: keys typed right after a pick are the amount) |
+| Lint, types | clean |
 
-## Decisions made or interpreted (please check)
-1. **Alternating EMOM minutes must be whole rotations** (your "rounds = slot rotations"). An "EMOM 10" with three minutes can be written as 9 or 12, not 10. Question 1 below.
-2. **Bare numbers in time fields**: "8" in an AMRAP, EMOM or cap field means 8 minutes; in rest and work fields, seconds. Always shown back as m:ss.
-3. **A line without an exercise can be saved** (as a draft) but not published; the panel counts it as "not counted".
-4. **Default efforts** are shown as an outlined choice ("Easy" for strength pace) and make that block's load an estimate (~), as the calc spec says.
-5. **"Today"** (calendar, new workout) is UTC, right for Iceland; a gym time zone is in BACKLOG.
-6. **Templates are copies**: using a template on a date makes an independent workout.
-7. **Quality over speed, as asked**: browser tests run against production builds. Two real bugs were found only that way: the Exercises actions failed outright, and screen readers heard nothing for numbers.
+## Pipeline proof
+Filled in after the 4b merge.
 
-## Open questions for Daniel
-1. Alternating EMOM: allow a shorter last rotation (EMOM 10 with three minutes), or are whole rotations right?
-2. Default efforts for strength (Load Hard / Pace Easy), AMRAP and intervals (Pace Moderate) and chipper (Pace Hard) are still marked provisional in the calc spec (§9.4). The builder now shows them; confirm or change.
-
-## Your steps
-1. **Redeploy production** from `main` in Vercel (see "Before you look" above).
-2. Open the **preview link** on pull request #2 (Vercel login, as before), sign in, and try: build a workout in the builder (try only the keyboard: Enter, ⌘Enter, ⌘S), look at the panel, save, open the calendar, make a template and use it on another day, add a gym exercise and a gym name, set a pace.
-3. The hosted database already has 4b's migrations; nothing to do in Supabase.
-
-## Recommended next step
-Review 4b. If approved, merge pull request #2, answer the two questions, and send the 20–50 real workouts as text for **4c (paste a workout)**.
+## Next
+**4d: block results** — after class, a coach logs each block's result for the class (AMRAP rounds, For Time finish times, as a low–high range), phone-first. Then **4c** (paste a workout from the whiteboard, built from common formats and the three §7 workouts), then **Step 5** (month calendar with drag and drop, a template on several dates, Analytics over 7/14/30 days or a custom range with the four lenses, warnings).
