@@ -179,21 +179,24 @@ Balance warnings are **coach-configurable guidelines**, not scientific threshold
 
 Assumed planned RPE and paces are the defaults to be approved in §9.
 
-### WOD 1 — Strength + accessory + AMRAP
-| Block | Intent | Duration | RPE | Result |
-|---|---|---|---|---|
-| A. E3M×5: 5 back squat @75–80% | strength | 15 min | 7 | 5 hard sets squat, 25 reps |
-| B. E2M×4: 8–10 DB bench, 8/8 SA DB row | strength | 8 min | 6 | 4 sets h_push (~36 reps), 4 sets h_pull (32 reps) |
-| C. AMRAP 8: 5 KB swing, 10 air squat, 15 DU | conditioning | 8 min | 8 | ~10 rounds → ~50 hinge, ~100 squat, ~150 DU |
+**Updated 2026-10-21 (Step 3):** planned RPE now comes from the approved effort words (§4.4), which only produce RPE 4, 6, 8 or 9.5. This section first used RPE 7 and 9, which no word produces, so each block takes the nearest word: WOD 1 A "7" → Load Hard (8; a tie, settled by the strength default), WOD 2 "9" → Pace Max (9.5). WOD 1 B, WOD 1 C and WOD 3 are unchanged. Pace-dependent values (~10 rounds, ~22 min, ~1,500 m, ~80 cal, ~72 reps) are unchanged until the pace table (`docs/pace-defaults.md`) is approved. These examples are the engine's acceptance tests (`src/lib/engine/worked-wods.test.ts`).
 
-Session planned sRPE: **217 AU**
+### WOD 1 — Strength + accessory + AMRAP
+| Block | Intent | Effort | Duration | RPE | Result |
+|---|---|---|---|---|---|
+| A. E3M×5: 5 back squat @75–80% | strength | Load Hard (default) | 15 min | 8 | 5 hard sets squat, 25 reps → 120 AU |
+| B. E2M×4: 8–10 DB bench, 8/8 SA DB row | strength | Load Moderate | 8 min | 6 | 4 sets h_push (~36 reps), 4 sets h_pull (32 reps) → 48 AU |
+| C. AMRAP 8: 5 KB swing, 10 air squat, 15 DU | conditioning | Pace Hard | 8 min | 8 | ~10 rounds → ~50 hinge, ~100 squat, ~150 DU → 64 AU |
+
+Session planned sRPE: **232 AU** (was 217 with A at RPE 7)
 
 ### WOD 2 — Chipper, 25 min cap
-All reps exact. Estimated finish ~22 min, RPE 9 → **~198 AU**.
+800 m run, 50 wall balls (9/6 kg), 30 alt. DB snatches (22.5/15 kg), 20 toes-to-bar, 40 box jump-overs, 10 burpees over the rower, 800 m row (reconstructed from the totals below).
+All reps exact. Estimated finish ~22 min, Pace Max (RPE 9.5) → **~209 AU** (was ~198 at RPE 9).
 Exposure: squat 30, v_push 20, jump 45, hinge 21, v_pull 15, core 14, h_push 5. Mono: run 800 m, row 800 m. Volume load (first Rx): wall ball 450 kg, DB snatch 675 kg.
 
 ### WOD 3 — Intervals 4 × 3 stations, 90/30, 90 s between rounds
-Block duration 28.5 min (18 min work), RPE 8 → **228 AU**.
+Max row, max cal bike, max lunges. Block duration 28.5 min (18 min work), Pace Hard (RPE 8) → **228 AU**.
 All values estimated: row ~1,500 m, bike ~80 cal, lunges ~72 reps.
 
 ### If these three were one week
@@ -202,7 +205,7 @@ All values estimated: row ~1,500 m, bike ~80 cal, lunges ~72 reps.
 | Hard sets | squat 5, h_push 4, h_pull 4, **hinge 0, vertical 0** | No heavy hinge or vertical work this week |
 | Exposure push:pull | 61 : 47 = **1.3** | Fine |
 | Exposure knee:hip | 227 : 71 = **3.2** | Knee-dominant heavy week |
-| Weekly planned sRPE | **643 AU** (217 / 198 / 228) | Even distribution, low monotony |
+| Weekly planned sRPE | **~669 AU** (232 / ~209 / 228; was 643) | Even distribution, low monotony (~0.9) |
 
 This is the case for separate lenses: on exposure alone, hinge looks covered (71 reps of swings and snatches). On the strength lens it is zero. A single combined index hides exactly that.
 
