@@ -653,6 +653,9 @@ isOneToOne: false
 "save_gym_exercise":
 { Args: { "p_exercise": Json,"p_org": string }; Returns: string
                            },
+"save_pasted_workout":
+{ Args: { "p_aliases"?: Json,"p_org": string,"p_workout": Json }; Returns: string
+                           },
 "save_workout":
 { Args: { "p_org": string,"p_workout": Json }; Returns: string
                            }
