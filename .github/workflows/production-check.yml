@@ -1,0 +1,75 @@
+name: Production check
+
+# Every push to main must be tested by CI and deployed to production. GitHub
+# occasionally loses push events (incident of 2026-10-21: neither CI nor
+# Vercel saw the 4a merge). This check runs after CI and on a schedule:
+#   1. If main's latest commit has no CI run, it starts one.
+#   2. If production does not run main's latest commit once CI has passed,
+#      it asks Vercel to deploy (VERCEL_DEPLOY_HOOK secret), and fails, so
+#      GitHub emails the owner, if production is still behind.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: production-check
+  cancel-in-progress: false
+
+env:
+  PRODUCTION_URL: https://workout-builder-cyan.vercel.app
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: main is tested
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          head=$(gh api "repos/$REPO/commits/main" --jq .sha)
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+          runs=$(gh run list --repo "$REPO" --workflow ci.yml --commit "$head" --json status,conclusion --jq 'length')
+          if [ "$runs" = "0" ]; then
+            echo "::warning::No CI run for main@${head:0:7}; starting one."
+            gh workflow run ci.yml --repo "$REPO" --ref main
+            echo "state=started" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          conclusion=$(gh run list --repo "$REPO" --workflow ci.yml --commit "$head" --json status,conclusion --jq '[.[] | select(.status == "completed")][0].conclusion // "pending"')
+          echo "CI for main@${head:0:7}: $conclusion"
+          echo "state=$conclusion" >> "$GITHUB_OUTPUT"
+
+      - name: production runs main
+        if: steps.ci.outputs.state == 'success'
+        env:
+          HEAD: ${{ steps.ci.outputs.head }}
+          DEPLOY_HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          live() { curl -fsS "$PRODUCTION_URL/api/version" | python3 -c 'import sys,json; print(json.load(sys.stdin)["commit"])' || echo unknown; }
+          current=$(live)
+          echo "Production runs ${current:0:7}; main is ${HEAD:0:7}"
+          [ "$current" = "$HEAD" ] && exit 0
+
+          # Vercel usually needs a few minutes after a push; give it time first.
+          for i in $(seq 1 10); do sleep 30; current=$(live); [ "$current" = "$HEAD" ] && exit 0; done
+
+          if [ -n "$DEPLOY_HOOK" ]; then
+            echo "::warning::Production is behind main; asking Vercel to deploy."
+            curl -fsS -X POST "$DEPLOY_HOOK" > /dev/null
+            for i in $(seq 1 16); do sleep 30; current=$(live); [ "$current" = "$HEAD" ] && exit 0; done
+          fi
+          echo "::error::Production runs ${current:0:7} but main is ${HEAD:0:7}. Redeploy main in Vercel (or add the VERCEL_DEPLOY_HOOK secret so this check can)."
+          exit 1

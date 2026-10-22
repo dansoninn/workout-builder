@@ -24,7 +24,8 @@ const RULES: Record<Unit, UnitRule> = {
   sets: { decimals: (v) => (Number.isInteger(v) ? 0 : 1), suffix: "" },
   m: { decimals: () => 0, estimateStep: 10, suffix: " m" },
   cal: { decimals: () => 0, suffix: " cal" },
-  kg: { decimals: (v) => (Number.isInteger(v) ? 0 : 1), suffix: " kg" },
+  // Single loads keep their half kilos (22.5 kg); volume load in the hundreds or thousands is whole kilos.
+  kg: { decimals: (v) => (Number.isInteger(v) || v >= 100 ? 0 : 1), suffix: " kg" },
   ratio: { decimals: () => 1, suffix: "" },
 };
 

@@ -51,7 +51,7 @@ muscles, effort_levels, equipment, taxonomy_versions
 | name | text | "Afrek Functional Fitness" |
 | slug | text unique | lowercase words with dashes; the first part of every app address (`/afrek/builder`), so the app's own route names (`settings`, `sign-in`, `invite`…) are reserved (Step 4a) |
 | country | text | ISO code |
-| settings | jsonb | pace defaults, warning thresholds, units. Gym pace overrides ✅ (calc spec §9.5): `settings.paces` = `{ "<exercise id>": { "sec_per_rep": 2.5 } }`, same keys as `exercises.pace_default`; an override replaces the core default for that gym. |
+| settings | jsonb | warning thresholds, units (owner-managed). Gym pace overrides live in their own table, `exercise_pace_overrides` (§5), so head coaches can manage them too. |
 | created_at | timestamptz | |
 
 ### `profiles`
@@ -136,7 +136,7 @@ Labels are English only (`label_en`) — decided 2026-10-21 ✅. A translation l
 | unilateral | bool | |
 | default_unit | enum | reps · distance_m · calories · time_s |
 | implement_count | smallint | ✅ default number of implements when loaded (DB thruster 2, DB snatch 1); volume load = kg per implement × implement count × reps. Default 1. Approved 2026-10-21. |
-| pace_default | jsonb | working pace of an intermediate adult class member at Pace Hard ✅ (calc spec §5.1, §9.5): one or more of `{ "sec_per_rep": 2, "sec_per_m": 0.25, "sec_per_cal": 4.5 }`, each positive (CHECK). Core values approved and seeded 2026-10-21 (`docs/pace-defaults.md`); timed holds have none. Gyms override in `organizations.settings.paces`. |
+| pace_default | jsonb | working pace of an intermediate adult class member at Pace Hard ✅ (calc spec §5.1, §9.5): one or more of `{ "sec_per_rep": 2, "sec_per_m": 0.25, "sec_per_cal": 4.5 }`, each positive (CHECK). Core values approved and seeded 2026-10-21 (`docs/pace-defaults.md`); timed holds have none. Gyms override in `exercise_pace_overrides`. |
 | status | enum | `active` · `needs_review` · `archived` |
 | created_by, created_at, updated_at, deleted_at | | |
 
@@ -148,6 +148,12 @@ Labels are English only (`label_en`) — decided 2026-10-21 ✅. A translation l
 
 ### `exercise_equipment` ✅
 `exercise_id`, `equipment_key` FK → `equipment`. Replaces a free-text equipment array — approved 2026-10-21.
+
+### Gym exercises: `save_gym_exercise` (Step 4b)
+Owners and head coaches add and edit the gym's own exercises with `save_gym_exercise(org, exercise)`: the exercise, its patterns, muscles and equipment in one transaction (the pattern weights are checked at commit and must add up to 1.00). Archiving (`status = archived`) keeps the exercise in old workouts but no longer offers it in the builder.
+
+### `exercise_pace_overrides` ✅ (Step 4b)
+A gym's own pace for an exercise (calc spec §9.5): `org_id`, `exercise_id` (core or the gym's own), `pace` (same shape as `exercises.pace_default`: one or more of `sec_per_rep`, `sec_per_m`, `sec_per_cal`), `updated_by`, `updated_at`. Primary key (org_id, exercise_id). An override replaces the default for that gym. Every member reads; **owners and head coaches** write (decision 9, 2026-10-21). Audited. Replaces the earlier `organizations.settings.paces` idea, because gym settings are owner-only.
 
 ### `exercise_aliases`
 | column | notes |
@@ -204,7 +210,7 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 
 `params` shape per format (validated by a CHECK + shared Zod schema in the app):
 - `sets`: `{ sets, rest_s }`
-- `every`: `{ interval_s, rounds, alternating? }` — `alternating: true` ✅ = the lines take turns, one per interval ("minute 1: X, minute 2: Y …"; calc spec §4.3), approved 2026-10-21
+- `every`: `{ interval_s, rounds, alternating? }` — `alternating: true` ✅ = ordered slots, one per interval, each with one or more lines (`block_items.slot`); taking turns for `rounds` intervals, the last rotation possibly partial (calc spec §4.3), approved 2026-10-21
 - `amrap`: `{ time_s }`
 - `for_time`: `{ rounds, time_cap_s }`
 - `intervals`: `{ rounds, work_s, rest_s, rest_between_rounds_s, stations }`
@@ -218,6 +224,7 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 | org_id | uuid | |
 | position | int | |
 | station_label | text NULL | "Station 1" |
+| slot | smallint NULL | ✅ alternating `every` blocks only: the interval of the rotation this line belongs to (1, 2, …); several lines can share a slot. Required on every line of an alternating block, NULL elsewhere (checked at commit). Slots are numbered 1…k without gaps (checked by `save_workout`) |
 | exercise_id | uuid FK NULL | NULL = unresolved, shown for review before publish |
 | raw_line | text | "8/8 x Single Arm DB Row" |
 | quantity | jsonb | see below |
@@ -249,6 +256,12 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 `rx` stores every Rx variant; calculations use the first-listed — approved 2026-10-21 ✅ (calc spec §9.6). Load is per implement; the implement count multiplies it for volume load.
 
 A workout can only move to `published` when every item has an `exercise_id`.
+
+### Templates (Step 4b)
+A template is a workout with `kind = template` and no date. "Save as template" and "Use on a date" both make a **copy** with new ids, so a template and the workouts made from it change independently, each with its own audit history.
+
+### Saving a workout: `save_workout` ✅ (Step 4b)
+The builder saves through one database function, `save_workout(org, workout)`, in a single transaction: the workout, its blocks and their lines, in order. It runs as the signed-in user, so RLS applies. Rows that did not change are not touched; removed blocks and lines are deleted; a line moved to another block is removed and re-added. So the audit log shows only real edits. It returns the workout's id. Right after, the app recomputes the workout with the engine on the server and stores the result in `workout_metrics` (with `calc_version` and `taxonomy_version`).
 
 ### `block_results` ✅ (approved 2026-10-21; built in Step 4)
 What the **group** actually did in a block, logged by a coach after class. Not per athlete. Several rows per block are allowed (the same workout runs in several classes).

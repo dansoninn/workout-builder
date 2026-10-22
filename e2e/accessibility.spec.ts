@@ -6,6 +6,8 @@ import { expectAccessible, invite, ownerWithGym, shortcutsReady, signUp, uniqueE
 for (const colorScheme of ["light", "dark"] as const) {
   test.describe(`${colorScheme} theme`, () => {
     test.use({ colorScheme });
+    // Each test walks many screens and runs a full axe scan on each.
+    test.setTimeout(120_000);
 
     test("signed-out screens", async ({ page }) => {
       for (const path of ["/sign-in", "/sign-up", "/forgot-password", "/auth/link-expired", "/no-such-page"]) {
@@ -44,6 +46,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         ["settings/members", "Settings"],
         ["settings/tracks", "Settings"],
         ["settings/profile", "Settings"],
+        ["settings/paces", "Settings"],
       ];
       for (const [path, heading] of pages) {
         await page.goto(`/${slug}/${path}`);
@@ -68,6 +71,34 @@ for (const colorScheme of ["light", "dark"] as const) {
       await page.keyboard.press("?");
       await expect(page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
       await expectAccessible(page, `shortcuts dialog (${colorScheme})`);
+
+      // The builder with content, its menus and the publish check.
+      await page.goto(`/${slug}/builder`);
+      await page.getByLabel("A1 exercise").fill("air squat");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("10");
+      await page.getByLabel("A1 load").fill("heavy");
+      await expect(page.getByText("Try 75-80%").first()).toBeVisible();
+      await expectAccessible(page, `builder with a line and a problem (${colorScheme})`);
+      await page.getByLabel("A1 load").fill("");
+      await page.getByRole("button", { name: "A1 options" }).click();
+      await expectAccessible(page, `builder line options (${colorScheme})`);
+      await page.keyboard.press("Escape");
+      await page.getByLabel("A1 exercise").fill("");
+      await page.getByRole("button", { name: "Publish" }).click();
+      await expect(page.getByRole("dialog", { name: "Not ready to publish" })).toBeVisible();
+      await expectAccessible(page, `publish check (${colorScheme})`);
+      await page.keyboard.press("Escape");
+
+      await page.goto(`/${slug}/exercises`);
+      await page.getByRole("button", { name: "Back squat", exact: true }).click();
+      await expect(page.getByRole("dialog", { name: "Back squat" })).toBeVisible();
+      await expectAccessible(page, `exercise detail (${colorScheme})`);
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "New exercise" }).click();
+      await expect(page.getByRole("dialog", { name: "New gym exercise" })).toBeVisible();
+      await expectAccessible(page, `new exercise form (${colorScheme})`);
+      await page.keyboard.press("Escape");
 
       await page.goto(`/${"x".repeat(12)}-none/builder`);
       await expect(page.getByRole("heading", { name: "Gym not found" })).toBeVisible();

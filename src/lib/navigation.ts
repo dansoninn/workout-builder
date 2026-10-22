@@ -26,6 +26,7 @@ export const SETTINGS_PAGES: readonly { key: string; label: string; path: string
   { key: "gym", label: "Gym", path: "settings/gym" },
   { key: "members", label: "Members", path: "settings/members" },
   { key: "tracks", label: "Tracks", path: "settings/tracks" },
+  { key: "paces", label: "Paces", path: "settings/paces" },
   { key: "profile", label: "Profile", path: "settings/profile", shortcut: "p" },
 ];
 
@@ -59,5 +60,15 @@ export const SHORTCUT_GROUPS: readonly { title: string; items: readonly { keys: 
       keys: ["G", (s.shortcut ?? "").toUpperCase()],
       label: s.key === "profile" ? "Your profile" : s.label,
     })),
+  },
+  {
+    title: "In the builder",
+    items: [
+      { keys: ["⌘", "S"], label: "Save the workout" },
+      { keys: ["Enter"], label: "New line below" },
+      { keys: ["⌘", "Enter"], label: "New block below" },
+      { keys: ["⌥", "↑ ↓"], label: "Move the line" },
+      { keys: ["⌘", "⌫"], label: "Delete the line" },
+    ],
   },
 ];

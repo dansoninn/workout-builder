@@ -30,7 +30,11 @@ export async function signIn(page: Page, email: string) {
 
 /** Creates a gym from the onboarding page and returns its address (slug). */
 export async function createGym(page: Page, name = uniqueGymName()): Promise<string> {
-  await page.getByLabel("Gym name").fill(name);
+  // Until the form is interactive, typed text can be lost; the address following the name shows it is.
+  await expect(async () => {
+    await page.getByLabel("Gym name").fill(name);
+    await expect(page.getByLabel("Address")).not.toHaveValue("", { timeout: 1000 });
+  }).toPass();
   const slug = await page.getByLabel("Address").inputValue();
   await page.getByRole("button", { name: "Create gym" }).click();
   await expect(page).toHaveURL(new RegExp(`/${slug}/builder$`));
@@ -89,6 +93,8 @@ export async function openAccountMenu(page: Page) {
 
 /** No WCAG 2.2 A/AA violations on the current page. */
 export async function expectAccessible(page: Page, label: string) {
+  // Scan the settled screen: mid-fade colours would fail contrast at random.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();

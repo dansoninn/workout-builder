@@ -59,14 +59,14 @@ isOneToOne: false
                   ]
                 },"block_items": {
                   Row: {
-                    "block_id": string,"exercise_id": string | null,"id": string,"implement_count": number | null,"load": Json | null,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"station_label": string | null
+                    "block_id": string,"exercise_id": string | null,"id": string,"implement_count": number | null,"load": Json | null,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"slot": number | null,"station_label": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "block_id": string,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"station_label"?: string | null
+                    "block_id": string,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"slot"?: number | null,"station_label"?: string | null
                   }
                   Update: {
-                    "block_id"?: string,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"position"?: number,"quantity"?: NonNullable<Json>,"raw_line"?: string,"station_label"?: string | null
+                    "block_id"?: string,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"position"?: number,"quantity"?: NonNullable<Json>,"raw_line"?: string,"slot"?: number | null,"station_label"?: string | null
                   }
                   Relationships: [
                     {
@@ -249,6 +249,38 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "muscles"
       referencedColumns: ["key"]
+    }
+                  ]
+                },"exercise_pace_overrides": {
+                  Row: {
+                    "exercise_id": string,"org_id": string,"pace": NonNullable<Json>,"updated_at": string,"updated_by": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "exercise_id": string,"org_id": string,"pace": NonNullable<Json>,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Update: {
+                    "exercise_id"?: string,"org_id"?: string,"pace"?: NonNullable<Json>,"updated_at"?: string,"updated_by"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "exercise_pace_overrides_exercise_id_fkey"
+      columns: ["exercise_id"]
+isOneToOne: false
+      referencedRelation: "exercises"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exercise_pace_overrides_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "exercise_pace_overrides_updated_by_fkey"
+      columns: ["updated_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
     }
                   ]
                 },"exercise_patterns": {
@@ -585,6 +617,12 @@ isOneToOne: false
 { Args: { "p_org": string }; Returns: {
               "display_name": string,"email": string,"joined_at": string,"role": Database["public"]['Enums']["org_role"],"user_id": string
             }[]
+                           },
+"save_gym_exercise":
+{ Args: { "p_exercise": Json,"p_org": string }; Returns: string
+                           },
+"save_workout":
+{ Args: { "p_org": string,"p_workout": Json }; Returns: string
                            }
           }
           Enums: {

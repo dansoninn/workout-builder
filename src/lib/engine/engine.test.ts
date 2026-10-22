@@ -147,36 +147,55 @@ describe("durations and rounds per format (calc spec §4.3)", () => {
     expect(r.exposure.reps.h_push).toEqual(estimated(40));
   });
 
-  it("alternating EMOM: the lines take turns, one per interval (approved 2026-10-21)", () => {
-    const lines = [
-      item("Air squat", { type: "reps", value: 15 }),
-      item("Push-up", { type: "reps", value: 10 }),
-      item("Kettlebell swing", { type: "reps", value: 12 }),
+  it("alternating EMOM: ordered slots take turns for the total intervals; the last rotation may be partial (approved 2026-10-21)", () => {
+    // "EMOM 12: min 1: 10 cal row + 5 burpees, min 2: 12 wall balls"
+    const row = coreExercise("Row", { secPerCal: 4 });
+    const lines: Item[] = [
+      { exercise: row, quantity: { type: "calories", min: 10, max: 10 }, slot: 1 },
+      item("Burpee", { type: "reps", value: 5 }, { slot: 1 }),
+      item("Wall ball", { type: "reps", value: 12 }, { slot: 2 }),
     ];
-    const every = (rounds: number, alternating?: boolean) =>
-      computeBlock(block({ intent: "conditioning", format: "every", params: { interval_s: 60, rounds, alternating }, items: lines }), config);
+    const emom = (rounds: number, alternating: boolean, items = lines) =>
+      computeBlock(block({ intent: "conditioning", format: "every", params: { interval_s: 60, rounds, alternating }, items }), config);
 
-    // EMOM 12, three lines: each is done 4 times instead of 12; the 12 minutes are the same.
-    const plain = every(12);
-    const alternating = every(12, true);
-    expect(alternating.durationMin).toEqual(exact(12));
-    expect(alternating.durationMin).toEqual(plain.durationMin);
-    expect(plain.exposure.reps.squat).toEqual(exact(12 * 15));
-    expect(alternating.exposure.reps.squat).toEqual(exact(4 * 15));
-    expect(alternating.exposure.reps.h_push).toEqual(exact(4 * 10));
-    expect(alternating.exposure.reps.hinge).toEqual(exact(4 * 12));
+    // 12 minutes; each minute's lines are done 6 times.
+    const r = emom(12, true);
+    expect(r.durationMin).toEqual(exact(12));
+    expect(r.monostructural.row?.calories).toEqual(exact(60));
+    expect(r.exposure.reps.squat?.mid).toBeCloseTo(6 * 12 * 0.6, 6); // wall ball: squat 0.6
+    expect(r.issues).toEqual([]);
 
-    // EMOM 10: the first line gets the extra minute (4, 3, 3), like tabata.
-    const uneven = every(10, true);
-    expect(uneven.exposure.reps.squat).toEqual(exact(4 * 15));
-    expect(uneven.exposure.reps.h_push).toEqual(exact(3 * 10));
-    expect(uneven.exposure.reps.hinge).toEqual(exact(3 * 12));
-    expect(uneven.warnings).toEqual([]);
+    // Not alternating: every line in every one of 12 intervals.
+    expect(emom(12, false, lines.map((l) => ({ ...l, slot: null }))).monostructural.row?.calories).toEqual(exact(120));
 
-    // Fewer minutes than lines: say so.
-    const short = every(2, true);
-    expect(short.exposure.reps.hinge?.mid ?? 0).toBe(0);
-    expect(short.warnings).toContain("2 intervals for 3 alternating lines: the last line is never reached");
+    // EMOM 10 with 3 minutes: 3 rotations and minute 1 once more → 4, 3, 3.
+    const three: Item[] = [
+      item("Air squat", { type: "reps", value: 15 }, { slot: 1 }),
+      item("Push-up", { type: "reps", value: 10 }, { slot: 2 }),
+      item("Kettlebell swing", { type: "reps", value: 12 }, { slot: 3 }),
+    ];
+    const ten = emom(10, true, three);
+    expect(ten.durationMin).toEqual(exact(10));
+    expect(ten.exposure.reps.squat).toEqual(exact(4 * 15));
+    expect(ten.exposure.reps.h_push).toEqual(exact(3 * 10));
+    expect(ten.exposure.reps.hinge).toEqual(exact(3 * 12));
+
+    // Lines without a slot are a minute each, after the numbered ones.
+    const unslotted = emom(6, true, three.map((l) => ({ ...l, slot: null })));
+    expect(unslotted.exposure.reps.squat).toEqual(exact(2 * 15));
+  });
+
+  it("issues point at the lines they are about", () => {
+    const r = computeWorkout({ blocks: [block({ label: "A", intent: "conditioning", format: "for_time", params: { rounds: 1 },
+      paceEffort: "hard", items: [
+        item("Air squat", { type: "reps", value: 10 }),
+        { exercise: null, rawLine: "mystery move", quantity: { type: "reps", value: 5 } },
+        { exercise: coreExercise("Burpee", null), quantity: { type: "reps", value: 10 } },
+      ] })] }, config);
+    expect(r.issues).toEqual([
+      { block: 0, items: [1], message: 'unmatched line skipped: "mystery move"' },
+      { block: 0, items: [2], message: "no pace for Burpee; duration cannot be estimated" },
+    ]);
   });
 
   it("rest between blocks counts in the session length, never in planned load (approved 2026-10-21)", () => {

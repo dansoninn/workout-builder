@@ -30,6 +30,7 @@ describe("public and gym paths", () => {
     expect(isPublicPath("/")).toBe(true);
     expect(isPublicPath("/invite/abc")).toBe(true);
     expect(isPublicPath("/auth/callback")).toBe(true);
+    expect(isPublicPath("/api/version")).toBe(true);
     expect(isPublicPath("/afrek/builder")).toBe(false);
     expect(isPublicPath("/onboarding")).toBe(false);
     expect(isPublicPath("/sign-inx")).toBe(false);
