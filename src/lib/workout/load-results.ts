@@ -1,8 +1,13 @@
 import "server-only";
 
+import { ENGINE_CONFIG } from "@/lib/engine/config";
+import { computeWorkout } from "@/lib/engine/workout";
 import { createClient } from "@/lib/supabase/server";
 
-import type { ResultMeasure } from "./results";
+import { toEngineWorkout } from "./draft";
+import { loadLibrary } from "./load-library";
+import { loadWorkout } from "./load-workout";
+import type { ResultMeasure, RoundLine } from "./results";
 import type { BlockFormat } from "./rules";
 
 /** A result as the results page shows it. */
@@ -10,6 +15,8 @@ export interface LoggedResult extends ResultMeasure {
   id: string;
   blockId: string;
   sessionLabel: string | null;
+  /** As the coach wrote it ("7 + 12 – 9 + 3"), for AMRAP rounds. */
+  rawText: string | null;
   note: string | null;
   loggedBy: string | null;
   loggedAt: string;
@@ -21,7 +28,7 @@ export async function loadLoggedResults(orgId: string, blockIds: string[]): Prom
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("block_results")
-    .select("id, block_id, session_label, rounds_low, rounds_high, finish_low_s, finish_high_s, note, created_at, profiles (display_name)")
+    .select("id, block_id, session_label, raw_text, rounds_low, rounds_high, finish_low_s, finish_high_s, note, created_at, profiles (display_name)")
     .eq("org_id", orgId)
     .in("block_id", blockIds)
     .is("deleted_at", null)
@@ -31,6 +38,7 @@ export async function loadLoggedResults(orgId: string, blockIds: string[]): Prom
     id: r.id,
     blockId: r.block_id,
     sessionLabel: r.session_label,
+    rawText: r.raw_text,
     rounds_low: r.rounds_low,
     rounds_high: r.rounds_high,
     finish_low_s: r.finish_low_s,
@@ -79,4 +87,16 @@ export async function loadResultsWorkouts(orgId: string, from: string, to: strin
         results: b.block_results.filter((r) => r.deleted_at === null).length,
       })),
   }));
+}
+
+/** An AMRAP block's round, line by line, from the engine on the saved workout: what "7 + 12" is read against. */
+export async function loadRoundLines(orgId: string, blockId: string): Promise<RoundLine[] | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("blocks").select("workout_id").eq("id", blockId).eq("org_id", orgId).maybeSingle();
+  if (!data) return null;
+  const [stored, library] = await Promise.all([loadWorkout(orgId, data.workout_id), loadLibrary(orgId)]);
+  const index = stored?.draft.blocks.findIndex((b) => b.id === blockId) ?? -1;
+  if (!stored || index < 0) return null;
+  const result = computeWorkout(toEngineWorkout(stored.draft, library).workout, ENGINE_CONFIG);
+  return result.blocks[index]?.roundLines ?? null;
 }

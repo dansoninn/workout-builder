@@ -81,6 +81,14 @@ test("after class, on a phone: log, correct, remove and undo what each class did
   await a.getByRole("button", { name: "Save correction" }).click();
   await expect(aResults).toContainText("6.5–8.5 rounds");
 
+  // Rounds + reps as coaches write them: the round is 10 air squats, so "+5" is half a round.
+  await a.getByRole("button", { name: "Log a result for block A" }).click();
+  await a.getByLabel("Fewest rounds").fill("7 + 5");
+  await expect(a.getByText("7 + 5 ≈ 7.5 rounds")).toBeVisible();
+  await a.getByLabel("Class (optional)").fill("12:00");
+  await a.getByRole("button", { name: "Save result" }).click();
+  await expect(aResults).toContainText("7 + 5 rounds (≈ 7.5)");
+
   // Remove one, then undo.
   await bResults.getByRole("button", { name: "Remove result 9:30–15:00" }).click();
   await expect(b.getByText("No results yet.")).toBeVisible();
@@ -91,7 +99,7 @@ test("after class, on a phone: log, correct, remove and undo what each class did
 
   // The list says how many are logged.
   await page.goto(`/${slug}/results`);
-  await expect(page.getByRole("link", { name: /Engine day/ })).toContainText("2 results");
+  await expect(page.getByRole("link", { name: /Engine day/ })).toContainText("3 results");
 
   // A block with results keeps them: the builder will not drop it.
   await page.setViewportSize({ width: 1280, height: 800 });
