@@ -2,6 +2,7 @@
 
 import { CalendarPlusIcon, CopyIcon, EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UndoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { flushSync } from "react-dom";
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -45,7 +46,7 @@ import type { Library } from "@/lib/workout/library";
 import { deleteWorkout, saveWorkout, setWorkoutStatus } from "./actions";
 import { BlockEditor, focusField } from "./block-editor";
 import { LoadPanel, type PanelIssue } from "./load-panel";
-import { useDraft } from "./use-draft";
+import { type DraftAction, useDraft } from "./use-draft";
 
 export type TrackOption = { id: string; name: string; color: string | null; archived: boolean };
 
@@ -238,13 +239,26 @@ export function Builder({
     return () => window.removeEventListener("keydown", onKey);
   }, [save]);
 
+  /**
+   * Applies a change and moves focus within the same keystroke, so the next
+   * key a fast coach types lands in the new field, never in the line they left.
+   */
+  const changeThenFocus = useCallback(
+    (action: DraftAction, itemId: string, field: "exercise" | "quantity" | "load" = "exercise") => {
+      flushSync(() => dispatch(action));
+      focusField(itemId, field);
+    },
+    [dispatch],
+  );
+
   const addBlockAfter = useCallback(
     (afterId: string | null) => {
       const block = newBlock("amrap", "conditioning");
-      dispatch({ type: "addBlock", afterId, block });
+      changeThenFocus({ type: "addBlock", afterId, block }, block.items[0]!.id);
+      // From the command palette, focus comes back once the palette has closed.
       requestAnimationFrame(() => focusField(block.items[0]!.id, "exercise"));
     },
-    [dispatch],
+    [changeThenFocus],
   );
 
   const commands = useMemo(
@@ -269,20 +283,19 @@ export function Builder({
     onNewLine: () => {
       const block = draft.blocks.find((b) => b.id === blockId)!;
       const next = newItem(isAlternating(block) ? item.slot : null);
-      dispatch({ type: "addItem", blockId, afterId: item.id, item: next });
-      requestAnimationFrame(() => focusField(next.id, "exercise"));
+      changeThenFocus({ type: "addItem", blockId, afterId: item.id, item: next }, next.id);
     },
     onNewBlock: () => addBlockAfter(blockId),
     onMove: (delta: -1 | 1) => {
-      dispatch({ type: "moveItem", blockId, id: item.id, delta });
-      requestAnimationFrame(() => focusField(item.id, (document.activeElement as HTMLElement | null)?.dataset.field as "exercise" ?? "exercise"));
+      const field = ((document.activeElement as HTMLElement | null)?.dataset.field ?? "exercise") as "exercise" | "quantity" | "load";
+      changeThenFocus({ type: "moveItem", blockId, id: item.id, delta }, item.id, field);
     },
     onDelete: () => {
       const block = draft.blocks.find((b) => b.id === blockId)!;
       const index = block.items.findIndex((i) => i.id === item.id);
       const neighbour = block.items[index - 1] ?? block.items[index + 1];
-      dispatch({ type: "removeItem", blockId, id: item.id });
-      if (neighbour) requestAnimationFrame(() => focusField(neighbour.id, "exercise"));
+      if (neighbour) changeThenFocus({ type: "removeItem", blockId, id: item.id }, neighbour.id);
+      else dispatch({ type: "removeItem", blockId, id: item.id });
     },
   });
 
@@ -292,8 +305,7 @@ export function Builder({
     const nextSlot = alternating ? (slot ?? Math.max(0, ...block.items.map((i) => i.slot ?? 1)) + 1) : null;
     const lastInSlot = alternating ? [...block.items].reverse().find((i) => (i.slot ?? 1) === nextSlot) : block.items.at(-1);
     const item = newItem(nextSlot);
-    dispatch({ type: "addItem", blockId, afterId: lastInSlot?.id ?? block.items.at(-1)?.id ?? null, item });
-    requestAnimationFrame(() => focusField(item.id, "exercise"));
+    changeThenFocus({ type: "addItem", blockId, afterId: lastInSlot?.id ?? block.items.at(-1)?.id ?? null, item }, item.id);
   };
 
   const status = saving ? "Saving…" : dirty ? "Unsaved changes" : savedOnce ? "Saved" : "Not saved yet";
