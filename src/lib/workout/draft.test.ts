@@ -115,7 +115,7 @@ describe("the builder's draft", () => {
     expect(draftProblems(broken, library)).toEqual([
       { block: 0, item: null, field: "sets", message: "Check the block's numbers" },
       { block: 0, item: 0, field: "quantity", message: "The second number must be larger, e.g. 8-10" },
-      { block: 0, item: 1, field: "load", message: "Try 75-80%, 22.5/15 kg, 2x22.5 or bw" },
+      { block: 0, item: 1, field: "load", message: 'Did not understand "heavy". Try 75-80%, 22.5/15 kg, 2x22.5 or bw' },
     ]);
   });
 
