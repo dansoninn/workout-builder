@@ -39,6 +39,7 @@ select is_empty($$ select 1 from public.period_metrics(tests.id('gym_a'), '2026-
   'Another gym sees nothing of it');
 
 -- Guidelines: a new gym starts with the defaults (decision 18).
+select tests.logout();
 select is((select settings -> 'guidelines' from public.organizations where id = tests.id('gym_a')), private.default_guidelines(),
   'A new gym starts with the default guidelines');
 select is(
