@@ -293,7 +293,10 @@ As built in 4d (migration `001900`, approved rules above plus these guards):
 ## 7. Computed data, audit, safety
 
 ### `workout_metrics` (cache)
-`workout_id`, `calc_version`, `taxonomy_version`, `computed_at`, `metrics jsonb`, `confidence jsonb`. PK `(workout_id, calc_version)`. Recomputed on save; rebuilt in bulk on version bump. Weekly/period analytics are SQL functions over this table.
+`workout_id`, `calc_version`, `taxonomy_version`, `computed_at`, `metrics jsonb`, `confidence jsonb`. PK `(workout_id, calc_version)`. Recomputed on save; rebuilt in bulk on version bump. Weekly/period analytics are SQL functions over this table: `period_metrics(org, from, to, calc_version, track?)` (5c, migration `002200`) returns the period's scheduled workouts with their stored metrics (run as the user, so RLS applies); the app sums the lenses with the engine's own TypeScript, so the builder, the calendar and analytics never disagree.
+
+### Gym guidelines (5c)
+`organizations.settings.guidelines` (owner-managed, like all gym settings): optional minimum hard sets per pattern per week, ranges for push:pull, knee:hip and upper:lower exposure, a maximum weekly monotony and a maximum week-on-week increase (%). Checked by `private.guidelines_problem` on every settings change (trigger) and mirrored in `src/lib/analytics/guidelines.ts`, tested on the shared rule cases. Set through `set_gym_guidelines(org, guidelines)`. They are the gym's guidelines, not scientific thresholds (calc spec §6); none is set by default.
 
 ### `audit_log`
 `id`, `org_id`, `actor_id`, `table_name`, `row_id`, `action` (insert/update/delete), `diff jsonb`, `at`. Written by triggers on workouts, blocks, block_items, exercises, memberships, and (from Step 4) exercise_aliases and block_results. Append-only.

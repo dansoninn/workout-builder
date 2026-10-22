@@ -2,17 +2,33 @@
 
 **Updated:** 2026-10-22 by Claude Code
 **Working mode:** continuous (CLAUDE.md, "Continuous working mode"): each sub-step on its own branch and pull request, merged when CI is green, production deploys by itself. I stop only for coaching decisions; those collect below under "Questions for Daniel".
-**Now:** 4b, 4d (block results), 4c (paste a workout), **5a (month calendar)** and **5b (a template on several dates)** are on production. Building **5c** (analytics and warnings). Plan: `docs/PLAN-step-5.md`.
+**Now:** **Step 5 is done and on production**: 4b, 4d (block results), 4c (paste a workout), 5a (month calendar), 5b (a template on several dates) and 5c (analytics and warnings). I have stopped here, as you asked, for your batch review. Plan as built: `docs/PLAN-step-5.md`.
 
 ## Questions for Daniel
 1. **AMRAP partial rounds, "7 + 12".** Coaches write an AMRAP score as rounds plus reps into the next round. Today the results screen takes decimals ("7.5"). Should it accept "7 + 12"? If yes, how should "+12" become part of a round: the share of the round's reps (12 of 30 reps → 7.4), or the share of the round's estimated time (better when a round mixes reps, calories and metres)? Nothing waits on this; decimals work meanwhile.
 2. **Effort words in pasted text.** Whiteboards say "heavy", "light", "sprint", "RPE 8", "@ 7/10". Which Pace or Load level should each mean? Today the parser reads only the app's own words ("Pace Hard", "Load Moderate") and leaves other words at the block's default effort (the builder shows it as the outlined default, so the coach sees it). A word list from you is all it needs.
 3. **Men/women amounts** ("15/12 cal bike", "400/300 m run"). Store them as a range for the class (12–15 cal), or use the first (men's) number the way loads use the first Rx? Today the parser asks the coach to rewrite the line.
+4. **Default guidelines for a new gym** (analytics warnings). Today none is set, so nothing warns until the owner fills in Settings → Guidelines. Should a new gym start with defaults, and which? Starting points to accept or change, all labelled in the app as the gym's guidelines, not science:
+   - hard sets per week, at least: squat 4, hinge 4, horizontal push 3, horizontal pull 3, vertical push 2, vertical pull 3 (strength work in a class gym is spread over 3–5 sessions; well below the ~10 sets per muscle often cited for hypertrophy, Schoenfeld et al. 2017);
+   - push : pull 0.8–1.2 and knee : hip 0.7–1.5 (balance, no single source; coaching convention);
+   - monotony at most 2.0 (Foster 1998 flags weeks above 2.0);
+   - week-on-week planned load at most +15% (a convention; the evidence for any fixed number is weak, which is why it is a trend only).
 
 ## Your steps
 1. **Let the production check redeploy by itself** (5 minutes, once): in Vercel, **Project → Settings → Git → Deploy Hooks**, create a hook named `production-check` for branch `main`, copy its address; in GitHub, **dansoninn/workout-builder → Settings → Secrets and variables → Actions → New repository secret**, name `VERCEL_DEPLOY_HOOK`, paste the address. Without it the check still catches a missed deploy, but only tells you (by GitHub email) instead of fixing it.
 
 ## What changed since your 4b review
+
+### 5c: analytics and warnings (Analytics, G then A; Settings → Guidelines)
+- **Any period**: the last 7, 14 or 30 days, or any range (up to a year); all tracks or one.
+- **The four lenses**, summed from the numbers stored when each workout was saved (the same engine as the builder, so they always agree; estimates stay ranges):
+  - **Session load**: planned load per day as columns (days still to come lighter, the likely range as a thin line), and per calendar week its load, **monotony**, **strain** and change from the week before (a trend, never an injury prediction).
+  - **Strength**: hard sets by pattern and by muscle, volume load.
+  - **Movement**: push : pull, knee : hip, upper : lower, and reps by pattern and plane.
+  - **Conditioning**: distance, calories and work time per modality.
+  - A workout whose load is unknown (a line without an amount or pace) is left out of the load and named, with a link.
+- **Warnings against your gym's guidelines**, which the owner sets in Settings → Guidelines: at least N hard sets per pattern per week, ranges for the three ratios, monotony at most N, week-on-week increase at most N %. Each warning says the guideline it breaks and links to the workouts behind it ("Knee : hip ~4.1: knee-heavy — WOD 3, WOD 1, WOD 2"). **None is set by default** (Question 4).
+- **Your three §7 workouts on one week show the approved numbers** in Analytics (tested end to end, pasted in): ~593 AU (569–625), monotony 0.85, hard sets squat 5 / horizontal push 4 / horizontal pull 4 and no hinge, push : pull ~1.3, knee : hip ~4.1.
 
 ### 5b: a template on several dates
 - **Apply template** on the calendar, or **Use on dates** on a template in the builder (also ⌘K): pick the template, the track and any number of days in a small month (click, or arrow keys and Space). Each day gets its own draft copy, all made together (if one cannot be made, none are). The template and the other days stay as they are when you change a copy.
@@ -56,6 +72,12 @@ Try it on your phone at https://workout-builder-cyan.vercel.app.
 Each has a browser test that slows the page down the way a busy phone or laptop would, and fails without the fix.
 
 ## Decisions made or interpreted (please check)
+**5 (calendar, templates, analytics):**
+1. **The calendar opens on the month**; the week (tracks as columns) is one click away. A day view is in BACKLOG.
+2. **Analytics periods end today** (7, 14, 30 days), or any range you choose, which can include days still to come (planned load is planned).
+3. **Weekly numbers are over whole calendar weeks**, Monday to Sunday, even when the period starts mid-week, so monotony and strain mean what Foster's method means.
+4. **Warnings name the workouts behind them**: for a ratio, the workouts adding most to the heavy side; for a weekly warning, that week's biggest loads; for missing hard sets, the workouts that have some (none, if there are none).
+
 **4c (paste):**
 1. **Intent from the format** when no section word says it: sets → strength; an EMOM of weighted lifts (a load written, or a barbell, dumbbell or kettlebell exercise) → strength; other EMOMs, AMRAP, For time, intervals, tabata → conditioning. The check screen says "(from the format)", and you change it in the builder.
 2. **"3 rounds" without "for time"** is read as 3 sets of a circuit (conditioning), with a note on the line: write "for time" if it is.
@@ -72,12 +94,13 @@ Each has a browser test that slows the page down the way a busy phone or laptop 
 ## How it was verified
 | What | Result |
 |---|---|
-| Unit tests (Vitest) | **368 of 368** (new in 4c: 38 parser tests — the three §7 workouts with their approved numbers, 17 heading formats, 21-15-9, alternating minutes, strength lines, supersets, sections, amounts and loads, generic words and plurals, unknown exercises, missing numbers, notes; in 4d: result rules on the shared cases, rounds and times as typed, clock format) |
-| Database tests (pgTAP) | **579 of 579** (new in 4c: paste 19 — workout, text and answers in one transaction, a coach may only answer generic words, head coaches name any word, viewers and other gyms nothing, the builder keeps the pasted text, audit; in 4d: block results 32, result rules 19) |
-| Browser tests (Playwright, production build) | **39 of 39** (new in 4c: paste with a missing number, a generic word answered once and remembered, an unknown exercise picked and remembered, into the builder, the gym's names used next time; viewers cannot paste; in 4d: the whole after-class flow on a phone) |
+| Unit tests (Vitest) | **389 of 389** (new in 5: month helpers, period sums and weeks on the §7 week, guidelines and warnings); before: **368** (new in 4c: 38 parser tests — the three §7 workouts with their approved numbers, 17 heading formats, 21-15-9, alternating minutes, strength lines, supersets, sections, amounts and loads, generic words and plurals, unknown exercises, missing numbers, notes; in 4d: result rules on the shared cases, rounds and times as typed, clock format) |
+| Database tests (pgTAP) | **616 of 616** (new in 5: copying a workout to dates 14, analytics and guidelines 13, guideline rule cases 10); before: **579** (new in 4c: paste 19 — workout, text and answers in one transaction, a coach may only answer generic words, head coaches name any word, viewers and other gyms nothing, the builder keeps the pasted text, audit; in 4d: block results 32, result rules 19) |
+| Browser tests (Playwright, production build) | **41 of 41** on GitHub (new in 5: month calendar drag and drop and keyboard move with Undo; a template on three days and one more by keyboard; the §7 week pasted in and read in Analytics with warnings); before: **39** (new in 4c: paste with a missing number, a generic word answered once and remembered, an unknown exercise picked and remembered, into the builder, the gym's names used next time; viewers cannot paste; in 4d: the whole after-class flow on a phone) |
 | Accessibility (axe, WCAG 2.2 AA) | Paste screen with questions; Results list, results page with the form, read-only results on a phone: **no problems** |
-| Looked at by eye | Paste screen (light, dark, tablet); Results on a phone (light and dark) and desktop |
+| Looked at by eye | Analytics and Guidelines; month calendar (light, dark, phone); paste screen (light, dark, tablet); Results on a phone and desktop |
+| Note | This Mac is under heavy memory pressure (swap nearly full after 49 days up), which made a local full browser run take an hour and time out. The browser tests run on GitHub for every pull request, and every merge was green there. |
 | Production | CI on `main`, deploy and production check after each merge |
 
 ## Next
-**Step 5**: month calendar with drag and drop, a template on several dates, Analytics over 7/14/30 days or a custom range with the four lenses, warnings.
+Your batch review on production. After that, the build order is complete; BACKLOG holds what is parked (your four questions above, real workouts as parser tests, a day view, comparing periods, gym time zone, custom email sender before the first real gym).
