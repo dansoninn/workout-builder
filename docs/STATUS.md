@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-21 by Claude Code
 **Working mode:** continuous (CLAUDE.md, "Continuous working mode"): each sub-step on its own branch and pull request, merged when CI is green, production deploys by itself. I stop only for coaching decisions; those collect below under "Questions for Daniel".
-**Now:** 4b approved and merged. Next: **4d (block results)**, then 4c (paste a workout), then Step 5.
+**Now:** 4b approved, merged and live on production. Building **4d (block results)**, then 4c (paste a workout), then Step 5.
 
 ## Questions for Daniel
 None open. Both 4b questions are answered and built (below).
@@ -22,7 +22,7 @@ None open. Both 4b questions are answered and built (below).
 - **Fix: a production check** that runs after every CI run on `main` and every 30 minutes:
   1. If `main`'s latest commit has no CI run, it starts one.
   2. Once CI has passed, it asks production which commit it runs (new address `/api/version`, public, shows only the commit) and waits up to 5 minutes for the deploy. If production is still behind, it triggers a Vercel deploy (your step 1) and waits again; if that fails too, the check fails and GitHub emails you.
-- **Proof** with the 4b merge: see "Pipeline proof" below (filled in after the merge).
+- **Proof** with the 4b merge: see "Pipeline proof" below.
 
 ### Found and fixed on the way
 - **Keys typed right after picking an exercise could be lost.** Picking with Enter and typing the amount at once (fast typist, or a busy page): the first keys landed in the exercise search and vanished, because the cursor can only move once the list has closed. Now those keys are kept and go into the amount. Found when the keyboard-only WOD 1 test failed under load; a new test forces a slow close and fails without the fix.
@@ -36,7 +36,11 @@ None open. Both 4b questions are answered and built (below).
 | Lint, types | clean |
 
 ## Pipeline proof
-Filled in after the 4b merge.
+The 4b merge (pull request #2, merge commit `ab35f96`, 2026-10-22 00:01 UTC):
+- **CI ran on `main` by itself** (push event) and passed: lint, types, unit, database and browser tests.
+- **Production deployed by itself**: https://workout-builder-cyan.vercel.app/api/version answered `{"commit":"ab35f964…","environment":"production"}` within minutes.
+- **The production check ran by itself** after CI and passed: "Production runs ab35f96; main is ab35f96".
+- This STATUS update went through the same path (its own pull request, merged when green).
 
 ## Next
 **4d: block results** — after class, a coach logs each block's result for the class (AMRAP rounds, For Time finish times, as a low–high range), phone-first. Then **4c** (paste a workout from the whiteboard, built from common formats and the three §7 workouts), then **Step 5** (month calendar with drag and drop, a template on several dates, Analytics over 7/14/30 days or a custom range with the four lenses, warnings).
