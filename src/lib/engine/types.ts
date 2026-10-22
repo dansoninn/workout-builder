@@ -208,6 +208,13 @@ export interface BlockResult extends Lenses {
   effortSource: EffortSource;
   /** Times each item is performed: sets, intervals or rounds (AMRAP: estimated, may be fractional). */
   rounds: Measure | null;
+  /**
+   * AMRAP: each line of one round in order, as the units it asks for (reps,
+   * calories, metres, seconds; both sides of 8/8) and its estimated seconds
+   * (middle estimate); null when a line has no pace. Used to turn a logged
+   * "7 + 12" into rounds (calc spec decision 16).
+   */
+  roundLines?: { units: number; seconds: number }[] | null;
   /** For time: the estimated finish hit the time cap. */
   capped: boolean;
   issues: Issue[];

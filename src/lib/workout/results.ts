@@ -46,11 +46,53 @@ export function resultProblem(format: BlockFormat, params: Record<string, unknow
 
 const twoDecimals = (n: number) => Math.abs(Math.round(n * 100) - n * 100) < 1e-9;
 
-/** Rounds as typed: "7", "7.5" or "7,5" (a phone's decimal comma). Empty is null. */
-export function parseRounds(input: string): { ok: true; value: number | null } | { ok: false; error: string } {
+/** One line of an AMRAP round: the units it asks for and its estimated seconds (engine, BlockResult.roundLines). */
+export interface RoundLine {
+  units: number;
+  seconds: number;
+}
+
+/**
+ * The part of a round that `units` into it take, by the round's estimated
+ * time (calc spec decision 16): the units go through the round's lines in
+ * order, and each line counts with its share of the time. Null when that is
+ * a whole round or more.
+ */
+export function partialRound(units: number, lines: RoundLine[]): number | null {
+  const roundSeconds = lines.reduce((total, l) => total + l.seconds, 0);
+  const roundUnits = lines.reduce((total, l) => total + l.units, 0);
+  if (roundSeconds <= 0 || units >= roundUnits) return null;
+  let left = units;
+  let spent = 0;
+  for (const line of lines) {
+    if (left <= 0) break;
+    const take = Math.min(left, line.units);
+    spent += line.seconds * (take / line.units);
+    left -= take;
+  }
+  return spent / roundSeconds;
+}
+
+/**
+ * Rounds as typed: "7", "7.5", "7,5" (a phone's decimal comma), or "7 + 12"
+ * (7 rounds and 12 reps into the next), which needs the round's lines to turn
+ * into part of a round. Empty is null.
+ */
+export function parseRounds(input: string, lines: RoundLine[] | null = null): { ok: true; value: number | null } | { ok: false; error: string } {
   const text = input.trim().replace(",", ".");
   if (!text) return { ok: true, value: null };
-  if (!/^\d+(?:\.\d+)?$/.test(text)) return { ok: false, error: "Rounds as a number, e.g. 7 or 7.5" };
+  const plus = text.match(/^(\d+)\s*\+\s*(\d+(?:\.\d+)?)$/);
+  if (plus) {
+    if (!lines?.length) return { ok: false, error: "This block has no estimate to turn reps into part of a round: write it as a decimal, e.g. 7.5" };
+    const units = Number(plus[2]);
+    const share = partialRound(units, lines);
+    if (share === null) {
+      const perRound = Math.round(lines.reduce((total, l) => total + l.units, 0));
+      return { ok: false, error: `A round here is ${perRound} reps: “+${plus[2]}” would be a whole round or more` };
+    }
+    return { ok: true, value: Number(plus[1]) + Math.round(share * 100) / 100 };
+  }
+  if (!/^\d+(?:\.\d+)?$/.test(text)) return { ok: false, error: "Rounds as a number, 7 + 12 (rounds + reps) or 7.5" };
   return { ok: true, value: Number(text) };
 }
 
@@ -89,10 +131,11 @@ export function roundsText(n: number): string {
   return String(Math.round(n * 100) / 100);
 }
 
-/** "6.5–8 rounds" or "7 rounds"; "9:30–14:00" or "12:15". */
-export function resultText(r: ResultMeasure): string {
+/** "6.5–8 rounds" or "7 rounds", or as written with what it came to ("7 + 12 rounds (≈ 7.4)"); "9:30–14:00" or "12:15". */
+export function resultText(r: ResultMeasure, written: string | null = null): string {
   if (r.rounds_low !== null && r.rounds_high !== null) {
     const range = r.rounds_low === r.rounds_high ? roundsText(r.rounds_low) : `${roundsText(r.rounds_low)}–${roundsText(r.rounds_high)}`;
+    if (written?.includes("+")) return `${written} rounds (≈ ${range})`;
     return `${range} ${r.rounds_high === 1 ? "round" : "rounds"}`;
   }
   if (r.finish_low_s !== null && r.finish_high_s !== null) {
@@ -104,6 +147,8 @@ export function resultText(r: ResultMeasure): string {
 /** What the result form sends to the server. */
 export const resultInputSchema = z.strictObject({
   blockId: z.uuid(),
+  /** AMRAP: the rounds as typed ("7 + 12", "6.5"); the server reads them again with the round's lines. */
+  roundsText: z.tuple([z.string().trim().max(20), z.string().trim().max(20)]).nullable().optional(),
   sessionLabel: z.string().trim().max(40).transform((s) => s || null),
   rounds_low: z.number().nonnegative().nullable(),
   rounds_high: z.number().nonnegative().nullable(),

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { finishText, parseFinish, parseRounds, resultInputSchema, resultText } from "./results";
+import { finishText, parseFinish, parseRounds, partialRound, resultInputSchema, resultText } from "./results";
+
+/** A round of 5 KB swings (15 s), 10 air squats (20 s), 15 double-unders (15 s): 30 reps, 50 s. */
+const ROUND = [
+  { units: 5, seconds: 15 },
+  { units: 10, seconds: 20 },
+  { units: 15, seconds: 15 },
+];
 
 describe("block results as a coach types them", () => {
   it("rounds: whole, decimal, or with a phone's decimal comma", () => {
@@ -10,6 +17,17 @@ describe("block results as a coach types them", () => {
     expect(parseRounds("")).toEqual({ ok: true, value: null });
     expect(parseRounds("7+12").ok).toBe(false);
     expect(parseRounds("-1").ok).toBe(false);
+  });
+
+  it('"7 + 12": the 12 reps go through the round in order and count by their share of its time', () => {
+    // 5 swings (15 s) + 7 of the 10 squats (14 s) = 29 s of a 50 s round.
+    expect(partialRound(12, ROUND)).toBeCloseTo(0.58, 6);
+    expect(parseRounds("7 + 12", ROUND)).toEqual({ ok: true, value: 7.58 });
+    expect(parseRounds("7+5", ROUND)).toEqual({ ok: true, value: 7.3 });
+    expect(parseRounds("0 + 20", ROUND)).toEqual({ ok: true, value: 0.8 });
+    expect(parseRounds("7 + 30", ROUND)).toEqual({ ok: false, error: "A round here is 30 reps: “+30” would be a whole round or more" });
+    expect(parseRounds("7 + 12", null).ok).toBe(false);
+    expect(resultText({ rounds_low: 7.58, rounds_high: 9.3, finish_low_s: null, finish_high_s: null }, "7 + 12 – 9 + 5")).toBe("7 + 12 – 9 + 5 rounds (≈ 7.58–9.3)");
   });
 
   it("finish times: m:ss, h:mm:ss, or digits from a number pad", () => {

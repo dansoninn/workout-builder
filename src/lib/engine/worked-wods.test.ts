@@ -129,6 +129,15 @@ describe("WOD 3 — intervals 4 × 3 stations, 90/30, 90 s between rounds, Pace 
   });
 });
 
+describe("an AMRAP's round, line by line (for results written as 7 + 12)", () => {
+  it("WOD 1 C: 5 swings, 10 air squats, 15 double-unders, each with its estimated time", () => {
+    const lines = wod1.blocks[2]!.roundLines!;
+    expect(lines.map((l) => l.units)).toEqual([5, 10, 15]);
+    expect(lines.every((l) => l.seconds > 0)).toBe(true);
+    expect(wod1.blocks[0]!.roundLines).toBeUndefined(); // only AMRAP blocks
+  });
+});
+
 describe("If these three were one week", () => {
   const week = sumLenses([wod1, wod2, wod3]);
   const ratios = computeRatios(week.exposure.reps);

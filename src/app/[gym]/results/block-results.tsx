@@ -19,6 +19,7 @@ import {
   parseRounds,
   type ResultMeasure,
   resultProblem,
+  type RoundLine,
   resultText,
   roundsText,
 } from "@/lib/workout/results";
@@ -37,6 +38,8 @@ export interface ResultsBlock {
   lines: string[];
   plan: { measure: Measure; unit: "rounds" | "clock" } | null;
   capSec: number | null;
+  /** AMRAP: one round line by line, to read "7 + 12" (calc spec decision 16). */
+  roundLines: RoundLine[] | null;
 }
 
 /** One AMRAP or For time block: its plan, what each class did, and the form to log it (phone-first). */
@@ -116,7 +119,7 @@ export function BlockResults({ slug, block, results, canLog }: { slug: string; b
                 <li key={result.id} className="grid gap-1 px-3 py-2.5 sm:flex sm:items-start sm:gap-3">
                   <div className="grid min-w-0 flex-1 gap-0.5">
                     <p className="flex flex-wrap items-baseline gap-x-2">
-                      <span className="font-medium tabular">{resultText(result)}</span>
+                      <span className="font-medium tabular">{resultText(result, result.rawText)}</span>
                       {result.sessionLabel && <span className="text-sm text-muted-foreground">{result.sessionLabel}</span>}
                     </p>
                     {result.note && <p className="text-sm whitespace-pre-line">{result.note}</p>}
@@ -125,10 +128,10 @@ export function BlockResults({ slug, block, results, canLog }: { slug: string; b
                   {canLog && (
                     <div className="-ml-2 flex gap-1 sm:ml-0">
                       <Button variant="ghost" size="sm" className="max-sm:h-9" onClick={() => setEditing(result.id)} disabled={editing !== null}>
-                        Edit<span className="sr-only"> result {resultText(result)}</span>
+                        Edit<span className="sr-only"> result {resultText(result, result.rawText)}</span>
                       </Button>
                       <Button variant="ghost" size="sm" className="max-sm:h-9" onClick={() => remove(result)} disabled={editing !== null}>
-                        Remove<span className="sr-only"> result {resultText(result)}</span>
+                        Remove<span className="sr-only"> result {resultText(result, result.rawText)}</span>
                       </Button>
                     </div>
                   )}
@@ -161,8 +164,11 @@ function ResultForm({ slug, block, result, onDone }: { slug: string; block: Resu
   const amrap = block.format === "amrap";
   const show = (n: number | null) => (n === null ? "" : amrap ? roundsText(n) : finishText(n));
   const [session, setSession] = useState(result?.sessionLabel ?? "");
-  const [low, setLow] = useState(show(amrap ? (result?.rounds_low ?? null) : (result?.finish_low_s ?? null)));
+  // Rounds come back as the coach wrote them ("7 + 12 – 9 + 3").
+  const written = amrap && result?.rawText ? result.rawText.split(" – ") : null;
+  const [low, setLow] = useState(written?.[0] ?? show(amrap ? (result?.rounds_low ?? null) : (result?.finish_low_s ?? null)));
   const [high, setHigh] = useState(() => {
+    if (written) return written[1] ?? "";
     const [l, h] = amrap ? [result?.rounds_low, result?.rounds_high] : [result?.finish_low_s, result?.finish_high_s];
     return h === undefined || h === null || h === l ? "" : show(h);
   });
@@ -170,7 +176,7 @@ function ResultForm({ slug, block, result, onDone }: { slug: string; block: Resu
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const parse = amrap ? parseRounds : parseFinish;
+  const parse = amrap ? (text: string) => parseRounds(text, block.roundLines) : parseFinish;
   const lowParsed = parse(low);
   const highParsed = parse(high);
   const fieldError = !lowParsed.ok ? lowParsed.error : !highParsed.ok ? highParsed.error : null;
@@ -197,7 +203,7 @@ function ResultForm({ slug, block, result, onDone }: { slug: string; block: Resu
     }
     setError(null);
     startTransition(async () => {
-      const saved = await saveResult(slug, result?.id ?? null, { blockId: block.id, sessionLabel: session, note, ...m! });
+      const saved = await saveResult(slug, result?.id ?? null, { blockId: block.id, sessionLabel: session, note, ...m!, roundsText: amrap ? [low, high] : null });
       if (!saved.ok) {
         setError(saved.error);
         return;
@@ -209,7 +215,7 @@ function ResultForm({ slug, block, result, onDone }: { slug: string; block: Resu
 
   const labels = amrap ? (["Fewest rounds", "Most rounds"] as const) : (["Fastest", "Slowest"] as const);
   const hint = amrap
-    ? "Decimals for part of a round: 7.5 is seven rounds and half the next. One number if the whole class did the same."
+    ? "7 + 12 is seven rounds and 12 reps into the next (counted by the round's estimated time); 7.5 is seven and a half. One number if the whole class did the same."
     : `Minutes:seconds; on a phone, 1215 is 12:15.${block.capSec ? " Anyone capped counts as the cap." : ""} One time if the whole class finished together.`;
 
   return (
@@ -228,16 +234,17 @@ function ResultForm({ slug, block, result, onDone }: { slug: string; block: Resu
               <Input
                 id={inputId}
                 value={value}
-                inputMode={amrap ? "decimal" : "numeric"}
+                // AMRAP: the phone pad has "+" and a comma, for "7 + 12" and "7,5".
+                inputMode={amrap ? "tel" : "numeric"}
                 autoComplete="off"
                 autoFocus={i === 0}
                 placeholder={amrap ? (i === 0 ? "6.5" : "8") : i === 0 ? "9:30" : block.capSec ? finishText(block.capSec) : "14:00"}
                 aria-invalid={error ? true : undefined}
                 onChange={(e) => set(e.target.value)}
                 onBlur={() => {
-                  // Show back what was understood: "1215" → "12:15", "7,5" → "7.5".
+                  // Show back what was understood: "1215" → "12:15", "7,5" → "7.5"; "7 + 12" stays as written.
                   const p = parse(value);
-                  if (p.ok && p.value !== null) set(show(p.value));
+                  if (p.ok && p.value !== null && !value.includes("+")) set(show(p.value));
                 }}
                 className={cn(touch, "tabular")}
               />
@@ -248,6 +255,15 @@ function ResultForm({ slug, block, result, onDone }: { slug: string; block: Resu
           <Button type="button" variant="ghost" size="xs" className="justify-self-end" onClick={() => setHigh(finishText(block.capSec!))}>
             Some were capped ({finishText(block.capSec)})
           </Button>
+        )}
+        {amrap && [low, high].some((t) => t.includes("+")) && lowParsed.ok && highParsed.ok && (
+          <p aria-live="polite" className="text-xs tabular">
+            {[low, high]
+              .map((t, i) => (t.includes("+") ? `${t} ≈ ${roundsText((i === 0 ? lowParsed : highParsed).value ?? 0)}` : null))
+              .filter(Boolean)
+              .join(" · ")}{" "}
+            rounds
+          </p>
         )}
         <p id={`${id}-hint`} className="text-xs text-muted-foreground">
           {hint}

@@ -366,6 +366,12 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
     plannedRpe: effort.plannedRpe,
     effortSource: effort.source,
     rounds,
+    // AMRAP: one round line by line, for logged results written as "7 + 12" (calc spec decision 16).
+    ...(block.format === "amrap" && {
+      roundLines: rows.every((r) => r.amount && r.time)
+        ? rows.map((r) => ({ units: (r.amount!.performed ?? r.amount!.value).mid, seconds: r.time!.mid }))
+        : null,
+    }),
     capped,
     issues,
     warnings: issues.map((issue) => issue.message),

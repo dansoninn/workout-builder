@@ -59,6 +59,7 @@ async function WorkoutResults({ gym, params }: { gym: GymMembership; params: Pag
         lines: workout.blocks[b]?.items.flatMap((item) => (item.rawLine ? [item.rawLine] : [])) ?? [],
         plan: block.format === "amrap" ? (result?.rounds ? { measure: result.rounds, unit: "rounds" } : null) : finish && { measure: finish, unit: "clock" },
         capSec: p.time_cap_s ?? null,
+        roundLines: result?.roundLines ?? null,
       },
     ];
   });
