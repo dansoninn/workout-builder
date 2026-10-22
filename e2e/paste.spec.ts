@@ -63,6 +63,18 @@ test("paste a workout: missing numbers first, generic words asked once and remem
   await expect(page.getByRole("status").filter({ hasText: "understood" })).toHaveText("3 understood · 0 for you · 0 kept as notes");
 });
 
+test("effort words are read into the four boxes, and the check screen says which word set which", async ({ page }) => {
+  const { slug } = await ownerWithGym(page);
+  await page.goto(`/${slug}/builder/paste`);
+  await page.getByLabel("The workout, as you would write it on the whiteboard").fill("A. Back squat 5x5 (heavy)\nB. AMRAP 12\n400 m run fast\n10 burpees @ 50% effort");
+  const lines = page.getByRole("list", { name: "Lines" });
+  await expect(lines.getByRole("listitem").filter({ hasText: "Back squat" })).toContainText("“heavy” → Load Hard");
+  await expect(lines.getByRole("listitem").filter({ hasText: "400 m run" })).toContainText("“fast” → Pace Hard");
+  await expect(lines.getByRole("listitem").filter({ hasText: "burpees" })).toContainText("“50% effort” → Pace Moderate");
+  await expect(page.getByRole("region", { name: "Effort boxes" })).toContainText("Short sentences.");
+  await page.getByLabel("The workout, as you would write it on the whiteboard").fill("Back squat 5 @ 75-80% Effort xyz");
+});
+
 test("viewers cannot paste a workout", async ({ page, browser }) => {
   const { slug } = await ownerWithGym(page);
   const link = await invite(page, slug, uniqueEmail("viewer"), "Viewer");

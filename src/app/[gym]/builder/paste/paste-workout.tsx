@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { toast } from "sonner";
 
+import { EffortLegend } from "@/components/design/effort-legend";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -183,8 +184,10 @@ export function PasteWorkout({
           <p id={`${textId}-hint`} className="text-xs text-muted-foreground">
             One exercise per line, or after a colon separated by commas. Blocks start with a letter (A., B.), a word (Strength, Metcon) or a
             format: AMRAP 12 · EMOM 10 · E3M x 5 · Every 2:00 x 6 · For time · 3 RFT · 21-15-9 · Tabata · 4 rounds 90/30. Loads: @75-80%,
-            (22.5/15 kg), 2 x 22.5 kg, bw. Efforts in the app&apos;s words: Pace Hard, Load Moderate.
+            (22.5/15 kg), 2 x 22.5 kg, bw; % 1RM is a load, % effort is not. Effort: light, moderate, heavy, fast, sprint, all out, RPE 8,
+            @ 7/10, 75% effort, or the app&apos;s own words (Pace Hard, Load Moderate).
           </p>
+          <EffortLegend className="rounded-md border border-border bg-surface p-3" />
         </div>
 
         <section className="grid content-start gap-3" aria-labelledby={`${textId}-understood`}>

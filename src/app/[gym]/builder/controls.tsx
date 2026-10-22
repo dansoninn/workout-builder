@@ -2,8 +2,8 @@
 
 import { useId, useState } from "react";
 
-import { EFFORT_LABELS } from "@/lib/labels";
-import { semanticColor } from "@/lib/labels";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { EFFORT_BOXES, EFFORT_LABELS, semanticColor } from "@/lib/labels";
 import type { EffortKey } from "@/lib/taxonomy";
 import { cn } from "@/lib/utils";
 import { durationText, parseDuration } from "@/lib/workout/fields";
@@ -167,35 +167,50 @@ export function EffortPicker<T extends EffortKey>({
           const checked = value === level;
           const implied = value === null && fallback === level;
           return (
-            <label
-              key={level}
-              className={cn(
-                "relative flex h-6 cursor-pointer items-center gap-1 rounded-sm px-2 text-xs font-medium text-muted-foreground transition-colors duration-100 select-none hover:text-foreground",
-                "has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-ring",
-                checked && "bg-hover text-foreground",
-                implied && "text-foreground",
-                disabled && "cursor-default",
-              )}
-              title={implied ? `${EFFORT_LABELS[level]} (default)` : undefined}
-            >
-              <input
-                type="radio"
-                name={name}
-                value={level}
-                checked={checked}
-                onChange={() => onChange(level)}
-                onClick={() => checked && onChange(null)}
-                className="sr-only"
-                aria-label={`${axis === "pace" ? "Pace" : "Load"} ${EFFORT_LABELS[level]}`}
-              />
-              <span
-                aria-hidden
-                className={cn("size-1.5 rounded-full", !checked && !implied && "opacity-0")}
-                style={{ backgroundColor: semanticColor("effort", level) }}
-              />
-              {EFFORT_LABELS[level]}
-              {implied && <span className="sr-only"> (default)</span>}
-            </label>
+            <Tooltip key={level}>
+              <TooltipTrigger
+                render={
+                  <label
+                    className={cn(
+                      "relative flex h-6 cursor-pointer items-center gap-1 rounded-sm px-2 text-xs font-medium text-muted-foreground transition-colors duration-100 select-none hover:text-foreground",
+                      "has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-ring",
+                      checked && "bg-hover text-foreground",
+                      implied && "text-foreground",
+                      disabled && "cursor-default",
+                    )}
+                  />
+                }
+              >
+                <input
+                  type="radio"
+                  name={name}
+                  value={level}
+                  checked={checked}
+                  onChange={() => onChange(level)}
+                  onClick={() => checked && onChange(null)}
+                  className="sr-only"
+                  aria-label={`${axis === "pace" ? "Pace" : "Load"} ${EFFORT_LABELS[level]}`}
+                  aria-describedby={`${name}-${level}`}
+                />
+                <span
+                  aria-hidden
+                  className={cn("size-1.5 rounded-full", !checked && !implied && "opacity-0")}
+                  style={{ backgroundColor: semanticColor("effort", level) }}
+                />
+                {EFFORT_LABELS[level]}
+                {implied && <span className="sr-only"> (default)</span>}
+                <span id={`${name}-${level}`} className="sr-only">
+                  {EFFORT_BOXES[level].percent} effort, RPE {EFFORT_BOXES[level].rpe}. {EFFORT_BOXES[level].description}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="flex-col items-start gap-0.5">
+                <span className="font-medium">
+                  {axis === "pace" ? "Pace" : "Load"} {EFFORT_LABELS[level]}
+                  {implied && " (the block's default)"} · {EFFORT_BOXES[level].percent} · RPE {EFFORT_BOXES[level].rpe}
+                </span>
+                <span>{EFFORT_BOXES[level].description}</span>
+              </TooltipContent>
+            </Tooltip>
           );
         })}
       </div>

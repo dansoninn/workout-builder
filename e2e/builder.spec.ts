@@ -196,6 +196,17 @@ test("a viewer sees a workout but cannot change it", async ({ page, browser }) =
   await context.close();
 });
 
+test("each effort box says what it means: in a tooltip, to screen readers, and in a legend", async ({ page }) => {
+  await ownerWithGym(page);
+  const hard = page.getByLabel("Pace Hard").first();
+  await expect(hard).toHaveAccessibleDescription("70–85% effort, RPE 7–8. A few words at a time. Challenging, but you control the pace and finish.");
+  await page.locator("label").filter({ has: hard }).hover();
+  await expect(page.getByRole("tooltip").filter({ hasText: "A few words at a time" })).toBeVisible();
+  const legend = page.getByRole("region", { name: "Effort boxes" });
+  await expect(legend).toContainText("Easy≤45% · RPE 3–4 Can talk in full sentences.");
+  await expect(legend).toContainText("Max≥90% · RPE 9–10 Nothing left.");
+});
+
 test("a generic word lists what it could mean and never picks for the coach", async ({ page }) => {
   await ownerWithGym(page);
   await page.getByLabel("A1 exercise").fill("squat");

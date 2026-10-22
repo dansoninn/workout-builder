@@ -4,6 +4,7 @@ import { Tabs } from "@base-ui/react/tabs";
 import { CircleAlertIcon } from "lucide-react";
 
 import { Bars } from "@/components/design/bars";
+import { EffortLegend } from "@/components/design/effort-legend";
 import { Estimate } from "@/components/design/estimate";
 import { PatternTag } from "@/components/design/tags";
 import type { Measure, WorkoutResult } from "@/lib/engine/types";
@@ -186,6 +187,8 @@ export function LoadPanel({
           )}
         </Tabs.Panel>
       </Tabs.Root>
+
+      <EffortLegend className="border-t border-border pt-4" />
     </div>
   );
 }
