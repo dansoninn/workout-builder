@@ -45,6 +45,7 @@ import {
 import type { Library } from "@/lib/workout/library";
 import { takesResults } from "@/lib/workout/results";
 
+import { ApplyTemplateDialog } from "../calendar/apply-template";
 import { deleteWorkout, saveWorkout, setWorkoutStatus } from "./actions";
 import { BlockEditor, focusField } from "./block-editor";
 import { LoadPanel, type PanelIssue } from "./load-panel";
@@ -75,7 +76,7 @@ export function Builder({
   const [highlighted, setHighlighted] = useState<string | null>(null);
   const [publishBlocked, setPublishBlocked] = useState<{ id: string; label: string }[] | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [useTemplate, setUseTemplate] = useState<{ date: string; trackId: string | null } | null>(null);
+  const [applyOpen, setApplyOpen] = useState(false);
 
   // The engine runs in the browser on every change (deferred so typing never waits).
   const deferred = useDeferredValue(draft);
@@ -204,30 +205,11 @@ export function Builder({
     });
   }, [draft, problems, slug, router]);
 
-  /** A scheduled copy of this template on a date: new ids, its own history from here. */
-  const scheduleFromTemplate = useCallback(
-    (date: string, trackId: string | null) => {
-      if (problems.length > 0) return void toast.error(`Fix this first: ${problems[0]!.message}`);
-      const copy: DraftWorkout = {
-        ...draft,
-        id: crypto.randomUUID(),
-        kind: "scheduled",
-        date,
-        trackId,
-        status: "draft",
-        title: draft.title.replace(/ \(template\)$/, ""),
-        blocks: draft.blocks.map((b) => ({ ...b, id: crypto.randomUUID(), items: b.items.map((i) => ({ ...i, id: crypto.randomUUID() })) })),
-      };
-      startSaving(async () => {
-        const result = await saveWorkout(slug, copy);
-        if (!result.ok) return void toast.error(result.error);
-        setUseTemplate(null);
-        toast.success(`Added on ${new Date(`${date}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })}`);
-        router.push(`/${slug}/builder/${copy.id}`);
-      });
-    },
-    [draft, problems, slug, router],
-  );
+  /** A template on dates: copies are made from the saved template, so unsaved changes are saved first. */
+  const useOnDates = useCallback(() => {
+    if (dirty) return void toast.error("Save the template first: the copies are made from what is saved.");
+    setApplyOpen(true);
+  }, [dirty]);
 
   // ⌘S saves from anywhere on the page.
   useEffect(() => {
@@ -284,11 +266,11 @@ export function Builder({
               ? { id: "unpublish", label: "Back to draft", run: unpublish }
               : { id: "publish", label: "Publish workout", run: publish },
             draft.kind === "template"
-              ? { id: "use-template", label: "Use this template on a date", run: () => setUseTemplate({ date: new Date().toISOString().slice(0, 10), trackId: draft.trackId ?? tracks.find((t) => !t.archived)?.id ?? null }) }
+              ? { id: "use-template", label: "Use this template on dates", run: useOnDates }
               : { id: "template", label: "Save as template", run: saveAsTemplate },
           ]),
     ],
-    [resultsHref, pasteHref, router, readOnly, save, addBlockAfter, draft.status, draft.kind, draft.trackId, tracks, publish, unpublish, saveAsTemplate],
+    [resultsHref, pasteHref, router, readOnly, save, addBlockAfter, draft.status, draft.kind, useOnDates, publish, unpublish, saveAsTemplate],
   );
   usePageCommands(commands);
 
@@ -362,8 +344,8 @@ export function Builder({
             </Button>
             {draft.kind === "template" && savedOnce && (
               <Button variant="outline" size="sm" disabled={saving}
-                onClick={() => setUseTemplate({ date: new Date().toISOString().slice(0, 10), trackId: draft.trackId ?? tracks.find((t) => !t.archived)?.id ?? null })}>
-                <CalendarPlusIcon /> Use on a date
+                onClick={useOnDates}>
+                <CalendarPlusIcon /> Use on dates
               </Button>
             )}
             {draft.status === "published" ? (
@@ -514,58 +496,18 @@ export function Builder({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={useTemplate !== null} onOpenChange={(open) => !open && setUseTemplate(null)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Use this template on a date</DialogTitle>
-            <DialogDescription>A copy goes on the calendar as a draft. Changing it later leaves the template as it is.</DialogDescription>
-          </DialogHeader>
-          <form
-            className="grid gap-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (useTemplate?.date) scheduleFromTemplate(useTemplate.date, useTemplate.trackId);
-            }}
-          >
-            <div className="grid gap-1.5">
-              <label htmlFor={`${dateId}-use`} className="text-sm font-medium">
-                Date
-              </label>
-              <input
-                id={`${dateId}-use`}
-                type="date"
-                required
-                value={useTemplate?.date ?? ""}
-                onChange={(e) => setUseTemplate((u) => (u ? { ...u, date: e.target.value } : u))}
-                className="h-8 rounded-md border border-input bg-surface px-2 text-sm tabular focus-visible:border-ring focus-visible:outline-none"
-              />
-            </div>
-            <div className="grid gap-1.5">
-              <label htmlFor={`${trackId}-use`} className="text-sm font-medium">
-                Track
-              </label>
-              <Select items={trackItems} value={useTemplate?.trackId ?? null} onValueChange={(v) => setUseTemplate((u) => (u ? { ...u, trackId: v ?? null } : u))}>
-                <SelectTrigger id={`${trackId}-use`} className="w-full">
-                  <SelectValue placeholder="No track" />
-                </SelectTrigger>
-                <SelectContent>
-                  {trackItems.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
-              <Button type="submit" disabled={saving || !useTemplate?.date}>
-                {saving ? "Adding…" : "Add to calendar"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {draft.kind === "template" && savedOnce && (
+        <ApplyTemplateDialog
+          slug={slug}
+          templates={[{ id: draft.id, title: draft.title || "Template" }]}
+          fixedTemplateId={draft.id}
+          tracks={tracks}
+          initialTrackId={draft.trackId}
+          today={new Date().toISOString().slice(0, 10)}
+          open={applyOpen}
+          onOpenChange={setApplyOpen}
+        />
+      )}
 
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent className="sm:max-w-md">

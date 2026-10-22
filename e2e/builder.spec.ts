@@ -211,7 +211,7 @@ test("a generic word lists what it could mean and never picks for the coach", as
   await expect(page.getByLabel("A1 amount")).toBeFocused();
 });
 
-test("a workout saved as a template is used on another date, and the template stays", async ({ page }) => {
+test("a template on several dates, from the builder and from the calendar by keyboard; the template stays", async ({ page }) => {
   const { slug } = await ownerWithGym(page);
   await page.getByLabel("Workout title").fill("Engine builder");
   await page.getByLabel("A1 exercise").fill("air squat");
@@ -222,16 +222,36 @@ test("a workout saved as a template is used on another date, and the template st
   await expect(page.getByText("Saved as a template")).toBeVisible();
   await expect(page.getByLabel("Workout title").filter({ visible: true })).toHaveValue("Engine builder (template)");
 
-  await page.getByRole("button", { name: "Use on a date" }).click();
-  const dialog = page.getByRole("dialog", { name: "Use this template on a date" });
+  // This week's Monday, Wednesday and Friday.
   const monday = new Date();
   monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
-  const date = monday.toISOString().slice(0, 10);
-  await dialog.getByLabel("Date").fill(date);
-  await dialog.getByRole("button", { name: "Add to calendar" }).click();
-  await expect(page.getByLabel("Workout title").filter({ visible: true })).toHaveValue("Engine builder");
+  const days = [0, 2, 4].map((n) => new Date(monday.getTime() + n * 86_400_000).toISOString().slice(0, 10));
+  const label = (date: string) =>
+    new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 
-  await page.goto(`/${slug}/calendar?week=${date}`);
-  await expect(page.getByRole("row").filter({ hasText: "Mon" }).getByRole("link", { name: /Engine builder/ })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Templates" }).getByRole("link", { name: /Engine builder \(template\)/ })).toBeVisible();
+  await page.getByRole("button", { name: "Use on dates" }).filter({ visible: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Use this template on dates" });
+  for (const date of days) await dialog.getByRole("button", { name: label(date), exact: true }).click();
+  await expect(dialog.getByRole("list", { name: "Days chosen" }).getByRole("listitem")).toHaveCount(3);
+  await dialog.getByRole("button", { name: "Add to 3 days" }).click();
+  await expect(page).toHaveURL(new RegExp(`/${slug}/calendar\\?view=month&date=${days[0]}`));
+  for (const date of days) {
+    await expect(page.locator(`[data-drop-target="${date}"]`).getByRole("link", { name: /Engine builder/ })).toBeVisible();
+  }
+  const templates = page.getByRole("region", { name: "Templates" });
+  await expect(templates.getByRole("link", { name: /Engine builder \(template\)/ })).toBeVisible();
+
+  // From the calendar, by keyboard only: the day after Friday.
+  await page.getByRole("button", { name: "Apply template" }).click();
+  const apply = page.getByRole("dialog", { name: "Apply a template" });
+  await expect(apply.getByLabel("Template")).toHaveText(/Engine builder \(template\)/);
+  const saturday = new Date(Date.parse(`${days[2]}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+  await apply.getByRole("button", { name: label(days[2]!), exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(apply.getByRole("button", { name: label(saturday), exact: true })).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect(apply.getByRole("button", { name: label(saturday), exact: true })).toHaveAttribute("aria-pressed", "true");
+  await apply.getByRole("button", { name: "Add to calendar" }).click();
+  await expect(page.getByText(`Engine builder (template) added to ${label(saturday)}`)).toBeVisible();
+  await expect(page.locator(`[data-drop-target="${saturday}"]`).getByRole("link", { name: /Engine builder/ })).toBeVisible();
 });

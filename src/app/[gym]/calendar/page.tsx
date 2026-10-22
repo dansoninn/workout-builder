@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { addDays, addMonths, isoDate, monthLabel, monthWeeks, weekDays, weekLabel, weekNumber, weekStart } from "@/lib/week";
 
 import { loadTracks } from "../builder/load";
+import { ApplyTemplateButton } from "./apply-template";
 import { CalendarBoard, type CalendarWorkout } from "./calendar-board";
 
 export const metadata: Metadata = { title: "Calendar" };
@@ -85,6 +86,14 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
         description={view === "week" ? `Week ${weekNumber(days[0]!)} · ${weekLabel(days[0]!)}` : monthLabel(anchor)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {canProgram && (
+              <ApplyTemplateButton
+                slug={gym.slug}
+                templates={((templates.data ?? []) as unknown as Row[]).map((t) => ({ id: t.id, title: t.title || "Untitled template" }))}
+                tracks={tracks}
+                today={today}
+              />
+            )}
             <nav aria-label="View" className="flex rounded-md border border-border p-0.5">
               {(["month", "week"] as const).map((v) => (
                 <Link

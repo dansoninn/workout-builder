@@ -257,8 +257,8 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 
 A workout can only move to `published` when every item has an `exercise_id`.
 
-### Templates (Step 4b)
-A template is a workout with `kind = template` and no date. "Save as template" and "Use on a date" both make a **copy** with new ids, so a template and the workouts made from it change independently, each with its own audit history.
+### Templates (Step 4b; several dates in 5b)
+A template is a workout with `kind = template` and no date. "Save as template" and "Use on dates" both make a **copy** with new ids, so a template and the workouts made from it change independently, each with its own audit history. `copy_workout(org, source, targets)` (5b, migration `002100`) copies a workout to up to 60 dates in one transaction (run as the user, so RLS applies); each copy is a scheduled draft and its metrics are stored right after.
 
 ### Saving a pasted workout: `save_pasted_workout` (Step 4c)
 `save_pasted_workout(org, workout, aliases)` does `save_workout` and, in the same transaction, stores `workouts.raw_text` (the text as pasted, required) and `parser_version`, and inserts the coach's answers as gym aliases (`[{ term, exercise_id }]`; a word the gym already has a name for is left as it is). Runs as the signed-in user, so RLS decides each part; if any part is refused, nothing is saved. Each line's `raw_line` is the line as pasted until the coach edits that line in the builder; the builder's later saves never touch `raw_text`. The server reads the text again with the gym's library and the answers, so what is stored never depends on what the browser sends.
