@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-22 by Claude Code
 **Working mode:** continuous (CLAUDE.md, "Continuous working mode"): each sub-step on its own branch and pull request, merged when CI is green, production deploys by itself. I stop only for coaching decisions; those collect below under "Questions for Daniel".
-**Now:** 4b, 4d (block results), 4c (paste a workout) and **5a (month calendar)** are on production. Building **5b** (a template on several dates), then **5c** (analytics and warnings). Plan: `docs/PLAN-step-5.md`.
+**Now:** 4b, 4d (block results), 4c (paste a workout), **5a (month calendar)** and **5b (a template on several dates)** are on production. Building **5c** (analytics and warnings). Plan: `docs/PLAN-step-5.md`.
 
 ## Questions for Daniel
 1. **AMRAP partial rounds, "7 + 12".** Coaches write an AMRAP score as rounds plus reps into the next round. Today the results screen takes decimals ("7.5"). Should it accept "7 + 12"? If yes, how should "+12" become part of a round: the share of the round's reps (12 of 30 reps → 7.4), or the share of the round's estimated time (better when a round mixes reps, calories and metres)? Nothing waits on this; decimals work meanwhile.
@@ -13,6 +13,9 @@
 1. **Let the production check redeploy by itself** (5 minutes, once): in Vercel, **Project → Settings → Git → Deploy Hooks**, create a hook named `production-check` for branch `main`, copy its address; in GitHub, **dansoninn/workout-builder → Settings → Secrets and variables → Actions → New repository secret**, name `VERCEL_DEPLOY_HOOK`, paste the address. Without it the check still catches a missed deploy, but only tells you (by GitHub email) instead of fixing it.
 
 ## What changed since your 4b review
+
+### 5b: a template on several dates
+- **Apply template** on the calendar, or **Use on dates** on a template in the builder (also ⌘K): pick the template, the track and any number of days in a small month (click, or arrow keys and Space). Each day gets its own draft copy, all made together (if one cannot be made, none are). The template and the other days stay as they are when you change a copy.
 
 ### 5a: month calendar, moving workouts
 - The calendar opens on the **month** (Monday first; on a phone, a list of days), with **Week** (tracks as columns, the week's planned load per track) one click away. Each workout shows its track colour, Draft, session length, planned load and **logged results** ("2 results").
