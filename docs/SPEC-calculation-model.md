@@ -128,7 +128,23 @@ Internal mapping (hidden from the coach, versioned):
 | Hard | 7–8 (calc: 8) | 0–1 |
 | Max | 9–10 (calc: 9.5) | 0 |
 
-Block planned RPE = the higher of pace and load effort for that block. The coach never types a number.
+Block planned RPE = the higher of pace and load effort for that block. In the builder the coach never types a number.
+
+**The four effort boxes ✅ (approved 2026-10-22, Daniel's batch review).** One framework, used everywhere: the builder's effort picker, the parser and the legend. Each box is shown with its description:
+
+| Box | % effort | RPE | Description shown in the app |
+|---|---|---|---|
+| Easy | ≤45% | 3–4 | Can talk in full sentences. Warm-up, flow, recovery. |
+| Moderate | 50–65% | 5–6 | Short sentences. A steady pace you could hold for a long time. |
+| Hard | 70–85% | 7–8 | A few words at a time. Challenging, but you control the pace and finish. |
+| Max | ≥90% | 9–10 | Nothing left. Sprints, short all-out windows. |
+
+**Effort in pasted text ✅ (approved 2026-10-22).**
+- **"%" means two things.** "% 1RM", "% of 1RM", "% of max", or a bare "%" on a loaded lift is a **load** (`percent_1rm`). "% effort" is intensity and goes to an **effort box**; a range uses its midpoint (75–80% effort → Hard). A bare "%" on a line that is not a loaded lift (a row, a run, bodyweight work) is read as % effort *(interpretation, Claude Code 2026-10-22)*.
+- **% effort, RPE and "@ n/10"** go to the boxes by the table above (% effort ≈ RPE × 10). A value between two boxes goes to the nearer one: below 47.5% Easy, below 67.5% Moderate, below 87.5% Hard, from 87.5% Max (RPE 4.7 → 47% → Easy; RPE 8.8 → Max) *(interpretation of the gaps between boxes, Claude Code 2026-10-22)*.
+- **Effort words:** light, easy → Easy; moderate, medium, steady → Moderate; heavy, hard, fast → Hard; max, all out, sprint → Max. The app's own words ("Pace Hard", "Load Moderate") keep working.
+- **Which axis.** "heavy" and "light" set **Load** on a line or block with a load, otherwise Pace. % effort, RPE and "@ n/10" set **Load** on a loaded lift, otherwise Pace *(RPE: interpretation, by analogy with % effort)*. The other words set Pace. Load has no Max: a Max on the load axis is read as Load Hard, and the check screen says so.
+- The check screen shows which word set which effort ("“heavy” → Load Hard").
 
 ---
 
@@ -246,6 +262,10 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (~5
 12. ✅ **Observed results:** after class a coach logs what the group did per block (AMRAP rounds low–high, For Time finish low–high, optional note) — `block_results` in the data model spec, built in Step 4. Per-gym pace calibration from logged results comes later (BACKLOG) — approved 2026-10-21.
 13. ✅ **Alternating EMOM** is an option of `every` with ordered slots (one per interval, one or more lines each); `rounds` = total intervals and sets the length (duration = interval × rounds); the slots take turns and the last rotation may be partial — EMOM 10 with 3 slots: slot 1 done 4 times, slots 2 and 3 three times (§4.3) — approved 2026-10-21 (slots: Daniel's 4a review; partial rotation: 4b review).
 14. ✅ **Rest between blocks** is stored per block, shown in session length, never counted in planned load (§4.3, Lens 4) — approved 2026-10-21.
+15. ✅ **Effort framework:** four boxes with % effort, RPE and a description, used in the builder, the parser and a legend; "%" as load or effort; effort words; RPE and "@ n/10" (§4.4) — approved 2026-10-22.
+16. ✅ **AMRAP partial rounds "7 + 12"** are accepted when logging results: the partial round counts by its share of the round's estimated time (the reps go through the round's lines in order; each line's estimated time counts in proportion), and the text as written is stored — approved 2026-10-22.
+17. ✅ **Men/women amounts** ("15/12 cal", "400/300 m"): the first number is used in every calculation, like loads' first Rx; both are stored and shown — approved 2026-10-22.
+18. ✅ **Default guidelines for a new gym** (analytics warnings, §6): hard sets per week at least squat 4, hinge 4, horizontal push 3, horizontal pull 3, vertical push 2, vertical pull 3; push : pull 0.8–1.2; knee : hip 0.7–1.5; monotony at most 2.0; week-on-week planned load at most +15%. Labelled as the gym's guidelines; the owner edits them — approved 2026-10-22.
 
 ---
 

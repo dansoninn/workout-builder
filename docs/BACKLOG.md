@@ -6,12 +6,11 @@ Claude Code reads this file at the start of every step and moves items to "Done"
 
 Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs to when known.
 
-## Open questions (need Daniel)
-- [ ] Default guidelines for a new gym (analytics warnings): minimum hard sets per pattern per week, push:pull / knee:hip / upper:lower ranges, maximum monotony, maximum week-on-week increase. Today none is set and nothing warns until the owner sets them. (2026-10-22, Claude Code)
-- [ ] Effort words in pasted text ("heavy", "light", "sprint", "RPE 8", "@ 7/10"): which Pace / Load level should each mean? Today the parser only reads the app's own words ("Pace Hard", "Load Moderate") and leaves the rest at the default effort. (2026-10-22, Claude Code)
-- [ ] Men/women amounts in pasted text ("15/12 cal", "400/300 m"): store them as a range for the class (12–15 cal), or the first (men's) number like loads' first Rx? Today the parser asks the coach to rewrite them. (2026-10-22, Claude Code)
-- [ ] AMRAP partial rounds as coaches write them, "7 + 12" (7 rounds and 12 reps into the next): accept it? Turning "+12" into part of a round needs a rule — e.g. the share of the round's reps, or of its estimated time when the round mixes reps, calories and metres. Today the app takes decimals only ("7.5"). (2026-10-22, Claude Code)
+## Daniel's review feedback (process next, in order)
+- [ ] Batch review answers 2026-10-22 (Daniel): effort framework (four boxes, calc spec §4.4 and decision 15); "%" as load or effort; effort words, RPE and "@ n/10"; clearer parse hints; AMRAP "7 + 12" by the round's estimated time (decision 16); men/women amounts, first number (decision 17); default guidelines for new gyms (decision 18). Then plan Step 6 (pilot readiness) in docs/PLAN-step-6.md and stop for review. (2026-10-22, Daniel)
+- [ ] Later (not MVP): "Athlete / performance mode" for 6–12 week individual programs: precise %1RM, RIR, periodisation, no class buffers. General-public class programming stays the default. (2026-10-22, Daniel)
 
+## Open questions (need Daniel)
 
 ## Next steps (planned order)
 - [ ] Step 4 — App (plan approved 2026-10-21: docs/PLAN-step-4.md). Four approval-gated sub-steps, each a pull request with a Vercel preview:
