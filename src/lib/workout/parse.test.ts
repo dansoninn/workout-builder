@@ -213,6 +213,44 @@ describe("common whiteboard formats", () => {
   });
 });
 
+describe("effort in pasted text (calc spec §4.4)", () => {
+  const item = (text: string, answers: Answers = {}) => parse(`For time\n${text}`, answers).blocks[0]!.items[0]!;
+  const line = (text: string) => parse(`For time\n${text}`).lines[1]!;
+
+  it('"%" is a load on a lift and effort elsewhere; "% effort" is always effort', () => {
+    expect(item("5 back squat @ 80%")).toMatchObject({ load: "80%", loadEffort: null, paceEffort: null });
+    expect(item("5 back squat @ 75-80% of 1RM")).toMatchObject({ load: "75-80%" });
+    expect(item("5 deadlift @ 80% of max")).toMatchObject({ load: "80%" });
+    expect(item("5 back squat @ 75-80% effort")).toMatchObject({ load: "", loadEffort: "hard" });
+    expect(item("Row 500 m @ 80%")).toMatchObject({ load: "", paceEffort: "hard" });
+    expect(item("10 burpees @ 50% effort")).toMatchObject({ paceEffort: "moderate" });
+  });
+
+  it("effort words, RPE and @ n/10 go to the boxes, on Load for lifts and Pace otherwise", () => {
+    expect(item("5 back squat (heavy)")).toMatchObject({ loadEffort: "hard", paceEffort: null });
+    expect(item("10 burpees, light")).toMatchObject({ paceEffort: "easy" });
+    expect(item("400 m run fast")).toMatchObject({ paceEffort: "hard" });
+    expect(item("200 m run - sprint")).toMatchObject({ paceEffort: "max" });
+    expect(item("500 m row RPE 6")).toMatchObject({ paceEffort: "moderate" });
+    expect(item("3 deadlift @ 7/10")).toMatchObject({ loadEffort: "hard" });
+  });
+
+  it("Load has no Max, and the check screen says which word set which effort", () => {
+    expect(item("1 deadlift @ 9/10")).toMatchObject({ loadEffort: "hard" });
+    expect(line("1 deadlift @ 9/10").meaning).toContain("“9/10” → Load Hard (Load has no Max)");
+    expect(line("5 back squat (heavy)").meaning).toContain("“heavy” → Load Hard");
+    expect(line("200 m run - sprint").meaning).toContain("“sprint” → Pace Max");
+  });
+
+  it("a block's effort: on its heading or a line of its own; heavy is Load when the block lifts", () => {
+    const { blocks, lines } = parse("AMRAP 12, moderate pace\n10 burpees\n\nA. Back squat 5x5\nHeavy");
+    expect(blocks[0]).toMatchObject({ paceEffort: "moderate" });
+    expect(blocks[1]).toMatchObject({ loadEffort: "hard", paceEffort: null });
+    expect(lines[4]!.meaning).toBe("Effort for block B: “Heavy” → Load Hard");
+    expect(parse("Metcon (hard)\nAMRAP 10\n10 burpees").blocks[0]).toMatchObject({ paceEffort: "hard" });
+  });
+});
+
 describe("nothing is guessed", () => {
   it("a generic word is asked once, and the answer covers its plural", () => {
     const r = parse("For time\n50 squats\n20 squat");
