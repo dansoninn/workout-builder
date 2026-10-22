@@ -48,6 +48,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         ["settings/tracks", "Settings"],
         ["settings/profile", "Settings"],
         ["settings/paces", "Settings"],
+        ["settings/guidelines", "Settings"],
       ];
       for (const [path, heading] of pages) {
         await page.goto(`/${slug}/${path}`);

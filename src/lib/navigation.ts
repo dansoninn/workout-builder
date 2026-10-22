@@ -29,6 +29,7 @@ export const SETTINGS_PAGES: readonly { key: string; label: string; path: string
   { key: "members", label: "Members", path: "settings/members" },
   { key: "tracks", label: "Tracks", path: "settings/tracks" },
   { key: "paces", label: "Paces", path: "settings/paces" },
+  { key: "guidelines", label: "Guidelines", path: "settings/guidelines" },
   { key: "profile", label: "Profile", path: "settings/profile", shortcut: "p" },
 ];
 

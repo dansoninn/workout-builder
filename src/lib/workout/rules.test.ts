@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 
 import { RULE_CASES } from "./rule-cases";
 import { ruleCasesSql } from "./rule-cases-sql";
+import { guidelinesSchema } from "@/lib/analytics/guidelines";
+
 import { resultProblem } from "./results";
 import { blockParamsValid, loadSchema, paceSchema, quantitySchema } from "./rules";
 
@@ -16,6 +18,7 @@ describe("the builder's checks match the database's rules", () => {
         : c.rule === "result" ? resultProblem(c.format, c.params, c.value) === null
         : c.rule === "quantity" ? quantitySchema.safeParse(c.value).success
         : c.rule === "load" ? loadSchema.safeParse(c.value).success
+        : c.rule === "guidelines" ? guidelinesSchema.safeParse(c.value).success
         : paceSchema.safeParse(c.value).success;
       expect(valid).toBe(c.valid);
     },

@@ -9,7 +9,7 @@ import type { BlockFormat } from "./rules";
  */
 export type RuleCase =
   | { rule: "params"; format: BlockFormat; value: unknown; valid: boolean; why: string }
-  | { rule: "quantity" | "load" | "pace"; value: unknown; valid: boolean; why: string }
+  | { rule: "quantity" | "load" | "pace" | "guidelines"; value: unknown; valid: boolean; why: string }
   | { rule: "result"; format: BlockFormat; params: Record<string, unknown>; value: ResultMeasure; valid: boolean; why: string };
 
 const amrap8 = { format: "amrap", params: { time_s: 480 } } as const;
@@ -95,4 +95,16 @@ export const RULE_CASES: RuleCase[] = [
   { rule: "result", ...capped15, value: finish(700, 900), valid: true, why: "capped athletes count as the cap" },
   { rule: "result", ...capped15, value: finish(700, 901), valid: false, why: "not over the cap" },
   { rule: "result", format: "every", params: { interval_s: 60, rounds: 10 }, value: rounds(10, 10), valid: false, why: "only AMRAP and For Time" },
+
+  // The gym's guidelines (analytics warnings).
+  { rule: "guidelines", value: {}, valid: true, why: "none set" },
+  { rule: "guidelines", value: { hardSetsPerWeek: { hinge: 4, v_pull: 3 }, kneeHip: { max: 2 }, pushPull: { min: 0.8, max: 1.5 }, monotonyMax: 2, weekIncreaseMaxPercent: 20 }, valid: true, why: "all of them" },
+  { rule: "guidelines", value: { hardSetsPerWeek: { deadlift: 3 } }, valid: false, why: "a known pattern" },
+  { rule: "guidelines", value: { hardSetsPerWeek: { hinge: 0 } }, valid: false, why: "more than no sets" },
+  { rule: "guidelines", value: { kneeHip: { min: 3, max: 2 } }, valid: false, why: "lowest not above highest" },
+  { rule: "guidelines", value: { kneeHip: { most: 2 } }, valid: false, why: "a ratio is min and max" },
+  { rule: "guidelines", value: { monotonyMax: 0 }, valid: false, why: "monotony above 0" },
+  { rule: "guidelines", value: { monotonyMax: "2" }, valid: false, why: "monotony is a number" },
+  { rule: "guidelines", value: { weekIncreaseMaxPercent: 600 }, valid: false, why: "a sane increase" },
+  { rule: "guidelines", value: { acwr: 1.5 }, valid: false, why: "no unknown guideline" },
 ];

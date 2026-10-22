@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(67);
+select plan(77);
 
 select is(private.block_params_valid('sets', '{"sets":5,"rest_s":120}'::jsonb), true, 'params sets: sets with rest (valid)');
 select is(private.block_params_valid('sets', '{"sets":5}'::jsonb), true, 'params sets: rest is optional (valid)');
@@ -74,6 +74,16 @@ select is(private.block_result_problem('for_time', '{"rounds":3}'::jsonb, 3, 3, 
 select is(private.block_result_problem('for_time', '{"rounds":3,"time_cap_s":900}'::jsonb, null::numeric, null::numeric, 700, 900) is null, true, 'result for_time: capped athletes count as the cap (valid)');
 select is(private.block_result_problem('for_time', '{"rounds":3,"time_cap_s":900}'::jsonb, null::numeric, null::numeric, 700, 901) is null, false, 'result for_time: not over the cap (invalid)');
 select is(private.block_result_problem('every', '{"interval_s":60,"rounds":10}'::jsonb, 10, 10, null::int, null::int) is null, false, 'result every: only AMRAP and For Time (invalid)');
+select is(private.guidelines_problem('{}'::jsonb) is null, true, 'guidelines: none set (valid)');
+select is(private.guidelines_problem('{"hardSetsPerWeek":{"hinge":4,"v_pull":3},"kneeHip":{"max":2},"pushPull":{"min":0.8,"max":1.5},"monotonyMax":2,"weekIncreaseMaxPercent":20}'::jsonb) is null, true, 'guidelines: all of them (valid)');
+select is(private.guidelines_problem('{"hardSetsPerWeek":{"deadlift":3}}'::jsonb) is null, false, 'guidelines: a known pattern (invalid)');
+select is(private.guidelines_problem('{"hardSetsPerWeek":{"hinge":0}}'::jsonb) is null, false, 'guidelines: more than no sets (invalid)');
+select is(private.guidelines_problem('{"kneeHip":{"min":3,"max":2}}'::jsonb) is null, false, 'guidelines: lowest not above highest (invalid)');
+select is(private.guidelines_problem('{"kneeHip":{"most":2}}'::jsonb) is null, false, 'guidelines: a ratio is min and max (invalid)');
+select is(private.guidelines_problem('{"monotonyMax":0}'::jsonb) is null, false, 'guidelines: monotony above 0 (invalid)');
+select is(private.guidelines_problem('{"monotonyMax":"2"}'::jsonb) is null, false, 'guidelines: monotony is a number (invalid)');
+select is(private.guidelines_problem('{"weekIncreaseMaxPercent":600}'::jsonb) is null, false, 'guidelines: a sane increase (invalid)');
+select is(private.guidelines_problem('{"acwr":1.5}'::jsonb) is null, false, 'guidelines: no unknown guideline (invalid)');
 
 select * from finish();
 rollback;

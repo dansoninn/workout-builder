@@ -7,6 +7,7 @@ Claude Code reads this file at the start of every step and moves items to "Done"
 Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs to when known.
 
 ## Open questions (need Daniel)
+- [ ] Default guidelines for a new gym (analytics warnings): minimum hard sets per pattern per week, push:pull / knee:hip / upper:lower ranges, maximum monotony, maximum week-on-week increase. Today none is set and nothing warns until the owner sets them. (2026-10-22, Claude Code)
 - [ ] Effort words in pasted text ("heavy", "light", "sprint", "RPE 8", "@ 7/10"): which Pace / Load level should each mean? Today the parser only reads the app's own words ("Pace Hard", "Load Moderate") and leaves the rest at the default effort. (2026-10-22, Claude Code)
 - [ ] Men/women amounts in pasted text ("15/12 cal", "400/300 m"): store them as a range for the class (12–15 cal), or the first (men's) number like loads' first Rx? Today the parser asks the coach to rewrite them. (2026-10-22, Claude Code)
 - [ ] AMRAP partial rounds as coaches write them, "7 + 12" (7 rounds and 12 reps into the next): accept it? Turning "+12" into part of a round needs a rule — e.g. the share of the round's reps, or of its estimated time when the round mixes reps, calories and metres. Today the app takes decimals only ("7.5"). (2026-10-22, Claude Code)
@@ -33,8 +34,10 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
   - [x] **4d** `block_results`: table (data model §6), RLS, audit, pgTAP, and the phone-friendly after-class logging screen — built 2026-10-22 (Results, G then R). (2026-10-21, Daniel)
     - [x] Show logged results on the calendar (cards say "2 results") — built in 5a. (2026-10-22, Claude Code)
     - [ ] A gym's class times as a list to pick from when logging (today the class is free text, e.g. "06:00"). (2026-10-22, Claude Code)
-- [ ] Step 5 — Calendar (day / week / month, details in cells, colour by type, drag and drop), templates (apply to several dates at once), analytics.
-  - [ ] Weekly/period analytics over `workout_metrics` (the engine's `weekSummary` already computes total, monotony, strain, week-on-week change). (2026-10-21, Claude Code)
+- [x] Step 5 — Calendar (month and week, drag and drop), templates on several dates, analytics over 7/14/30 days or a range with the four lenses, warnings against the gym's guidelines — built 2026-10-22 (5a, 5b, 5c). (2026-10-21, Daniel)
+  - [x] Weekly/period analytics over `workout_metrics` (total, monotony, strain, week-on-week change). (2026-10-21, Claude Code)
+  - [ ] A day view in the calendar (month and week today). (2026-10-22, Claude Code)
+  - [ ] Analytics comparing two periods side by side; ACWR as a trend only (calc spec Lens 4). (2026-10-22, Claude Code)
 - [ ] Later — Plyometric foot contacts metric (jumps, DU/SU, landings) — Lens candidate. (2026-10-21, Daniel)
 - [ ] Decide after 4b, with real data: split the `core` pattern into anti-extension / anti-rotation / anti-lateral-flexion / flexion. A taxonomy change (new taxonomy version, pattern weights reviewed). (2026-10-21, Daniel)
 - [ ] Decide after 4b, with real data: gait / locomotion as its own pattern (crawls, sprints, shuttles). A taxonomy change (new taxonomy version, pattern weights reviewed). (2026-10-21, Daniel)
