@@ -1,23 +1,21 @@
 # Status
 
 **Updated:** 2026-10-22 by Claude Code
-**Working mode:** continuous (CLAUDE.md, "Continuous working mode"): each sub-step on its own branch and pull request, merged when CI is green, production deploys by itself. I stop only for coaching decisions; those collect below under "Questions for Daniel".
-**Now:** **Step 5 is done and on production**: 4b, 4d (block results), 4c (paste a workout), 5a (month calendar), 5b (a template on several dates) and 5c (analytics and warnings). I have stopped here, as you asked, for your batch review. Plan as built: `docs/PLAN-step-5.md`.
+**Working mode:** continuous (CLAUDE.md, "Continuous working mode").
+**Now:** working through your batch review answers (BACKLOG, "Daniel's review feedback"), each as its own pull request; then the Step 6 plan (`docs/PLAN-step-6.md`), where I stop for your review.
+
+## What changed since your batch review (2026-10-22)
+- **Effort framework (your answers 1–4):** calc spec §4.4 has the four boxes with % effort, RPE and descriptions (decisions 15–18 added). In the builder each effort box shows its % effort, RPE and description in a tooltip (and to screen readers), and the load panel and paste screen show a legend. The parser reads "% effort" (a range by its midpoint), "% 1RM / % of 1RM / % of max" and a bare % on a lift as loads, effort words, "RPE n" and "@ n/10"; the check screen says which word set which effort ("“heavy” → Load Hard"). Hints now name the part not understood ('Did not understand "Effort" after 75-80%. Try …').
+  - Interpretations to check: a value between two boxes goes to the nearer one (47% → Easy, 88% → Max); a bare "%" on a row, run or bodyweight line is % effort; "with a load" includes a lift done with weights even when no weight is written ("Back squat 5x5 heavy" → Load Hard).
+- Still to come: "7 + 12" results, men/women amounts, default guidelines for new gyms, then the Step 6 plan.
 
 ## Questions for Daniel
-1. **AMRAP partial rounds, "7 + 12".** Coaches write an AMRAP score as rounds plus reps into the next round. Today the results screen takes decimals ("7.5"). Should it accept "7 + 12"? If yes, how should "+12" become part of a round: the share of the round's reps (12 of 30 reps → 7.4), or the share of the round's estimated time (better when a round mixes reps, calories and metres)? Nothing waits on this; decimals work meanwhile.
-2. **Effort words in pasted text.** Whiteboards say "heavy", "light", "sprint", "RPE 8", "@ 7/10". Which Pace or Load level should each mean? Today the parser reads only the app's own words ("Pace Hard", "Load Moderate") and leaves other words at the block's default effort (the builder shows it as the outlined default, so the coach sees it). A word list from you is all it needs.
-3. **Men/women amounts** ("15/12 cal bike", "400/300 m run"). Store them as a range for the class (12–15 cal), or use the first (men's) number the way loads use the first Rx? Today the parser asks the coach to rewrite the line.
-4. **Default guidelines for a new gym** (analytics warnings). Today none is set, so nothing warns until the owner fills in Settings → Guidelines. Should a new gym start with defaults, and which? Starting points to accept or change, all labelled in the app as the gym's guidelines, not science:
-   - hard sets per week, at least: squat 4, hinge 4, horizontal push 3, horizontal pull 3, vertical push 2, vertical pull 3 (strength work in a class gym is spread over 3–5 sessions; well below the ~10 sets per muscle often cited for hypertrophy, Schoenfeld et al. 2017);
-   - push : pull 0.8–1.2 and knee : hip 0.7–1.5 (balance, no single source; coaching convention);
-   - monotony at most 2.0 (Foster 1998 flags weeks above 2.0);
-   - week-on-week planned load at most +15% (a convention; the evidence for any fixed number is weak, which is why it is a trend only).
+None open: your four batch-review answers are being built (above).
 
 ## Your steps
 1. **Let the production check redeploy by itself** (5 minutes, once): in Vercel, **Project → Settings → Git → Deploy Hooks**, create a hook named `production-check` for branch `main`, copy its address; in GitHub, **dansoninn/workout-builder → Settings → Secrets and variables → Actions → New repository secret**, name `VERCEL_DEPLOY_HOOK`, paste the address. Without it the check still catches a missed deploy, but only tells you (by GitHub email) instead of fixing it.
 
-## What changed since your 4b review
+## Earlier: what changed between your 4b review and your batch review
 
 ### 5c: analytics and warnings (Analytics, G then A; Settings → Guidelines)
 - **Any period**: the last 7, 14 or 30 days, or any range (up to a year); all tracks or one.

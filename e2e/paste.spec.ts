@@ -72,7 +72,9 @@ test("effort words are read into the four boxes, and the check screen says which
   await expect(lines.getByRole("listitem").filter({ hasText: "400 m run" })).toContainText("“fast” → Pace Hard");
   await expect(lines.getByRole("listitem").filter({ hasText: "burpees" })).toContainText("“50% effort” → Pace Moderate");
   await expect(page.getByRole("region", { name: "Effort boxes" })).toContainText("Short sentences.");
-  await page.getByLabel("The workout, as you would write it on the whiteboard").fill("Back squat 5 @ 75-80% Effort xyz");
+  // A hint names the part it did not understand.
+  await page.getByLabel("The workout, as you would write it on the whiteboard").fill("For time\n5 back squat @ 2 bars");
+  await expect(lines.getByRole("listitem").filter({ hasText: "back squat" })).toContainText('Did not understand "bars" after 2.');
 });
 
 test("viewers cannot paste a workout", async ({ page, browser }) => {
