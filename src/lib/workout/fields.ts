@@ -39,6 +39,33 @@ const UNIT_WORDS: Record<string, MeasureUnit> = {
  * coach types a bare number or "max".
  */
 export function parseQuantity(input: string, unit: MeasureUnit = "reps"): Parsed<Quantity> {
+  const read = readQuantity(input, unit);
+  if (read.ok || !UNREAD.test(read.error)) return read;
+  return { ok: false, error: whatWasNotRead(input, (t) => readQuantity(t, unit).ok, QUANTITY_EXAMPLES) };
+}
+
+const QUANTITY_EXAMPLES = "Try 5, 8-10, 21-15-9, 8/8, 400 m, 15 cal, 0:30 or max";
+const LOAD_EXAMPLES = "Try 75-80%, 22.5/15 kg, 2x22.5 or bw";
+/** Errors that only say the text was not read; the others (a range the wrong way round) say what to fix. */
+const UNREAD = /^(?:Try |Unknown unit)/;
+
+/**
+ * Says which part was not understood: the longest start of the text that
+ * reads, and what follows it ('Did not understand "effort" after 75-80%').
+ */
+function whatWasNotRead(input: string, reads: (text: string) => boolean, examples: string): string {
+  const words = input.trim().split(/\s+/);
+  for (let k = words.length - 1; k > 0; k--) {
+    const head = words.slice(0, k).join(" ");
+    if (reads(head)) return `Did not understand "${words.slice(k).join(" ")}" after ${head}. ${examples}`;
+  }
+  // "15a": a number with something stuck to it.
+  const glued = input.trim().match(/^(\d+(?:[.,]\d+)?%?)([^\d\s].*)$/);
+  if (glued && reads(glued[1]!)) return `Did not understand "${glued[2]}" after ${glued[1]}. ${examples}`;
+  return `Did not understand "${input.trim()}". ${examples}`;
+}
+
+function readQuantity(input: string, unit: MeasureUnit): Parsed<Quantity> {
   const text = input.trim().toLowerCase().replace(/[–—]/g, "-").replace(/\s+/g, " ");
   if (!text) return { ok: false, error: "Enter an amount" };
 
@@ -72,7 +99,7 @@ export function parseQuantity(input: string, unit: MeasureUnit = "reps"): Parsed
 
   // A number or range, with an optional unit: 5 · 8-10 · 800 m · 1.5 km · 8-12 cal
   const amount = text.match(new RegExp(`^(${NUMBER})(?:\\s*-\\s*(${NUMBER}))?\\s*([a-z]+)?$`));
-  if (!amount) return { ok: false, error: "Try 5, 8-10, 21-15-9, 8/8, 400 m, 15 cal, 0:30 or max" };
+  if (!amount) return { ok: false, error: QUANTITY_EXAMPLES };
   const [, lowText, highText, word] = amount;
   const amountUnit = word ? UNIT_WORDS[word] : unit;
   if (!amountUnit) return { ok: false, error: `Unknown unit "${word}"` };
@@ -102,7 +129,20 @@ export function parseQuantity(input: string, unit: MeasureUnit = "reps"): Parsed
 
 /** Parses a load: 75% · 75-80% · 22.5 · 22.5/15 kg · bw · 2x22.5 (two implements). */
 export function parseLoad(input: string): Parsed<Load | null> {
-  const text = input.trim().toLowerCase().replace(/[–—]/g, "-").replace(/\s+/g, " ").replace(/^@\s*/, "");
+  const read = readLoad(input);
+  if (read.ok || !UNREAD.test(read.error)) return read;
+  return { ok: false, error: whatWasNotRead(input.replace(/^\s*@\s*/, ""), (t) => readLoad(t).ok, LOAD_EXAMPLES) };
+}
+
+function readLoad(input: string): Parsed<Load | null> {
+  const text = input
+    .trim()
+    .toLowerCase()
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .replace(/^@\s*/, "")
+    // 75% 1RM · 75-80% of 1RM · 80% of max: a load (calc spec §4.4).
+    .replace(/%\s*(?:of\s*)?(?:1\s*rm|max)$/, "%");
   if (!text) return { ok: true, value: null };
   if (/^(bw|body ?weight)$/.test(text)) return { ok: true, value: { type: "bodyweight" } };
 
@@ -120,7 +160,7 @@ export function parseLoad(input: string): Parsed<Load | null> {
     if (!rx.every((w) => w > 0)) return { ok: false, error: "Enter a weight, e.g. 22.5/15" };
     return { ok: true, value: { type: "absolute_kg", rx }, ...(kg[1] ? { implementCount: Number(kg[1]) } : {}) };
   }
-  return { ok: false, error: "Try 75-80%, 22.5/15 kg, 2x22.5 or bw" };
+  return { ok: false, error: LOAD_EXAMPLES };
 }
 
 const UNIT_NAMES: Record<MeasureUnit, string> = { reps: "reps", distance_m: "m", calories: "cal", time_s: "time" };

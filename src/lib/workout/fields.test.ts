@@ -45,8 +45,9 @@ describe("parseQuantity", () => {
     ["10-8", "The second number must be larger, e.g. 8-10"],
     ["8/6", "Per side means the same number each side, e.g. 8/8"],
     ["2.5", "Use whole reps"],
-    ["5 kg", 'Unknown unit "kg"'],
-    ["lots", "Try 5, 8-10, 21-15-9, 8/8, 400 m, 15 cal, 0:30 or max"],
+    ["5 kg", 'Did not understand "kg" after 5. Try 5, 8-10, 21-15-9, 8/8, 400 m, 15 cal, 0:30 or max'],
+    ["lots", 'Did not understand "lots". Try 5, 8-10, 21-15-9, 8/8, 400 m, 15 cal, 0:30 or max'],
+    ["15a", 'Did not understand "a" after 15. Try 5, 8-10, 21-15-9, 8/8, 400 m, 15 cal, 0:30 or max'],
   ])("%s is refused: %s", (input, error) => {
     expect(parseQuantity(input)).toEqual({ ok: false, error });
   });
@@ -76,6 +77,9 @@ describe("parseLoad", () => {
     ["22,5/15 kg", { type: "absolute_kg", rx: [22.5, 15] }, undefined],
     ["2x22.5/15", { type: "absolute_kg", rx: [22.5, 15] }, 2],
     ["2 × 22.5 kg", { type: "absolute_kg", rx: [22.5] }, 2],
+    ["75% 1RM", { type: "percent_1rm", min: 75, max: 75 }, undefined],
+    ["75-80% of 1RM", { type: "percent_1rm", min: 75, max: 80 }, undefined],
+    ["80% of max", { type: "percent_1rm", min: 80, max: 80 }, undefined],
     ["bw", { type: "bodyweight" }, undefined],
     ["Bodyweight", { type: "bodyweight" }, undefined],
   ] as const)("%s", (input, expected, implementCount) => {
@@ -86,6 +90,12 @@ describe("parseLoad", () => {
 
   it.each(["80-75%", "110%", "heavy", "0 kg"])("%s is refused", (input) => {
     expect(parseLoad(input).ok).toBe(false);
+  });
+
+  it("says which part it did not understand", () => {
+    expect(parseLoad("75-80% Effort")).toEqual({ ok: false, error: 'Did not understand "Effort" after 75-80%. Try 75-80%, 22.5/15 kg, 2x22.5 or bw' });
+    expect(parseLoad("heavy")).toEqual({ ok: false, error: 'Did not understand "heavy". Try 75-80%, 22.5/15 kg, 2x22.5 or bw' });
+    expect(parseLoad("80-75%")).toEqual({ ok: false, error: "Use a percentage up to 100, e.g. 75-80%" });
   });
 
   it("shows two implements as 2 × load", () => {

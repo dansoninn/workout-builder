@@ -3,6 +3,7 @@ import { normalizeAlias } from "@/lib/normalize-alias";
 import type { EffortKey } from "@/lib/taxonomy";
 
 import { type BlockParams, type DraftBlock, type DraftItem, FORMAT_LABELS, newBlock, newItem } from "./draft";
+import { type EffortFound, effortFromPercent, takeEffortText } from "./effort-text";
 import { durationText, loadMeaning, parseDuration, parseLoad, parseQuantity, quantityMeaning } from "./fields";
 import { type Library, type LibraryExercise, searchExercises } from "./library";
 import type { BlockFormat } from "./rules";
@@ -119,22 +120,13 @@ function seconds(text: string, bare: "min" | "s"): number | null {
   return parseDuration(text.replace(/'$/, " min").replace(/"$/, " s").replace(/\bm$/, "min"), bare);
 }
 
-const EFFORT_WORDS: Record<string, EffortKey> = { easy: "easy", moderate: "moderate", hard: "hard", max: "max" };
-
-/** The app's own effort words ("Pace Hard", "Load Moderate"), taken out of the text. */
-function takeEfforts(text: string): { text: string; pace: EffortKey | null; load: Exclude<EffortKey, "max"> | null } {
-  let pace: EffortKey | null = null;
-  let load: Exclude<EffortKey, "max"> | null = null;
-  const rest = text
-    .replace(/\bpace\s+(easy|moderate|hard|max)\b/i, (_, word: string) => {
-      pace = EFFORT_WORDS[word.toLowerCase()]!;
-      return " ";
-    })
-    .replace(/\bload\s+(easy|moderate|hard)\b/i, (_, word: string) => {
-      load = EFFORT_WORDS[word.toLowerCase()] as Exclude<EffortKey, "max">;
-      return " ";
-    });
-  return { text: rest.replace(/\s+/g, " ").trim(), pace, load };
+/** An effort read from the text and what it set, for the check screen ("heavy" → Load Hard). */
+export interface EffortSet {
+  source: string;
+  axis: "pace" | "load";
+  level: EffortKey;
+  /** Load has no Max: said when a Max became Load Hard. */
+  note?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,14 +155,14 @@ interface ItemParts {
   words: string;
   load: string | null;
   notes: string[];
-  pace: EffortKey | null;
-  loadEffort: Exclude<EffortKey, "max"> | null;
+  efforts: EffortFound[];
 }
 
 const looksLikeLoad = (text: string) => parseLoad(text).ok && /\d|bw|body/i.test(text);
 
 function splitItem(original: string): ItemParts {
-  const efforts = takeEfforts(original);
+  // 75% 1RM · 75-80% of 1RM · 80% of max: a load (calc spec §4.4), before "max" can read as an effort.
+  const efforts = takeEffortText(original.replace(/(\d)\s*%\s*(?:of\s*)?(?:1\s*rm|max)\b/gi, "$1%"));
   let s = efforts.text;
   const notes: string[] = [];
   const problems: string[] = [];
@@ -237,7 +229,7 @@ function splitItem(original: string): ItemParts {
     .replace(/^[\s,.:;-]*(?:x\s+|of\s+)?/i, "")
     .replace(/[\s,.:;-]+$/, "")
     .trim();
-  return { problems, sets, quantity, words, load, notes, pace: efforts.pace, loadEffort: efforts.load };
+  return { problems, sets, quantity, words, load, notes, efforts: efforts.found };
 }
 
 // ---------------------------------------------------------------------------
@@ -438,6 +430,8 @@ export interface ParsedLine {
   /** The block this line belongs to (index), if any. */
   block: number | null;
   items: ParsedItem[];
+  /** The efforts this line set, and from which words. */
+  efforts: EffortSet[];
   /** A number is missing or unreadable: the workout cannot be made until the text says it. */
   blocking: boolean;
 }
@@ -462,6 +456,8 @@ interface Building {
   roundsOnly: boolean;
   /** Every heading line of the block ("Metcon", then "EMOM 12"). */
   headingLines: ParsedLine[];
+  /** The block's efforts, set once its lines are known ("heavy" is Load only if the block has a load). */
+  efforts: { found: EffortFound; line: ParsedLine }[];
 }
 
 const NOTE_LINE = /^(?:scale[sd]?|scaling|score|rx|note|notes|coach(?:'s)? notes?|goal|stimulus|target|options?|tip)\s*[:-]/i;
@@ -477,7 +473,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
   let seenContent = false;
 
   const startBlock = (letter: string | null): Building => {
-    const building: Building = { block: { ...newBlock(), items: [] }, letter, hasFormat: false, intentFrom: "format", scheme: null, headingLine: null, setsFromLine: false, roundsOnly: false, headingLines: [] };
+    const building: Building = { block: { ...newBlock(), items: [] }, letter, hasFormat: false, intentFrom: "format", scheme: null, headingLine: null, setsFromLine: false, roundsOnly: false, headingLines: [], efforts: [] };
     blocks.push(building);
     current = building;
     waiting = null;
@@ -525,8 +521,16 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
     if (parts.quantity) item.quantity = parts.quantity;
     if (parts.load) item.load = parts.load;
-    if (parts.pace) item.paceEffort = parts.pace;
-    if (parts.loadEffort) item.loadEffort = parts.loadEffort;
+    const exercise = resolution?.kind === "matched" ? resolution.exercise : null;
+    const efforts = [...parts.efforts];
+    // A bare "%" is a load on a loaded lift; on a row, a run or bodyweight work it is effort (calc spec §4.4).
+    const percent = item.load ? parseLoad(item.load) : null;
+    if (percent?.ok && percent.value?.type === "percent_1rm" && exercise && !isWeightedLift(exercise)) {
+      efforts.push({ source: item.load, level: effortFromPercent((percent.value.min + percent.value.max) / 2), axis: "pace" });
+      item.load = "";
+    }
+    const loaded = item.load.trim() !== "";
+    for (const effort of efforts) setEffort(item, effort, loaded, loaded || (exercise !== null && isWeightedLift(exercise)), line);
     if (parts.sets !== null) {
       const { block } = building;
       if (!building.hasFormat && !building.setsFromLine) {
@@ -557,7 +561,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
   };
 
   text.replace(/\r\n?/g, "\n").split("\n").forEach((original, index) => {
-    const line: ParsedLine = { line: index, text: original, status: "ok", meaning: "", problems: [], block: null, items: [], blocking: false };
+    const line: ParsedLine = { line: index, text: original, status: "ok", meaning: "", problems: [], block: null, items: [], efforts: [], blocking: false };
     lines.push(line);
     const tidied = tidy(original);
     if (!tidied) {
@@ -565,7 +569,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       return;
     }
     const heading = readHeading(tidied);
-    const efforts = takeEfforts(heading.rest);
+    const efforts = takeEffortText(heading.rest);
     const read = readFormat(efforts.text);
     const startsBlock = (heading.letter !== null && !heading.itemOfBlock) || heading.intent !== null || read !== null;
 
@@ -591,11 +595,10 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
 
     // "Pace Hard", "Load Moderate" on their own line: the block's effort.
-    if (open && efforts.text === "" && !heading.letter && !heading.intent && (efforts.pace || efforts.load)) {
-      if (efforts.pace) open.block.paceEffort = efforts.pace;
-      if (efforts.load) open.block.loadEffort = efforts.load;
-      line.meaning = [efforts.pace && `Pace ${capitalise(efforts.pace)}`, efforts.load && `Load ${capitalise(efforts.load)}`].filter(Boolean).join(" · ") + ` for block ${letterOf(blocks.indexOf(open))}`;
+    if (open && efforts.text === "" && !heading.letter && !heading.intent && efforts.found.length > 0) {
+      for (const found of efforts.found) open.efforts.push({ found, line });
       line.block = blocks.indexOf(open);
+      line.meaning = `Effort for block ${letterOf(blocks.indexOf(open))}`;
       return;
     }
 
@@ -644,8 +647,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
         building.block.intent = heading.intent;
         building.intentFrom = "section";
       }
-      if (efforts.pace) building.block.paceEffort = efforts.pace;
-      if (efforts.load) building.block.loadEffort = efforts.load;
+      for (const found of efforts.found) building.efforts.push({ found, line });
       if (/\b(?:partner|in pairs|teams? of 2)\b/i.test(tidied)) building.block.partner = true;
       if (read) {
         building.block.format = read.format;
@@ -707,6 +709,17 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       for (const item of block.items) item.slot = null;
     }
     if (building.intentFrom === "format") block.intent = building.roundsOnly ? "conditioning" : intentFromFormat(block, library);
+    // The block's efforts, now that its lines say whether it has a load.
+    const index = indexOf(library);
+    const loaded = block.items.some((i) => i.load.trim() !== "");
+    const lift = loaded || block.items.some((i) => {
+      const exercise = i.exerciseId ? index.byId.get(i.exerciseId) : undefined;
+      return exercise !== undefined && isWeightedLift(exercise);
+    });
+    for (const { found, line } of building.efforts) {
+      setEffort(block, found, loaded, lift, line);
+      if (line.meaning.startsWith("Effort for block")) line.meaning = `Effort for block ${letterOf(b)}: ${effortsText(line.efforts)}`;
+    }
   });
 
   // What each line now means, and whether it needs the coach.
@@ -728,6 +741,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       : building?.headingLines.includes(line) ? `Block ${letterOf(line.block!)}${building.block.title ? ` · ${building.block.title}` : ""}`
       : slot ? `Minute ${slot}: ${parts}`
       : parts;
+    if (line.efforts.length) line.meaning = `${line.meaning} · ${effortsText(line.efforts)}`;
     const needs = line.problems.length > 0 || line.blocking || line.items.some((i) => i.resolution !== null && i.resolution.kind !== "matched");
     line.status = needs ? "ask" : "ok";
   }
@@ -736,6 +750,42 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
 }
 
 const NO_AMOUNT = "Add the amount, e.g. 10 burpees";
+
+/** A movement done with weights: a bare "%" on it is a load, and % effort or RPE on it sets Load. */
+const isWeightedLift = (exercise: LibraryExercise) => exercise.kind === "movement" && exercise.equipment.some((e) => WEIGHTS.has(e));
+
+/**
+ * Sets a read effort on a line or block, on the axis it belongs to
+ * (calc spec §4.4), and records it for the check screen. Load has no Max.
+ */
+function setEffort(
+  target: { paceEffort: EffortKey | null; loadEffort: Exclude<EffortKey, "max"> | null },
+  effort: EffortFound,
+  loaded: boolean,
+  lift: boolean,
+  line: ParsedLine,
+) {
+  // heavy/light and % effort, RPE, @ n/10: Load on a line with a load or a lift with weights, else Pace.
+  const axis = effort.axis === "pace" || effort.axis === "load" ? effort.axis : loaded || lift ? "load" : "pace";
+  if (axis === "load") {
+    const level = effort.level === "max" ? "hard" : effort.level;
+    target.loadEffort = level;
+    line.efforts.push({ source: effort.source, axis, level, ...(effort.level === "max" && { note: "Load has no Max" }) });
+  } else {
+    target.paceEffort = effort.level;
+    line.efforts.push({ source: effort.source, axis, level: effort.level });
+  }
+}
+
+/** “heavy” → Load Hard, “sprint” → Pace Max; the app's own words as they are. */
+function effortsText(efforts: EffortSet[]): string {
+  return efforts
+    .map((e) => {
+      const result = `${capitalise(e.axis)} ${capitalise(e.level)}`;
+      return e.source.toLowerCase() === result.toLowerCase() ? result : `“${e.source}” → ${result}${e.note ? ` (${e.note})` : ""}`;
+    })
+    .join(", ");
+}
 const letterOf = (index: number) => String.fromCharCode(65 + index);
 const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 
