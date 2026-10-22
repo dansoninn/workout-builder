@@ -45,3 +45,31 @@ export function weekNumber(iso: string): number {
   const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
   return 1 + Math.round((thursday.getTime() - firstThursday.getTime()) / DAY_MS / 7 - (3 - ((firstThursday.getUTCDay() + 6) % 7)) / 7);
 }
+
+/** The first of the month containing `iso`. */
+export function monthStart(iso: string): string {
+  return `${iso.slice(0, 7)}-01`;
+}
+
+/** The first of the month `months` away (negative goes back). */
+export function addMonths(iso: string, months: number): string {
+  const [year, month] = iso.split("-").map(Number) as [number, number];
+  const date = new Date(Date.UTC(year, month - 1 + months, 1));
+  return isoDate(date);
+}
+
+/** Whole weeks (Monday to Sunday) covering the month containing `iso`. */
+export function monthWeeks(iso: string): string[][] {
+  const first = monthStart(iso);
+  const last = addDays(addMonths(first, 1), -1);
+  const weeks: string[][] = [];
+  for (let monday = weekStart(first); monday <= last; monday = addDays(monday, 7)) weeks.push(weekDays(monday));
+  return weeks;
+}
+
+const monthFormat = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+
+/** "October 2026". */
+export function monthLabel(iso: string): string {
+  return monthFormat.format(toDate(monthStart(iso)));
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { addDays, dayLabel, weekDays, weekLabel, weekNumber, weekStart } from "./week";
+import { addDays, addMonths, dayLabel, monthLabel, monthStart, monthWeeks, weekDays, weekLabel, weekNumber, weekStart } from "./week";
 
 describe("weeks", () => {
   it("start on Monday", () => {
@@ -21,5 +21,18 @@ describe("weeks", () => {
     expect(weekNumber("2026-10-21")).toBe(43);
     expect(weekNumber("2027-01-01")).toBe(53);
     expect(weekNumber("2026-01-01")).toBe(1);
+  });
+
+  it("months: whole weeks from Monday, and moving month by month", () => {
+    const weeks = monthWeeks("2026-10-22");
+    expect(weeks).toHaveLength(5);
+    expect(weeks[0]![0]).toBe("2026-09-28");
+    expect(weeks.at(-1)!.at(-1)).toBe("2026-11-01");
+    expect(monthWeeks("2027-02-10")).toHaveLength(4); // February 2027: 28 days from a Monday
+    expect(monthWeeks("2026-02-10")).toHaveLength(5); // February 2026 starts on a Sunday
+    expect(monthStart("2026-10-22")).toBe("2026-10-01");
+    expect(addMonths("2026-12-15", 1)).toBe("2027-01-01");
+    expect(addMonths("2026-01-31", -1)).toBe("2025-12-01");
+    expect(monthLabel("2026-10-22")).toBe("October 2026");
   });
 });
