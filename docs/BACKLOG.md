@@ -7,7 +7,7 @@ Claude Code reads this file at the start of every step and moves items to "Done"
 Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs to when known.
 
 ## Daniel's review feedback (process next, in order)
-- [ ] Batch review answers 2026-10-22 (Daniel): effort framework (four boxes, calc spec §4.4 and decision 15); "%" as load or effort; effort words, RPE and "@ n/10"; clearer parse hints; AMRAP "7 + 12" by the round's estimated time (decision 16); men/women amounts, first number (decision 17); default guidelines for new gyms (decision 18). Then plan Step 6 (pilot readiness) in docs/PLAN-step-6.md and stop for review. (2026-10-22, Daniel)
+- [x] Batch review answers 2026-10-22 (Daniel), built 2026-10-22: effort framework (four boxes, calc spec §4.4 and decision 15); "%" as load or effort; effort words, RPE and "@ n/10"; clearer parse hints; AMRAP "7 + 12" by the round's estimated time (decision 16); men/women amounts, first number (decision 17); default guidelines for new gyms (decision 18). Then plan Step 6 (pilot readiness) in docs/PLAN-step-6.md and stop for review. (2026-10-22, Daniel)
 - [ ] Later (not MVP): "Athlete / performance mode" for 6–12 week individual programs: precise %1RM, RIR, periodisation, no class buffers. General-public class programming stays the default. (2026-10-22, Daniel)
 
 ## Open questions (need Daniel)
@@ -33,6 +33,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
   - [x] **4d** `block_results`: table (data model §6), RLS, audit, pgTAP, and the phone-friendly after-class logging screen — built 2026-10-22 (Results, G then R). (2026-10-21, Daniel)
     - [x] Show logged results on the calendar (cards say "2 results") — built in 5a. (2026-10-22, Claude Code)
     - [ ] A gym's class times as a list to pick from when logging (today the class is free text, e.g. "06:00"). (2026-10-22, Claude Code)
+- [ ] **Step 6 — Pilot readiness** (first real gym: Afrek): plan in docs/PLAN-step-6.md, waiting for Daniel's review and his decisions (domain, Vercel Pro, Supabase Pro + PITR, email sender, legal entity, lawyer). (2026-10-22, Daniel)
 - [x] Step 5 — Calendar (month and week, drag and drop), templates on several dates, analytics over 7/14/30 days or a range with the four lenses, warnings against the gym's guidelines — built 2026-10-22 (5a, 5b, 5c). (2026-10-21, Daniel)
   - [x] Weekly/period analytics over `workout_metrics` (total, monotony, strain, week-on-week change). (2026-10-21, Claude Code)
   - [ ] A day view in the calendar (month and week today). (2026-10-22, Claude Code)
