@@ -31,7 +31,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
     - [ ] Add Daniel's real workouts as parser test cases when he sends them; extend the grammar where they need it. (2026-10-22, Daniel)
     - [ ] Paste into an existing workout (add blocks to it) — today a paste makes a new workout. (2026-10-22, Claude Code)
   - [x] **4d** `block_results`: table (data model §6), RLS, audit, pgTAP, and the phone-friendly after-class logging screen — built 2026-10-22 (Results, G then R). (2026-10-21, Daniel)
-    - [ ] Show logged results on the calendar (Step 5 calendar cells: "2 results"). (2026-10-22, Claude Code)
+    - [x] Show logged results on the calendar (cards say "2 results") — built in 5a. (2026-10-22, Claude Code)
     - [ ] A gym's class times as a list to pick from when logging (today the class is free text, e.g. "06:00"). (2026-10-22, Claude Code)
 - [ ] Step 5 — Calendar (day / week / month, details in cells, colour by type, drag and drop), templates (apply to several dates at once), analytics.
   - [ ] Weekly/period analytics over `workout_metrics` (the engine's `weekSummary` already computes total, monotony, strain, week-on-week change). (2026-10-21, Claude Code)
