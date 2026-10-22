@@ -3,6 +3,7 @@
 import { Tabs } from "@base-ui/react/tabs";
 import { CircleAlertIcon } from "lucide-react";
 
+import { Bars } from "@/components/design/bars";
 import { Estimate } from "@/components/design/estimate";
 import { PatternTag } from "@/components/design/tags";
 import type { Measure, WorkoutResult } from "@/lib/engine/types";
@@ -10,7 +11,6 @@ import { formatMeasure } from "@/lib/format";
 import { MODALITY_LABELS, MUSCLE_LABELS } from "@/lib/labels";
 import type { ModalityKey, MuscleKey } from "@/lib/taxonomy";
 import { PATTERNS } from "@/lib/taxonomy";
-import { cn } from "@/lib/utils";
 import { blockLabel, type DraftWorkout, FORMAT_LABELS } from "@/lib/workout/draft";
 
 export type PanelIssue = { key: string; text: string; lines: { id: string; label: string }[] };
@@ -203,48 +203,5 @@ function Stat({ label, measure, unit, note }: { label: string; measure: Measure 
       </span>
       {note && <span className="text-2xs text-muted-foreground">{note}</span>}
     </div>
-  );
-}
-
-function Bars({
-  title,
-  rows,
-  unit,
-  empty,
-}: {
-  title: string;
-  rows: { key: string; label: React.ReactNode; measure: Measure }[];
-  unit: "sets" | "reps";
-  empty?: string;
-}) {
-  const max = Math.max(...rows.map((r) => r.measure.high), 1);
-  return (
-    <section aria-label={title} className="grid gap-1.5">
-      <h3 className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">{title}</h3>
-      {rows.length === 0 ? (
-        empty && <p className="text-sm text-muted-foreground">{empty}</p>
-      ) : (
-        <ul className="grid gap-1">
-          {rows.map((r) => (
-            <li key={r.key} className="grid grid-cols-[8.5rem_minmax(0,1fr)_auto] items-center gap-2 text-sm">
-              <span className="truncate">{r.label}</span>
-              <span className="relative h-1.5 rounded-full bg-border" aria-hidden>
-                <span
-                  className={cn("absolute inset-y-0 left-0 rounded-full bg-primary")}
-                  style={{ width: `${(r.measure.mid / max) * 100}%` }}
-                />
-                {r.measure.confidence === "estimated" && r.measure.high > r.measure.low && (
-                  <span
-                    className="absolute inset-y-0 rounded-full bg-primary/30"
-                    style={{ left: `${(r.measure.low / max) * 100}%`, width: `${((r.measure.high - r.measure.low) / max) * 100}%` }}
-                  />
-                )}
-              </span>
-              <Estimate measure={r.measure} unit={unit} className="text-right" />
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }
