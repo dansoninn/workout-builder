@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-22 by Claude Code
 **Working mode:** continuous (CLAUDE.md, "Continuous working mode").
-**Now:** working through your batch review answers (BACKLOG, "Daniel's review feedback"), each as its own pull request; then the Step 6 plan (`docs/PLAN-step-6.md`), where I stop for your review.
+**Now:** all seven batch-review answers are built and on production. **Stopped for your review of `docs/PLAN-step-6.md`** (pilot readiness for Afrek): Part 1 lists what you must decide or buy, with prices; nothing in Step 6 is built until you approve it.
 
 ## What changed since your batch review (2026-10-22)
 - **Effort framework (your answers 1–4):** calc spec §4.4 has the four boxes with % effort, RPE and descriptions (decisions 15–18 added). In the builder each effort box shows its % effort, RPE and description in a tooltip (and to screen readers), and the load panel and paste screen show a legend. The parser reads "% effort" (a range by its midpoint), "% 1RM / % of 1RM / % of max" and a bare % on a lift as loads, effort words, "RPE n" and "@ n/10"; the check screen says which word set which effort ("“heavy” → Load Hard"). Hints now name the part not understood ('Did not understand "Effort" after 75-80%. Try …').
@@ -12,7 +12,7 @@
 - **Default guidelines (answer 7):** every new gym starts with them (calc spec decision 18), labelled as the gym's guidelines. The owner changes them in Settings → Guidelines, or goes **Back to the defaults**; Analytics links owners there. Existing gyms keep what they have. Your §7 week is outside five of the defaults: no hinge, vertical push or vertical pull hard sets, push : pull 1.3 (above 1.2) and knee : hip 4.1 (above 1.5).
 
 ## Questions for Daniel
-None open: your four batch-review answers are being built (above).
+The ten decisions in `docs/PLAN-step-6.md`, Part 1. The ones that unblock everything: **the product name and domain**, and **Vercel Pro** (Vercel's free plan does not allow commercial use).
 
 ## Your steps
 1. **Let the production check redeploy by itself** (5 minutes, once): in Vercel, **Project → Settings → Git → Deploy Hooks**, create a hook named `production-check` for branch `main`, copy its address; in GitHub, **dansoninn/workout-builder → Settings → Secrets and variables → Actions → New repository secret**, name `VERCEL_DEPLOY_HOOK`, paste the address. Without it the check still catches a missed deploy, but only tells you (by GitHub email) instead of fixing it.
