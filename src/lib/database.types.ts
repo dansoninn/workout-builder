@@ -103,14 +103,14 @@ isOneToOne: false
                   ]
                 },"block_results": {
                   Row: {
-                    "block_id": string,"created_at": string,"deleted_at": string | null,"finish_high_s": number | null,"finish_low_s": number | null,"id": string,"logged_by": string | null,"note": string | null,"org_id": string,"rounds_high": number | null,"rounds_low": number | null,"session_label": string | null,"updated_at": string
+                    "block_id": string,"created_at": string,"deleted_at": string | null,"finish_high_s": number | null,"finish_low_s": number | null,"id": string,"logged_by": string | null,"note": string | null,"raw_text": string | null,"org_id": string,"rounds_high": number | null,"rounds_low": number | null,"session_label": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "block_id": string,"created_at"?: string,"deleted_at"?: string | null,"finish_high_s"?: number | null,"finish_low_s"?: number | null,"id"?: string,"logged_by"?: string | null,"note"?: string | null,"org_id": string,"rounds_high"?: number | null,"rounds_low"?: number | null,"session_label"?: string | null,"updated_at"?: string
+                    "block_id": string,"created_at"?: string,"deleted_at"?: string | null,"finish_high_s"?: number | null,"finish_low_s"?: number | null,"id"?: string,"logged_by"?: string | null,"note"?: string | null,"raw_text"?: string | null,"org_id": string,"rounds_high"?: number | null,"rounds_low"?: number | null,"session_label"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "block_id"?: string,"created_at"?: string,"deleted_at"?: string | null,"finish_high_s"?: number | null,"finish_low_s"?: number | null,"id"?: string,"logged_by"?: string | null,"note"?: string | null,"org_id"?: string,"rounds_high"?: number | null,"rounds_low"?: number | null,"session_label"?: string | null,"updated_at"?: string
+                    "block_id"?: string,"created_at"?: string,"deleted_at"?: string | null,"finish_high_s"?: number | null,"finish_low_s"?: number | null,"id"?: string,"logged_by"?: string | null,"note"?: string | null,"raw_text"?: string | null,"org_id"?: string,"rounds_high"?: number | null,"rounds_low"?: number | null,"session_label"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {

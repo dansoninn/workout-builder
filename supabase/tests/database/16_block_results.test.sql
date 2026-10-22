@@ -6,7 +6,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(32);
+select plan(34);
 
 -- An AMRAP 8 and a For Time block with a 15-minute cap in gym A, and a template.
 insert into tests.ids (name) values ('amrap_a'), ('for_time_a'), ('template_a'), ('template_block_a'), ('result_1'), ('result_2');
@@ -81,6 +81,14 @@ $$, '23514', 'Results are logged on workouts in the calendar, not on templates',
 select throws_ok($$
   insert into public.block_results (org_id, block_id, rounds_low, rounds_high, session_label) values (tests.id('gym_a'), tests.id('amrap_a'), 5, 5, ' 06:00 ')
 $$, '23514', null, 'The class label is stored trimmed');
+
+-- AMRAP rounds as written ("7 + 12"), stored next to the rounds they came to.
+select lives_ok($$
+  insert into public.block_results (org_id, block_id, rounds_low, rounds_high, raw_text) values (tests.id('gym_a'), tests.id('amrap_a'), 7.58, 7.58, '7 + 12')
+$$, 'A result keeps the rounds as written');
+select throws_ok($$
+  insert into public.block_results (org_id, block_id, rounds_low, rounds_high, raw_text) values (tests.id('gym_a'), tests.id('amrap_a'), 7, 7, ' 7 ')
+$$, '23514', null, 'Written text is stored trimmed');
 
 -- Editing, pinning, soft delete.
 select isnt_empty($$
