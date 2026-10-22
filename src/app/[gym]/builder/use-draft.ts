@@ -95,7 +95,10 @@ export function draftReducer(draft: DraftWorkout, action: DraftAction): DraftWor
     case "item":
       return updateBlock(draft, action.blockId, (b) => ({
         ...b,
-        items: b.items.map((i) => (i.id === action.id ? { ...i, ...action.patch } : i)),
+        // Editing what a line says drops the pasted text: from then on the builder writes the line.
+        items: b.items.map((i) =>
+          i.id !== action.id ? i : { ...i, ...action.patch, ...(["exerciseId", "quantity", "load", "implementCount"].some((k) => k in action.patch) ? { rawLine: null } : {}) },
+        ),
       }));
   }
 }

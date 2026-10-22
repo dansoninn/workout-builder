@@ -23,6 +23,11 @@ export interface DraftItem {
   notes: string;
   /** Alternating EMOM: the slot (minute) of the rotation, 1, 2, … */
   slot: number | null;
+  /**
+   * The line as the coach pasted it (4c), stored as its raw_line until the
+   * line is edited; then the builder writes the line from its fields.
+   */
+  rawLine?: string | null;
 }
 
 export type BlockParams = Record<string, number | boolean | undefined>;
@@ -52,6 +57,9 @@ export interface DraftWorkout {
   focus: string;
   status: "draft" | "published";
   blocks: DraftBlock[];
+  /** The text the workout was pasted from (4c) and the parser that read it; kept as they are. */
+  rawText?: string | null;
+  parserVersion?: number | null;
 }
 
 export const FORMAT_LABELS: Record<BlockFormat, string> = {
@@ -245,6 +253,8 @@ export function toSavePayload(draft: DraftWorkout, library: Library) {
     date: draft.kind === "scheduled" ? draft.date : null,
     title: draft.title.trim() || null,
     focus: draft.focus.trim() || null,
+    raw_text: draft.rawText ?? null,
+    parser_version: draft.parserVersion ?? null,
     blocks: draft.blocks.map((block, b) => {
       const { format, params } = paramsFor(block);
       // Alternating slots are renumbered 1…k in order, so they never have gaps.
@@ -268,7 +278,8 @@ export function toSavePayload(draft: DraftWorkout, library: Library) {
           return {
             id: item.id,
             exercise_id: line.exercise?.id ?? null,
-            raw_line: rawLine(line.quantity.value, line.exercise?.name ?? null, line.load.value, line.implementCount),
+            // As pasted, until the line is edited; then as the builder writes it.
+            raw_line: item.rawLine?.trim() || rawLine(line.quantity.value, line.exercise?.name ?? null, line.load.value, line.implementCount),
             quantity: line.quantity.value,
             load: line.load.value,
             pace_effort: item.paceEffort,
