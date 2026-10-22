@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(48);
+select plan(67);
 
 select is(private.block_params_valid('sets', '{"sets":5,"rest_s":120}'::jsonb), true, 'params sets: sets with rest (valid)');
 select is(private.block_params_valid('sets', '{"sets":5}'::jsonb), true, 'params sets: rest is optional (valid)');
@@ -55,6 +55,25 @@ select is(private.pace_is_valid('{"sec_per_m":0.24,"sec_per_cal":4}'::jsonb), tr
 select is(private.pace_is_valid('{}'::jsonb), false, 'pace: at least one pace (invalid)');
 select is(private.pace_is_valid('{"sec_per_rep":0}'::jsonb), false, 'pace: a positive pace (invalid)');
 select is(private.pace_is_valid('{"sec_per_500m":120}'::jsonb), false, 'pace: a known key (invalid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, 6.5, 8.75, null::int, null::int) is null, true, 'result amrap: AMRAP rounds, low-high (valid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, 7, 7, null::int, null::int) is null, true, 'result amrap: everyone the same (valid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, 0, 0.5, null::int, null::int) is null, true, 'result amrap: under one round (valid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, 8, 7, null::int, null::int) is null, false, 'result amrap: fewest above most (invalid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, -1, 7, null::int, null::int) is null, false, 'result amrap: no negative rounds (invalid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, 7.125, 8, null::int, null::int) is null, false, 'result amrap: two decimals at most (invalid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, 7, 1000, null::int, null::int) is null, false, 'result amrap: a sane number of rounds (invalid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, 7, null::numeric, null::int, null::int) is null, false, 'result amrap: both ends of the range (invalid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, null::numeric, null::numeric, 600, 700) is null, false, 'result amrap: an AMRAP has no finish time (invalid)');
+select is(private.block_result_problem('amrap', '{"time_s":480}'::jsonb, 7, 8, 600, 700) is null, false, 'result amrap: not both (invalid)');
+select is(private.block_result_problem('for_time', '{"rounds":3}'::jsonb, null::numeric, null::numeric, 570, 840) is null, true, 'result for_time: For Time finishes, low-high (valid)');
+select is(private.block_result_problem('for_time', '{"rounds":3}'::jsonb, null::numeric, null::numeric, 735, 735) is null, true, 'result for_time: one finish (valid)');
+select is(private.block_result_problem('for_time', '{"rounds":3}'::jsonb, null::numeric, null::numeric, 840, 570) is null, false, 'result for_time: fastest after slowest (invalid)');
+select is(private.block_result_problem('for_time', '{"rounds":3}'::jsonb, null::numeric, null::numeric, 0, 570) is null, false, 'result for_time: a finish takes time (invalid)');
+select is(private.block_result_problem('for_time', '{"rounds":3}'::jsonb, null::numeric, null::numeric, 570, 90000) is null, false, 'result for_time: within a day (invalid)');
+select is(private.block_result_problem('for_time', '{"rounds":3}'::jsonb, 3, 3, null::int, null::int) is null, false, 'result for_time: For Time has no rounds result (invalid)');
+select is(private.block_result_problem('for_time', '{"rounds":3,"time_cap_s":900}'::jsonb, null::numeric, null::numeric, 700, 900) is null, true, 'result for_time: capped athletes count as the cap (valid)');
+select is(private.block_result_problem('for_time', '{"rounds":3,"time_cap_s":900}'::jsonb, null::numeric, null::numeric, 700, 901) is null, false, 'result for_time: not over the cap (invalid)');
+select is(private.block_result_problem('every', '{"interval_s":60,"rounds":10}'::jsonb, 10, 10, null::int, null::int) is null, false, 'result every: only AMRAP and For Time (invalid)');
 
 select * from finish();
 rollback;
