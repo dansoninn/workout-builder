@@ -76,7 +76,7 @@ Role rights (enforced in RLS):
 | Edit / delete gym aliases | ✓ | ✓ | | |
 | Read everything in the gym | ✓ | ✓ | ✓ | ✓ |
 
-Gym aliases (approved 2026-10-21): when the parser asks "which squat?", any coach may save the answer as a gym alias; only owners and head coaches can change or delete gym aliases afterwards. Alias changes are written to the audit log (who and when). Built in Step 4.
+Gym aliases (approved 2026-10-21): when the parser asks "which squat?", any coach may save the answer as a gym alias; only owners and head coaches can change or delete gym aliases afterwards. Alias changes are written to the audit log (who and when). Built in 4c (migration `002000`): a coach's insert is allowed only when the word is an ambiguous term (RLS policy "Coaches can answer a generic word for the gym"); owners and head coaches add any gym alias (also from the paste screen, "Remember … as your gym's name"); `exercise_aliases` has the audit trigger.
 
 ### `invitations` (Step 4a)
 An owner invites a person by email with a role and shares the link (automatic emails come with the custom email sender, BACKLOG).
@@ -259,6 +259,9 @@ A workout can only move to `published` when every item has an `exercise_id`.
 
 ### Templates (Step 4b)
 A template is a workout with `kind = template` and no date. "Save as template" and "Use on a date" both make a **copy** with new ids, so a template and the workouts made from it change independently, each with its own audit history.
+
+### Saving a pasted workout: `save_pasted_workout` (Step 4c)
+`save_pasted_workout(org, workout, aliases)` does `save_workout` and, in the same transaction, stores `workouts.raw_text` (the text as pasted, required) and `parser_version`, and inserts the coach's answers as gym aliases (`[{ term, exercise_id }]`; a word the gym already has a name for is left as it is). Runs as the signed-in user, so RLS decides each part; if any part is refused, nothing is saved. Each line's `raw_line` is the line as pasted until the coach edits that line in the builder; the builder's later saves never touch `raw_text`. The server reads the text again with the gym's library and the answers, so what is stored never depends on what the browser sends.
 
 ### Saving a workout: `save_workout` ✅ (Step 4b)
 The builder saves through one database function, `save_workout(org, workout)`, in a single transaction: the workout, its blocks and their lines, in order. It runs as the signed-in user, so RLS applies. Rows that did not change are not touched; removed blocks and lines are deleted; a line moved to another block is removed and re-added. So the audit log shows only real edits. It returns the workout's id. Right after, the app recomputes the workout with the engine on the server and stores the result in `workout_metrics` (with `calc_version` and `taxonomy_version`).

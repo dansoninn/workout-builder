@@ -44,10 +44,13 @@ export const draftSchema = z.strictObject({
               loadEffort,
               notes: z.string().max(500),
               slot: z.number().int().min(1).nullable(),
+              rawLine: z.string().max(500).nullable().optional(),
             }),
           )
           .max(60),
       }),
     )
     .max(30),
+  rawText: z.string().max(20000).nullable().optional(),
+  parserVersion: z.number().int().positive().nullable().optional(),
 });

@@ -2,15 +2,26 @@
 
 **Updated:** 2026-10-22 by Claude Code
 **Working mode:** continuous (CLAUDE.md, "Continuous working mode"): each sub-step on its own branch and pull request, merged when CI is green, production deploys by itself. I stop only for coaching decisions; those collect below under "Questions for Daniel".
-**Now:** 4b and **4d (block results)** are on production. Next: **4c (paste a workout)**, then Step 5.
+**Now:** 4b, **4d (block results)** and **4c (paste a workout)** are on production. Next: **Step 5** (month calendar, templates on several dates, analytics, warnings).
 
 ## Questions for Daniel
 1. **AMRAP partial rounds, "7 + 12".** Coaches write an AMRAP score as rounds plus reps into the next round. Today the results screen takes decimals ("7.5"). Should it accept "7 + 12"? If yes, how should "+12" become part of a round: the share of the round's reps (12 of 30 reps → 7.4), or the share of the round's estimated time (better when a round mixes reps, calories and metres)? Nothing waits on this; decimals work meanwhile.
+2. **Effort words in pasted text.** Whiteboards say "heavy", "light", "sprint", "RPE 8", "@ 7/10". Which Pace or Load level should each mean? Today the parser reads only the app's own words ("Pace Hard", "Load Moderate") and leaves other words at the block's default effort (the builder shows it as the outlined default, so the coach sees it). A word list from you is all it needs.
+3. **Men/women amounts** ("15/12 cal bike", "400/300 m run"). Store them as a range for the class (12–15 cal), or use the first (men's) number the way loads use the first Rx? Today the parser asks the coach to rewrite the line.
 
 ## Your steps
 1. **Let the production check redeploy by itself** (5 minutes, once): in Vercel, **Project → Settings → Git → Deploy Hooks**, create a hook named `production-check` for branch `main`, copy its address; in GitHub, **dansoninn/workout-builder → Settings → Secrets and variables → Actions → New repository secret**, name `VERCEL_DEPLOY_HOOK`, paste the address. Without it the check still catches a missed deploy, but only tells you (by GitHub email) instead of fixing it.
 
 ## What changed since your 4b review
+
+### 4c: paste a workout (Builder → "Paste text", or ⌘K "Paste a workout as text")
+Try it at https://workout-builder-cyan.vercel.app with one of your whiteboard workouts.
+- **Paste or type the workout as you write it**: block letters (A., B.), section words (Strength, Metcon, Skill, Mobility, Warm-up), formats (AMRAP 12 · 12 min AMRAP · EMOM 10 · E3M x 5 · E90S x 8 · Every 2:00 x 6 · Every 2 min for 10 min · For time · 3 RFT · 5 rounds for time, 20 min cap · Chipper · 21-15-9 · Tabata · 4 rounds 90/30 · 40 s on / 20 s off x 8 · 4 sets), alternating minutes (Min 1: … + …, Odd/Even), lines after a colon ("AMRAP 8: 5 KB swing, 10 air squat"), supersets (A1., A2.), "Back squat" with "5 x 5 @ 80%" on the next line, rest lines, partner, notes.
+- Amounts and loads are read **by the same rules as the builder's fields** (8-10, 8/8, 21-15-9, 800 m, 1 km, 15 cal, :45, max cal; @75-80%, (22.5/15 kg), 2 x 22.5 kg, bw), so anything you can type in the builder can be pasted. Plurals and small words are fine ("burpees over the rower" → Burpee).
+- **Line by line, as you type**, the right side says what the app understood: ✓ understood, ? for you, – kept as a note. The line number jumps to that line in your text.
+- **Nothing is guessed.** A generic word asks "Which “squat” does your gym mean?" **once**: the answer becomes your gym's name for it and is used in every later paste (and in the builder's search). An unknown exercise is picked from suggestions or the library (owners and head coaches can tick "Remember … as your gym's name"); left unpicked, it waits in the builder like any unmatched line. A missing number ("AMRAP" without a time, a line without an amount) stops the workout from being made and says which line. Lines the app cannot place ("Scale: …", "Score: …") become the block's notes.
+- **Make workout** saves it as a draft (the text as pasted and each line as written are stored with it) and opens it in the builder to check, change and publish.
+- **Your three §7 workouts, pasted, give the approved numbers**: WOD 1 202 AU and ~7.7 rounds (in the spec's one-line style and written down a whiteboard), WOD 2 ~163 AU, WOD 3 228 AU after answering "bike" and "lunge".
 
 ### 4d: what each class did (Results, G then R)
 Try it on your phone at https://workout-builder-cyan.vercel.app.
@@ -38,6 +49,14 @@ Try it on your phone at https://workout-builder-cyan.vercel.app.
 Each has a browser test that slows the page down the way a busy phone or laptop would, and fails without the fix.
 
 ## Decisions made or interpreted (please check)
+**4c (paste):**
+1. **Intent from the format** when no section word says it: sets → strength; an EMOM of weighted lifts (a load written, or a barbell, dumbbell or kettlebell exercise) → strength; other EMOMs, AMRAP, For time, intervals, tabata → conditioning. The check screen says "(from the format)", and you change it in the builder.
+2. **"3 rounds" without "for time"** is read as 3 sets of a circuit (conditioning), with a note on the line: write "for time" if it is.
+3. **Lines without an amount** take the 21-15-9 of their block; in intervals and tabata they mean "max" in each work window (WOD 3: "Max row").
+4. **Warm-up and cool-down sections** become mobility blocks like any other (counted at their default effort, Pace Easy). Delete the block in the builder if a warm-up should not count.
+5. **A pasted workout is a new draft**, opened in the builder; pasting into an existing workout is in BACKLOG.
+
+**4d (results):**
 1. **Results is its own section** in the sidebar (G then R), since it is what a coach opens on a phone after class; the builder and ⌘K link to it too. The calendar will show results in Step 5.
 2. **Results only for AMRAP and For time blocks**, as the spec says; other formats (EMOM, intervals) have nothing to log.
 3. **A class is free text** ("06:00"); a list of the gym's class times is in BACKLOG.
@@ -46,12 +65,12 @@ Each has a browser test that slows the page down the way a busy phone or laptop 
 ## How it was verified
 | What | Result |
 |---|---|
-| Unit tests (Vitest) | **330 of 330** (new: result rules on the shared cases, rounds and times as typed, clock format for finish times, alternating EMOM partial rotation) |
-| Database tests (pgTAP) | **560 of 560** (new: block results 32 — roles, gym isolation, rules against the block, templates, soft delete, pinning, audit, a block keeping its results, cascades; result rules 19 on the shared cases) |
-| Browser tests (Playwright, production build) | **37 of 37** (new: the whole after-class flow on a phone — log, number-pad time, cap, correct, remove and undo, viewer read-only, builder refusing to drop a block with results; keys typed fast never lost or misplaced) |
-| Accessibility (axe, WCAG 2.2 AA) | Results list, results page with the form, read-only results, on a phone: **no problems** (found and fixed: "(optional)" in too light a grey) |
-| Looked at by eye | Results list and results page on a phone (light and dark) and desktop |
+| Unit tests (Vitest) | **368 of 368** (new in 4c: 38 parser tests — the three §7 workouts with their approved numbers, 17 heading formats, 21-15-9, alternating minutes, strength lines, supersets, sections, amounts and loads, generic words and plurals, unknown exercises, missing numbers, notes; in 4d: result rules on the shared cases, rounds and times as typed, clock format) |
+| Database tests (pgTAP) | **579 of 579** (new in 4c: paste 19 — workout, text and answers in one transaction, a coach may only answer generic words, head coaches name any word, viewers and other gyms nothing, the builder keeps the pasted text, audit; in 4d: block results 32, result rules 19) |
+| Browser tests (Playwright, production build) | **39 of 39** (new in 4c: paste with a missing number, a generic word answered once and remembered, an unknown exercise picked and remembered, into the builder, the gym's names used next time; viewers cannot paste; in 4d: the whole after-class flow on a phone) |
+| Accessibility (axe, WCAG 2.2 AA) | Paste screen with questions; Results list, results page with the form, read-only results on a phone: **no problems** |
+| Looked at by eye | Paste screen (light, dark, tablet); Results on a phone (light and dark) and desktop |
 | Production | CI on `main`, deploy and production check after each merge |
 
 ## Next
-**4c: paste a workout** from the whiteboard: built from common whiteboard formats and the three §7 workouts (your real workouts become test cases later); a check-and-confirm screen; the raw text kept; a generic word asked once and saved as your gym's name for it. Then **Step 5**: month calendar with drag and drop, a template on several dates, Analytics over 7/14/30 days or a custom range with the four lenses, warnings.
+**Step 5**: month calendar with drag and drop, a template on several dates, Analytics over 7/14/30 days or a custom range with the four lenses, warnings.

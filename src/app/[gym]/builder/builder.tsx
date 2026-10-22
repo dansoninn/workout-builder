@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlusIcon, ClipboardCheckIcon, CopyIcon, EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UndoIcon } from "lucide-react";
+import { CalendarPlusIcon, ClipboardCheckIcon, ClipboardPasteIcon, CopyIcon, EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UndoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useState, useTransition } from "react";
@@ -265,10 +265,16 @@ export function Builder({
 
   // After class: what each class did in the AMRAP and For Time blocks (4d).
   const resultsHref = savedOnce && draft.kind === "scheduled" && draft.blocks.some((b) => takesResults(b.format)) ? `/${slug}/results/${draft.id}` : null;
+  // A new workout can come from text instead (4c), on the same date and track.
+  const pasteHref =
+    isNew && !savedOnce && !readOnly && draft.kind === "scheduled"
+      ? `/${slug}/builder/paste?${new URLSearchParams({ date: draft.date ?? "", ...(draft.trackId ? { track: draft.trackId } : {}) })}`
+      : null;
 
   const commands = useMemo(
     () => [
       ...(resultsHref ? [{ id: "results", label: "Log results", run: () => router.push(resultsHref) }] : []),
+      ...(pasteHref ? [{ id: "paste", label: "Paste the workout as text", run: () => router.push(pasteHref) }] : []),
       ...(readOnly
         ? []
         : [
@@ -282,7 +288,7 @@ export function Builder({
               : { id: "template", label: "Save as template", run: saveAsTemplate },
           ]),
     ],
-    [resultsHref, router, readOnly, save, addBlockAfter, draft.status, draft.kind, draft.trackId, tracks, publish, unpublish, saveAsTemplate],
+    [resultsHref, pasteHref, router, readOnly, save, addBlockAfter, draft.status, draft.kind, draft.trackId, tracks, publish, unpublish, saveAsTemplate],
   );
   usePageCommands(commands);
 
@@ -334,6 +340,11 @@ export function Builder({
         />
         {draft.kind === "template" && <Badge variant="secondary">Template</Badge>}
         <Badge variant={draft.status === "published" ? "default" : "outline"}>{draft.status === "published" ? "Published" : "Draft"}</Badge>
+        {pasteHref && (
+          <ButtonLink href={pasteHref} variant="ghost" size="sm">
+            <ClipboardPasteIcon /> <span className="max-sm:sr-only">Paste text</span>
+          </ButtonLink>
+        )}
         {resultsHref && (
           <ButtonLink href={resultsHref} variant="ghost" size="sm">
             <ClipboardCheckIcon /> <span className="max-sm:sr-only">{readOnly ? "Workout results" : "Log results"}</span>

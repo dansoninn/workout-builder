@@ -18,7 +18,7 @@ export async function loadWorkout(orgId: string, workoutId: string): Promise<Sto
   const supabase = await createClient();
   const { data: w } = await supabase
     .from("workouts")
-    .select("id, kind, date, track_id, title, focus, status, updated_at")
+    .select("id, kind, date, track_id, title, focus, status, updated_at, raw_text, parser_version")
     .eq("id", workoutId)
     .eq("org_id", orgId)
     .is("deleted_at", null)
@@ -29,7 +29,7 @@ export async function loadWorkout(orgId: string, workoutId: string): Promise<Sto
     .from("blocks")
     .select(
       "id, position, title, intent, format, params, pace_effort, load_effort, partner, target_rounds, notes, rest_after_s, " +
-        "block_items (id, position, exercise_id, quantity, load, pace_effort, load_effort, implement_count, notes, slot)",
+        "block_items (id, position, exercise_id, raw_line, quantity, load, pace_effort, load_effort, implement_count, notes, slot)",
     )
     .eq("workout_id", workoutId)
     .order("position");
@@ -39,7 +39,7 @@ export async function loadWorkout(orgId: string, workoutId: string): Promise<Sto
     id: string; title: string | null; intent: DraftWorkout["blocks"][number]["intent"]; format: BlockFormat;
     params: Record<string, number | boolean>; pace_effort: string | null; load_effort: string | null; partner: boolean;
     target_rounds: number | null; notes: string; rest_after_s: number | null;
-    block_items: { id: string; position: number; exercise_id: string | null; quantity: Quantity; load: Load | null;
+    block_items: { id: string; position: number; exercise_id: string | null; raw_line: string; quantity: Quantity; load: Load | null;
       pace_effort: string | null; load_effort: string | null; implement_count: number | null; notes: string; slot: number | null }[];
   };
 
@@ -78,8 +78,11 @@ export async function loadWorkout(orgId: string, workoutId: string): Promise<Sto
             loadEffort: i.load_effort as Exclude<EffortKey, "max"> | null,
             notes: i.notes,
             slot: i.slot,
+            rawLine: i.raw_line,
           })),
       })),
+      rawText: w.raw_text,
+      parserVersion: w.parser_version,
     },
   };
 }
