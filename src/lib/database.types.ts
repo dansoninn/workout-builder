@@ -101,6 +101,38 @@ isOneToOne: false
       referencedColumns: ["key"]
     }
                   ]
+                },"block_results": {
+                  Row: {
+                    "block_id": string,"created_at": string,"deleted_at": string | null,"finish_high_s": number | null,"finish_low_s": number | null,"id": string,"logged_by": string | null,"note": string | null,"org_id": string,"rounds_high": number | null,"rounds_low": number | null,"session_label": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "block_id": string,"created_at"?: string,"deleted_at"?: string | null,"finish_high_s"?: number | null,"finish_low_s"?: number | null,"id"?: string,"logged_by"?: string | null,"note"?: string | null,"org_id": string,"rounds_high"?: number | null,"rounds_low"?: number | null,"session_label"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "block_id"?: string,"created_at"?: string,"deleted_at"?: string | null,"finish_high_s"?: number | null,"finish_low_s"?: number | null,"id"?: string,"logged_by"?: string | null,"note"?: string | null,"org_id"?: string,"rounds_high"?: number | null,"rounds_low"?: number | null,"session_label"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "block_results_block_same_gym"
+      columns: ["block_id","org_id"]
+isOneToOne: false
+      referencedRelation: "blocks"
+      referencedColumns: ["id","org_id"]
+    },{
+      foreignKeyName: "block_results_logged_by_fkey"
+      columns: ["logged_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "block_results_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"blocks": {
                   Row: {
                     "format": Database["public"]['Enums']["block_format"],"id": string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"params": NonNullable<Json>,"partner": boolean,"position": number,"rest_after_s": number | null,"target_rounds": number | null,"title": string | null,"workout_id": string

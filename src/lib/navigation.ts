@@ -1,6 +1,7 @@
 import {
   CalendarDaysIcon,
   ChartColumnIcon,
+  ClipboardCheckIcon,
   DumbbellIcon,
   LayoutListIcon,
   type LucideIcon,
@@ -17,6 +18,7 @@ export const SECTIONS: readonly {
 }[] = [
   { key: "builder", label: "Builder", path: "builder", shortcut: "b", icon: LayoutListIcon },
   { key: "calendar", label: "Calendar", path: "calendar", shortcut: "c", icon: CalendarDaysIcon },
+  { key: "results", label: "Results", path: "results", shortcut: "r", icon: ClipboardCheckIcon },
   { key: "analytics", label: "Analytics", path: "analytics", shortcut: "a", icon: ChartColumnIcon },
   { key: "exercises", label: "Exercises", path: "exercises", shortcut: "e", icon: DumbbellIcon },
   { key: "settings", label: "Settings", path: "settings/gym", shortcut: "s", icon: SettingsIcon },

@@ -33,6 +33,14 @@ describe("formatMeasure: honest numbers", () => {
     expect(formatMeasure(exact(4), "sets").main).toBe("4");
   });
 
+  it("finish times read as a clock; estimates to the nearest 10 s", () => {
+    expect(formatMeasure({ low: 641, mid: 754, high: 905, confidence: "estimated" }, "clock")).toMatchObject({
+      main: "~12:30",
+      range: "10:40–15:10",
+    });
+    expect(formatMeasure({ low: 3750, mid: 3750, high: 3750, confidence: "exact" }, "clock").main).toBe("1:02:30");
+  });
+
   it("reads naturally for screen readers", () => {
     expect(formatMeasure(estimated(20.42, 17.43, 24.41), "min").label).toBe("about 20 min, likely between 17 and 24");
   });

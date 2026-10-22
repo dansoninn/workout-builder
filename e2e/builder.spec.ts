@@ -146,6 +146,11 @@ test("unsaved work is kept in the browser and offered back", async ({ page }) =>
 });
 
 test("keys typed right after picking an exercise are the amount, never lost", async ({ page }) => {
+  // A busy page: the next screen frame comes late, so nothing may wait for it to move focus.
+  await page.addInitScript(() => {
+    const frame = window.requestAnimationFrame.bind(window);
+    window.requestAnimationFrame = (callback) => frame(() => window.setTimeout(() => frame(callback), 150));
+  });
   await ownerWithGym(page);
   // The list fades out slowly, as on a busy page: focus cannot move to the amount until it is gone.
   await page.addStyleTag({ content: "[data-ending-style] { opacity: 0 !important; transition: opacity 400ms !important; }" });
@@ -158,6 +163,15 @@ test("keys typed right after picking an exercise are the amount, never lost", as
   await expect(page.getByLabel("A1 exercise")).toHaveValue("Air squat");
   await expect(page.getByLabel("A1 amount")).toHaveValue("21-15-9");
   await expect(page.getByLabel("A1 amount")).toBeFocused();
+
+  // Enter (new line) and ⌘Enter (new block), typing on at once: each key lands in the new line.
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("burpee");
+  await expect(page.getByLabel("A2 exercise")).toHaveValue("burpee");
+  await page.keyboard.press("ControlOrMeta+Enter");
+  await page.keyboard.type("row");
+  await expect(page.getByLabel("B1 exercise")).toHaveValue("row");
+  await expect(page.getByLabel("A1 amount")).toHaveValue("21-15-9");
 });
 
 test("a viewer sees a workout but cannot change it", async ({ page, browser }) => {

@@ -7,6 +7,7 @@ Claude Code reads this file at the start of every step and moves items to "Done"
 Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs to when known.
 
 ## Open questions (need Daniel)
+- [ ] AMRAP partial rounds as coaches write them, "7 + 12" (7 rounds and 12 reps into the next): accept it? Turning "+12" into part of a round needs a rule — e.g. the share of the round's reps, or of its estimated time when the round mixes reps, calories and metres. Today the app takes decimals only ("7.5"). (2026-10-22, Claude Code)
 
 
 ## Next steps (planned order)
@@ -15,7 +16,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
   - [ ] Let coaches and viewers leave a gym themselves (today only an owner can remove someone). (2026-10-21, Claude Code)
   - [ ] Reorder tracks (the `position` column exists; new tracks go last). (2026-10-21, Claude Code)
   - [ ] Google sign-in (after email + password). (2026-10-21, Daniel)
-  - [ ] **4b** Built, ready for Daniel's review (branch step-4b, pull request #2): the builder with the live load panel, calendar week list, templates, Exercises page, gym paces. (2026-10-21, Daniel)
+  - [x] **4b** Approved and merged 2026-10-21 (pull request #2): the builder with the live load panel, calendar week list, templates, Exercises page, gym paces. (2026-10-21, Daniel)
     - [ ] Undo / redo in the builder. (2026-10-21, Claude Code)
     - [ ] Drag and drop for blocks and lines (keyboard and menus today). (2026-10-21, Claude Code)
     - [ ] Restore an archived gym exercise (archive only today). (2026-10-21, Claude Code)
@@ -24,7 +25,9 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
     - [ ] Look up exercises with `normalizeAlias` and strip plurals ("kb swings" → "kb swing"); lookup order gym alias → core alias → ambiguous term → unmatched. (2026-10-21, Claude Code)
     - [ ] Ambiguous terms asked once and saved as a gym alias: any coach may save the answer; owner/head coach edit or delete; audit trigger on `exercise_aliases`; RLS change (coach insert limited to ambiguous terms). (2026-10-21, Daniel)
     - [ ] Read "2 × 22.5 kg" / "single DB" into the line's `implement_count` override. (2026-10-21, Claude Code)
-  - [ ] **4d** `block_results`: table (data model §6), RLS, audit, pgTAP, and the phone-friendly after-class logging screen. (2026-10-21, Daniel)
+  - [x] **4d** `block_results`: table (data model §6), RLS, audit, pgTAP, and the phone-friendly after-class logging screen — built 2026-10-22 (Results, G then R). (2026-10-21, Daniel)
+    - [ ] Show logged results on the calendar (Step 5 calendar cells: "2 results"). (2026-10-22, Claude Code)
+    - [ ] A gym's class times as a list to pick from when logging (today the class is free text, e.g. "06:00"). (2026-10-22, Claude Code)
 - [ ] Step 5 — Calendar (day / week / month, details in cells, colour by type, drag and drop), templates (apply to several dates at once), analytics.
   - [ ] Weekly/period analytics over `workout_metrics` (the engine's `weekSummary` already computes total, monotony, strain, week-on-week change). (2026-10-21, Claude Code)
 - [ ] Later — Plyometric foot contacts metric (jumps, DU/SU, landings) — Lens candidate. (2026-10-21, Daniel)

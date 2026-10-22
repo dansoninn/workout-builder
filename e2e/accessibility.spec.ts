@@ -40,6 +40,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       const pages: [string, string][] = [
         ["builder", "Builder"],
         ["calendar", "Calendar"],
+        ["results", "Results"],
         ["analytics", "Analytics"],
         ["exercises", "Exercises"],
         ["settings/gym", "Settings"],

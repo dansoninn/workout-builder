@@ -5,7 +5,7 @@
 
 import type { Measure } from "@/lib/engine/types";
 
-export type Unit = "min" | "AU" | "reps" | "rounds" | "sets" | "m" | "cal" | "kg" | "ratio";
+export type Unit = "min" | "AU" | "reps" | "rounds" | "sets" | "m" | "cal" | "kg" | "ratio" | "clock";
 
 interface UnitRule {
   /** Decimals for a value of this size. */
@@ -14,6 +14,8 @@ interface UnitRule {
   estimateStep?: number;
   /** Text after the number; empty for none. */
   suffix: string;
+  /** Writes the rounded number its own way (a clock time from seconds). */
+  text?: (value: number) => string;
 }
 
 const RULES: Record<Unit, UnitRule> = {
@@ -27,7 +29,17 @@ const RULES: Record<Unit, UnitRule> = {
   // Single loads keep their half kilos (22.5 kg); volume load in the hundreds or thousands is whole kilos.
   kg: { decimals: (v) => (Number.isInteger(v) || v >= 100 ? 0 : 1), suffix: " kg" },
   ratio: { decimals: () => 1, suffix: "" },
+  // Seconds as a finish time on the clock (12:30); estimates to the nearest 10 s.
+  clock: { decimals: () => 0, estimateStep: 10, suffix: "", text: clockText },
 };
+
+/** 750 → "12:30"; 3750 → "1:02:30". */
+function clockText(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = String(seconds % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+}
 
 function round(value: number, decimals: number, step?: number): number {
   if (step) return Math.round(value / step) * step;
@@ -54,13 +66,17 @@ export function formatMeasure(measure: Measure, unit: Unit): FormattedMeasure {
   const estimated = measure.confidence === "estimated";
   const step = estimated ? rule.estimateStep : undefined;
   const decimals = rule.decimals(measure.mid);
-  const mid = number(round(measure.mid, decimals, step), step ? 0 : decimals);
+  const write = (value: number) => {
+    const rounded = round(value, decimals, step);
+    return rule.text ? rule.text(rounded) : number(rounded, step ? 0 : decimals);
+  };
+  const mid = write(measure.mid);
   const main = `${estimated ? "~" : ""}${mid}${rule.suffix}`;
 
   let range: string | null = null;
   if (estimated) {
-    const low = number(round(measure.low, decimals, step), step ? 0 : decimals);
-    const high = number(round(measure.high, decimals, step), step ? 0 : decimals);
+    const low = write(measure.low);
+    const high = write(measure.high);
     if (low !== high) range = `${low}–${high}`;
   }
 

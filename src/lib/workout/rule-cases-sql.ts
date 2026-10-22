@@ -5,6 +5,14 @@ const quote = (text: string) => `'${text.replace(/'/g, "''")}'`;
 /** The pgTAP file for RULE_CASES (see scripts/generate-rule-cases.ts). */
 export function ruleCasesSql(): string {
   const checks = RULE_CASES.map((c) => {
+    if (c.rule === "result") {
+      const v = c.value;
+      const sql = (n: number | null, type: string) => (n === null ? `null::${type}` : String(n));
+      const call =
+        `private.block_result_problem(${quote(c.format)}, ${quote(JSON.stringify(c.params))}::jsonb, ` +
+        `${sql(v.rounds_low, "numeric")}, ${sql(v.rounds_high, "numeric")}, ${sql(v.finish_low_s, "int")}, ${sql(v.finish_high_s, "int")})`;
+      return `select is(${call} is null, ${c.valid}, ${quote(`result ${c.format}: ${c.why} (${c.valid ? "valid" : "invalid"})`)});`;
+    }
     const json = `${quote(JSON.stringify(c.value))}::jsonb`;
     const call =
       c.rule === "params" ? `private.block_params_valid(${quote(c.format)}, ${json})`

@@ -1,3 +1,4 @@
+import type { ResultMeasure } from "./results";
 import type { BlockFormat } from "./rules";
 
 /**
@@ -8,7 +9,14 @@ import type { BlockFormat } from "./rules";
  */
 export type RuleCase =
   | { rule: "params"; format: BlockFormat; value: unknown; valid: boolean; why: string }
-  | { rule: "quantity" | "load" | "pace"; value: unknown; valid: boolean; why: string };
+  | { rule: "quantity" | "load" | "pace"; value: unknown; valid: boolean; why: string }
+  | { rule: "result"; format: BlockFormat; params: Record<string, unknown>; value: ResultMeasure; valid: boolean; why: string };
+
+const amrap8 = { format: "amrap", params: { time_s: 480 } } as const;
+const forTime = { format: "for_time", params: { rounds: 3 } } as const;
+const capped15 = { format: "for_time", params: { rounds: 3, time_cap_s: 900 } } as const;
+const rounds = (low: number | null, high: number | null): ResultMeasure => ({ rounds_low: low, rounds_high: high, finish_low_s: null, finish_high_s: null });
+const finish = (low: number | null, high: number | null): ResultMeasure => ({ rounds_low: null, rounds_high: null, finish_low_s: low, finish_high_s: high });
 
 export const RULE_CASES: RuleCase[] = [
   // Block params, per format.
@@ -66,4 +74,25 @@ export const RULE_CASES: RuleCase[] = [
   { rule: "pace", value: {}, valid: false, why: "at least one pace" },
   { rule: "pace", value: { sec_per_rep: 0 }, valid: false, why: "a positive pace" },
   { rule: "pace", value: { sec_per_500m: 120 }, valid: false, why: "a known key" },
+
+  // Block results (what the group did).
+  { rule: "result", ...amrap8, value: rounds(6.5, 8.75), valid: true, why: "AMRAP rounds, low-high" },
+  { rule: "result", ...amrap8, value: rounds(7, 7), valid: true, why: "everyone the same" },
+  { rule: "result", ...amrap8, value: rounds(0, 0.5), valid: true, why: "under one round" },
+  { rule: "result", ...amrap8, value: rounds(8, 7), valid: false, why: "fewest above most" },
+  { rule: "result", ...amrap8, value: rounds(-1, 7), valid: false, why: "no negative rounds" },
+  { rule: "result", ...amrap8, value: rounds(7.125, 8), valid: false, why: "two decimals at most" },
+  { rule: "result", ...amrap8, value: rounds(7, 1000), valid: false, why: "a sane number of rounds" },
+  { rule: "result", ...amrap8, value: rounds(7, null), valid: false, why: "both ends of the range" },
+  { rule: "result", ...amrap8, value: finish(600, 700), valid: false, why: "an AMRAP has no finish time" },
+  { rule: "result", ...amrap8, value: { rounds_low: 7, rounds_high: 8, finish_low_s: 600, finish_high_s: 700 }, valid: false, why: "not both" },
+  { rule: "result", ...forTime, value: finish(570, 840), valid: true, why: "For Time finishes, low-high" },
+  { rule: "result", ...forTime, value: finish(735, 735), valid: true, why: "one finish" },
+  { rule: "result", ...forTime, value: finish(840, 570), valid: false, why: "fastest after slowest" },
+  { rule: "result", ...forTime, value: finish(0, 570), valid: false, why: "a finish takes time" },
+  { rule: "result", ...forTime, value: finish(570, 90000), valid: false, why: "within a day" },
+  { rule: "result", ...forTime, value: rounds(3, 3), valid: false, why: "For Time has no rounds result" },
+  { rule: "result", ...capped15, value: finish(700, 900), valid: true, why: "capped athletes count as the cap" },
+  { rule: "result", ...capped15, value: finish(700, 901), valid: false, why: "not over the cap" },
+  { rule: "result", format: "every", params: { interval_s: 60, rounds: 10 }, value: rounds(10, 10), valid: false, why: "only AMRAP and For Time" },
 ];
