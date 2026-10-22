@@ -44,10 +44,13 @@ export const quantitySchema = z.discriminatedUnion("type", [
     .strictObject({ type: z.literal("reps_range"), min: whole(1), max: whole(1) })
     .refine((q) => q.min < q.max, { error: "The first number must be smaller" }),
   z.strictObject({ type: z.literal("reps_scheme"), scheme: z.array(whole(1)).min(1) }),
-  z.strictObject({ type: z.literal("distance_m"), value: positive }),
   z
-    .strictObject({ type: z.literal("calories"), min: whole(1), max: whole(1) })
-    .refine((q) => q.min <= q.max, { error: "The first number must not be larger" }),
+    .strictObject({ type: z.literal("distance_m"), value: positive, rx: z.array(positive).min(2).max(4).optional() })
+    .refine((q) => !q.rx || q.rx[0] === q.value, { error: "The first amount is the one that counts" }),
+  z
+    .strictObject({ type: z.literal("calories"), min: whole(1), max: whole(1), rx: z.array(whole(1)).min(2).max(4).optional() })
+    .refine((q) => q.min <= q.max, { error: "The first number must not be larger" })
+    .refine((q) => !q.rx || (q.rx[0] === q.min && q.min === q.max), { error: "The first amount is the one that counts" }),
   z.strictObject({ type: z.literal("time_s"), value: whole(1) }),
   z.strictObject({ type: z.literal("max_effort"), unit: z.enum(MEASURE_UNITS) }),
 ]);

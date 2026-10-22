@@ -5,7 +5,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(77);
+select plan(84);
 
 select is(private.block_params_valid('sets', '{"sets":5,"rest_s":120}'::jsonb), true, 'params sets: sets with rest (valid)');
 select is(private.block_params_valid('sets', '{"sets":5}'::jsonb), true, 'params sets: rest is optional (valid)');
@@ -38,6 +38,13 @@ select is(private.item_quantity_valid('{"type":"distance_m","value":0.5}'::jsonb
 select is(private.item_quantity_valid('{"type":"calories","min":8,"max":12}'::jsonb), true, 'quantity: 8-12 cal (valid)');
 select is(private.item_quantity_valid('{"type":"calories","min":15,"max":15}'::jsonb), true, 'quantity: 15 cal (valid)');
 select is(private.item_quantity_valid('{"type":"calories","min":15,"max":12}'::jsonb), false, 'quantity: min above max (invalid)');
+select is(private.item_quantity_valid('{"type":"calories","min":15,"max":15,"rx":[15,12]}'::jsonb), true, 'quantity: 15/12 cal (valid)');
+select is(private.item_quantity_valid('{"type":"calories","min":12,"max":12,"rx":[15,12]}'::jsonb), false, 'quantity: the first amount counts (invalid)');
+select is(private.item_quantity_valid('{"type":"calories","min":12,"max":15,"rx":[12,15]}'::jsonb), false, 'quantity: a range or men/women, not both (invalid)');
+select is(private.item_quantity_valid('{"type":"calories","min":15,"max":15,"rx":[15]}'::jsonb), false, 'quantity: men/women is two amounts or more (invalid)');
+select is(private.item_quantity_valid('{"type":"distance_m","value":400,"rx":[400,300]}'::jsonb), true, 'quantity: 400/300 m (valid)');
+select is(private.item_quantity_valid('{"type":"distance_m","value":300,"rx":[400,300]}'::jsonb), false, 'quantity: the first distance counts (invalid)');
+select is(private.item_quantity_valid('{"type":"distance_m","value":400,"rx":[400,0]}'::jsonb), false, 'quantity: each distance above 0 (invalid)');
 select is(private.item_quantity_valid('{"type":"time_s","value":30}'::jsonb), true, 'quantity: 30 s hold (valid)');
 select is(private.item_quantity_valid('{"type":"max_effort","unit":"calories"}'::jsonb), true, 'quantity: max cal (valid)');
 select is(private.item_quantity_valid('{"type":"max_effort","unit":"kg"}'::jsonb), false, 'quantity: a known unit (invalid)');

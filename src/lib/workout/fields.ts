@@ -83,6 +83,20 @@ function readQuantity(input: string, unit: MeasureUnit): Parsed<Quantity> {
     return scheme.every(isWhole) ? { ok: true, value: { type: "reps_scheme", scheme } } : { ok: false, error: "Use whole reps" };
   }
 
+  // 15/12 cal · 400/300 m · 1/0.8 km: men/women amounts; the first counts (calc spec decision 17).
+  const split = text.match(new RegExp(`^(${NUMBER}(?:\\s*\\/\\s*${NUMBER})+)\\s*([a-z]+)?$`));
+  const splitUnit = split ? (split[2] ? UNIT_WORDS[split[2]] : unit) : undefined;
+  if (split && (splitUnit === "calories" || splitUnit === "distance_m")) {
+    const scale = split[2] === "km" || split[2] === "k" ? 1000 : 1;
+    const rx = split[1]!.split("/").map((part) => num(part.trim()) * scale);
+    if (rx.length > 4) return { ok: false, error: "Give up to four amounts, e.g. 15/12 cal" };
+    if (!rx.every((x) => x > 0)) return { ok: false, error: "Each amount above 0" };
+    if (splitUnit === "calories") {
+      return rx.every(isWhole) ? { ok: true, value: { type: "calories", min: rx[0]!, max: rx[0]!, rx } } : { ok: false, error: "Use whole calories" };
+    }
+    return { ok: true, value: { type: "distance_m", value: rx[0]!, rx } };
+  }
+
   // 8/8 (per side)
   const perSide = text.match(/^(\d+)\s*\/\s*(\d+)$/);
   if (perSide) {
@@ -178,8 +192,8 @@ export function quantityText(q: Quantity): string {
     case "reps_range": return `${q.min}-${q.max}`;
     case "reps_scheme": return q.scheme.join("-");
     case "reps_per_side": return `${q.value}/${q.value}`;
-    case "distance_m": return `${q.value} m`;
-    case "calories": return q.min === q.max ? `${q.min} cal` : `${q.min}-${q.max} cal`;
+    case "distance_m": return q.rx ? `${q.rx.join("/")} m` : `${q.value} m`;
+    case "calories": return q.rx ? `${q.rx.join("/")} cal` : q.min === q.max ? `${q.min} cal` : `${q.min}-${q.max} cal`;
     case "time_s": return formatSeconds(q.value);
     case "max_effort": return q.unit === "reps" ? "max" : `max ${UNIT_NAMES[q.unit]}`;
   }
@@ -192,8 +206,8 @@ export function quantityMeaning(q: Quantity): string {
     case "reps_range": return `${q.min}–${q.max} reps`;
     case "reps_scheme": return `${q.scheme.join("-")} (${q.scheme.reduce((a, b) => a + b, 0)} reps)`;
     case "reps_per_side": return `${q.value} each side`;
-    case "distance_m": return `${q.value} m`;
-    case "calories": return q.min === q.max ? `${q.min} cal` : `${q.min}–${q.max} cal`;
+    case "distance_m": return q.rx ? `${q.rx.join("/")} m (${q.value} m in the numbers)` : `${q.value} m`;
+    case "calories": return q.rx ? `${q.rx.join("/")} cal (${q.min} cal in the numbers)` : q.min === q.max ? `${q.min} cal` : `${q.min}–${q.max} cal`;
     case "time_s": return formatSeconds(q.value);
     case "max_effort": return q.unit === "reps" ? "max reps" : q.unit === "distance_m" ? "max distance" : q.unit === "calories" ? "max calories" : "max time";
   }
