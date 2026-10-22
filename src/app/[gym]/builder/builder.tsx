@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlusIcon, CopyIcon, EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UndoIcon } from "lucide-react";
+import { CalendarPlusIcon, ClipboardCheckIcon, CopyIcon, EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UndoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useState, useTransition } from "react";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { usePageCommands } from "@/components/app/shell-context";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import {
   Dialog,
   DialogClose,
@@ -42,6 +43,7 @@ import {
   toEngineWorkout,
 } from "@/lib/workout/draft";
 import type { Library } from "@/lib/workout/library";
+import { takesResults } from "@/lib/workout/results";
 
 import { deleteWorkout, saveWorkout, setWorkoutStatus } from "./actions";
 import { BlockEditor, focusField } from "./block-editor";
@@ -261,9 +263,13 @@ export function Builder({
     [changeThenFocus],
   );
 
+  // After class: what each class did in the AMRAP and For Time blocks (4d).
+  const resultsHref = savedOnce && draft.kind === "scheduled" && draft.blocks.some((b) => takesResults(b.format)) ? `/${slug}/results/${draft.id}` : null;
+
   const commands = useMemo(
-    () =>
-      readOnly
+    () => [
+      ...(resultsHref ? [{ id: "results", label: "Log results", run: () => router.push(resultsHref) }] : []),
+      ...(readOnly
         ? []
         : [
             { id: "save", label: "Save workout", keys: ["⌘", "S"], run: () => save() },
@@ -274,8 +280,9 @@ export function Builder({
             draft.kind === "template"
               ? { id: "use-template", label: "Use this template on a date", run: () => setUseTemplate({ date: new Date().toISOString().slice(0, 10), trackId: draft.trackId ?? tracks.find((t) => !t.archived)?.id ?? null }) }
               : { id: "template", label: "Save as template", run: saveAsTemplate },
-          ],
-    [readOnly, save, addBlockAfter, draft.status, draft.kind, draft.trackId, tracks, publish, unpublish, saveAsTemplate],
+          ]),
+    ],
+    [resultsHref, router, readOnly, save, addBlockAfter, draft.status, draft.kind, draft.trackId, tracks, publish, unpublish, saveAsTemplate],
   );
   usePageCommands(commands);
 
@@ -327,6 +334,11 @@ export function Builder({
         />
         {draft.kind === "template" && <Badge variant="secondary">Template</Badge>}
         <Badge variant={draft.status === "published" ? "default" : "outline"}>{draft.status === "published" ? "Published" : "Draft"}</Badge>
+        {resultsHref && (
+          <ButtonLink href={resultsHref} variant="ghost" size="sm">
+            <ClipboardCheckIcon /> <span className="max-sm:sr-only">{readOnly ? "Workout results" : "Log results"}</span>
+          </ButtonLink>
+        )}
         {readOnly ? (
           <Badge variant="outline">View only</Badge>
         ) : (
