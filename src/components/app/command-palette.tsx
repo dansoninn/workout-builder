@@ -7,6 +7,7 @@ import {
   PlusIcon,
   SettingsIcon,
   UserPlusIcon,
+  ClipboardPasteIcon,
   ZapIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -103,8 +104,16 @@ export function CommandPalette({ gyms, current }: { gyms: GymMembership[]; curre
             </CommandGroup>
           )}
 
-          {current && (can.manageMembers(current.role) || can.manageTracks(current.role)) && (
+          {current && can.program(current.role) && (
             <CommandGroup heading="Actions">
+              <CommandItem value="New workout" onSelect={() => go(gymHref(current.slug, "builder"))}>
+                <PlusIcon />
+                New workout
+              </CommandItem>
+              <CommandItem value="Paste a workout as text" onSelect={() => go(gymHref(current.slug, "builder/paste"))}>
+                <ClipboardPasteIcon />
+                Paste a workout as text
+              </CommandItem>
               {can.manageMembers(current.role) && (
                 <CommandItem value="Invite a member" onSelect={() => go(`${gymHref(current.slug, "settings/members")}?invite=1`)}>
                   <UserPlusIcon />
