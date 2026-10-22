@@ -547,7 +547,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     if (item.quantity) {
       const q = parseQuantity(item.quantity, unit);
       if (!q.ok) {
-        line.problems.push(/^\d+\s*\/\s*\d+\s*(?:cal|m)/i.test(item.quantity) ? "Men/women amounts are not read yet: write one amount or a range, e.g. 12-15 cal" : q.error);
+        line.problems.push(q.error);
         line.blocking = true;
       }
     }

@@ -62,8 +62,10 @@ export type Quantity =
   | { type: "reps_range"; min: number; max: number }
   | { type: "reps_scheme"; scheme: number[] }
   | { type: "reps_per_side"; value: number }
-  | { type: "distance_m"; value: number }
-  | { type: "calories"; min: number; max: number }
+  /** rx: men/women amounts ("400/300 m"); value is the first, which every calculation uses (calc spec decision 17). */
+  | { type: "distance_m"; value: number; rx?: number[] }
+  /** rx: men/women amounts ("15/12 cal"); min = max = the first, which every calculation uses. */
+  | { type: "calories"; min: number; max: number; rx?: number[] }
   | { type: "time_s"; value: number }
   | { type: "max_effort"; unit: MeasureUnit };
 

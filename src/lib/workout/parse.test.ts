@@ -277,9 +277,11 @@ describe("nothing is guessed", () => {
     expect(r.lines[3]).toMatchObject({ status: "ask", blocking: true, problems: ["Add the amount, e.g. 10 burpees"] });
   });
 
-  it("men/women amounts and pounds are asked for, not converted", () => {
-    expect(parse("For time\n15/12 cal row").lines[1]).toMatchObject({ blocking: true, problems: [expect.stringContaining("Men/women")] });
-    expect(parse("For time\n20 wall balls (20/14 lb)").lines[1]).toMatchObject({ blocking: true, problems: [expect.stringContaining("Pounds")] });
+  it("men/women amounts are read, the first one counting (decision 17); pounds are asked for, not converted", () => {
+    const r = parse("For time\n15/12 cal row\n400/300 m run\n20 wall balls (20/14 lb)", {});
+    expect(r.blocks[0]!.items.slice(0, 2).map((i) => i.quantity)).toEqual(["15/12 cal", "400/300 m"]);
+    expect(r.lines[1]).toMatchObject({ status: "ok", meaning: "15/12 cal (15 cal in the numbers) · Row" });
+    expect(r.lines[3]).toMatchObject({ blocking: true, problems: [expect.stringContaining("Pounds")] });
   });
 
   it('"3 rounds" without "for time" is read as sets, and says so', () => {
