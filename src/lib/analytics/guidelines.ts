@@ -32,6 +32,18 @@ export const guidelinesSchema = z.strictObject({
 });
 export type Guidelines = z.infer<typeof guidelinesSchema>;
 
+/**
+ * A new gym's guidelines (calc spec decision 18, approved 2026-10-22). The
+ * database gives every new gym the same (private.default_guidelines).
+ */
+export const DEFAULT_GUIDELINES: Guidelines = {
+  hardSetsPerWeek: { squat: 4, hinge: 4, h_push: 3, h_pull: 3, v_push: 2, v_pull: 3 },
+  pushPull: { min: 0.8, max: 1.2 },
+  kneeHip: { min: 0.7, max: 1.5 },
+  monotonyMax: 2,
+  weekIncreaseMaxPercent: 15,
+};
+
 export const RATIO_LABELS = { pushPull: "Push : pull", kneeHip: "Knee : hip", upperLower: "Upper : lower" } as const;
 type RatioKey = keyof typeof RATIO_LABELS;
 

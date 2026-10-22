@@ -232,7 +232,14 @@ function Warnings({
       <h2 id="warnings" className="text-lg font-semibold">
         {warnings.length === 0 ? "Within your guidelines" : `${warnings.length} ${warnings.length === 1 ? "thing" : "things"} outside your guidelines`}
       </h2>
-      <p className="text-sm text-muted-foreground">Your gym&apos;s own guidelines, not scientific limits. {summary.days} days.</p>
+      <p className="text-sm text-muted-foreground">
+        Your gym&apos;s own guidelines, not scientific limits. {summary.days} days.{" "}
+        {canSet && (
+          <Link href={href("settings/guidelines")} className="font-medium text-foreground underline underline-offset-2">
+            Change them in Settings
+          </Link>
+        )}
+      </p>
       {warnings.length > 0 && (
         <ul className="grid gap-1.5">
           {warnings.map((w) => (

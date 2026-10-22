@@ -4,7 +4,7 @@ import { ENGINE_CONFIG } from "@/lib/engine/config";
 import { WOD_1, WOD_2, WOD_3 } from "@/lib/engine/fixtures/worked-wods";
 import { computeWorkout } from "@/lib/engine/workout";
 
-import { checkGuidelines, guidelinesSchema, hasGuidelines, readGuidelines } from "./guidelines";
+import { checkGuidelines, DEFAULT_GUIDELINES, guidelinesSchema, hasGuidelines, readGuidelines } from "./guidelines";
 import { type PeriodWorkout, summarisePeriod, weeksAround } from "./period";
 
 const workout = (id: string, date: string, result = computeWorkout(WOD_1, ENGINE_CONFIG)): PeriodWorkout => ({ id, date, title: id, trackId: null, result });
@@ -62,6 +62,17 @@ describe("a period of workouts, from their stored metrics", () => {
 
 describe("the gym's guidelines", () => {
   const summary = summarisePeriod(WEEK, "2026-10-19", "2026-10-25");
+
+  it("the defaults for a new gym (decision 18) are well-formed, and the §7 week is outside five of them", () => {
+    expect(guidelinesSchema.safeParse(DEFAULT_GUIDELINES).success).toBe(true);
+    expect(checkGuidelines(summary, DEFAULT_GUIDELINES).map((w) => w.key)).toEqual([
+      "hard-sets:hinge",
+      "hard-sets:v_push",
+      "hard-sets:v_pull",
+      "ratio:pushPull",
+      "ratio:kneeHip",
+    ]);
+  });
 
   it("nothing warns that the gym has not set", () => {
     expect(hasGuidelines({})).toBe(false);

@@ -5,7 +5,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(13);
+select plan(15);
 
 insert into tests.ids (name) select unnest(array['later', 'deleted', 'tpl', 'other_track']);
 insert into public.tracks (id, org_id, name, color) values (tests.id('other_track'), tests.id('gym_a'), 'Barbell club', '#DC2626');
@@ -38,7 +38,15 @@ select tests.login_as('owner_b');
 select is_empty($$ select 1 from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 1) $$,
   'Another gym sees nothing of it');
 
--- Guidelines.
+-- Guidelines: a new gym starts with the defaults (decision 18).
+select tests.logout();
+select is((select settings -> 'guidelines' from public.organizations where id = tests.id('gym_a')), private.default_guidelines(),
+  'A new gym starts with the default guidelines');
+select is(
+  private.default_guidelines(),
+  '{"hardSetsPerWeek": {"squat": 4, "hinge": 4, "h_push": 3, "h_pull": 3, "v_push": 2, "v_pull": 3}, "pushPull": {"min": 0.8, "max": 1.2}, "kneeHip": {"min": 0.7, "max": 1.5}, "monotonyMax": 2, "weekIncreaseMaxPercent": 15}'::jsonb,
+  'The defaults are the approved ones (the same as the app''s DEFAULT_GUIDELINES)');
+
 select tests.login_as('owner_a');
 select lives_ok($$ select public.set_gym_guidelines(tests.id('gym_a'), '{"hardSetsPerWeek": {"hinge": 4}, "kneeHip": {"max": 2}}') $$,
   'The owner sets the gym''s guidelines');
