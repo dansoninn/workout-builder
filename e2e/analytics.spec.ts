@@ -46,10 +46,10 @@ test("the §7 week in Analytics: the approved numbers, and warnings against the 
   await paste(page, slug, addDays(monday, 2), WOD_2);
   await paste(page, slug, addDays(monday, 4), WOD_3, [["Max cal bike", "Air bike"], ["Max lunges", "Walking lunge"]]);
 
-  // No guidelines yet: no warnings, and the owner is told where to set them.
+  // A new gym starts with the default guidelines (decision 18): the §7 week is outside five of them.
   await page.goto(`/${slug}/analytics?from=${monday}&to=${addDays(monday, 6)}`);
   await expect(page.getByRole("heading", { name: "Analytics", level: 1 })).toBeVisible();
-  await expect(page.getByText("your gym has not set its guidelines yet")).toBeVisible();
+  await expect(page.getByRole("region", { name: /outside your guidelines/ }).getByRole("heading")).toHaveText("5 things outside your guidelines");
   const summary = page.getByRole("region", { name: "Summary" });
   await expect(summary.locator("[data-visible-number]").first()).toHaveText("~593 AU");
   await expect(page.getByRole("table", { name: "Planned load per calendar week" })).toContainText("0.85");
@@ -57,10 +57,13 @@ test("the §7 week in Analytics: the approved numbers, and warnings against the 
   await expect(strength.getByRole("listitem")).toHaveText([/Squat\s*5/, /Horizontal push\s*4/, /Horizontal pull\s*4/]);
   await expect(page.locator("figure figcaption")).toContainText("Planned load per day");
 
-  // The owner sets two guidelines.
-  await page.getByRole("link", { name: "Set them in Settings" }).click();
+  // The owner changes them: no vertical guidelines, a looser push : pull and knee : hip.
+  await page.getByRole("link", { name: "Change them in Settings" }).click();
   await expect(page.getByRole("heading", { name: "Guidelines" })).toBeVisible();
-  await page.getByLabel("Hinge").fill("4");
+  await expect(page.getByLabel("Hinge")).toHaveValue("4");
+  await page.getByLabel("Vertical push").fill("");
+  await page.getByLabel("Vertical pull").fill("");
+  await page.getByRole("group", { name: "Push : pull" }).getByLabel("Highest").fill("1.5");
   await page.getByRole("group", { name: "Knee : hip" }).getByLabel("Highest").fill("2");
   await page.getByRole("button", { name: "Save guidelines" }).click();
   await expect(page.getByText("Guidelines saved")).toBeVisible();

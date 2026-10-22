@@ -7,7 +7,7 @@ import { ReadOnlyNote, SettingsSection } from "@/components/app/settings";
 import { PatternTag } from "@/components/design/tags";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { type Guidelines, guidelinesSchema, RATIO_LABELS } from "@/lib/analytics/guidelines";
+import { DEFAULT_GUIDELINES, type Guidelines, guidelinesSchema, RATIO_LABELS } from "@/lib/analytics/guidelines";
 import { PATTERNS, type PatternKey } from "@/lib/taxonomy";
 
 import { setGuidelines } from "./actions";
@@ -88,8 +88,17 @@ export function GuidelinesForm({ slug, initial, canEdit }: { slug: string; initi
     <form onSubmit={save} className="grid gap-10" noValidate>
       <SettingsSection
         title="Guidelines"
-        description="Your gym's own guidelines for its programming, not scientific limits. Analytics warns when a period is outside them. Leave a field empty for no warning."
-        action={canEdit && <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save guidelines"}</Button>}
+        description="Your gym's own guidelines for its programming, not scientific limits. Analytics warns when a period is outside them. A new gym starts with the defaults; change them to fit your members, or leave a field empty for no warning."
+        action={
+          canEdit && (
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setForm(toForm(DEFAULT_GUIDELINES))} disabled={pending}>
+                Back to the defaults
+              </Button>
+              <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save guidelines"}</Button>
+            </div>
+          )
+        }
       >
         {!canEdit && <ReadOnlyNote>The owner sets the gym&apos;s guidelines.</ReadOnlyNote>}
         {error && (
