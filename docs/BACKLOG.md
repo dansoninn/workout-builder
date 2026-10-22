@@ -7,6 +7,8 @@ Claude Code reads this file at the start of every step and moves items to "Done"
 Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs to when known.
 
 ## Open questions (need Daniel)
+- [ ] Effort words in pasted text ("heavy", "light", "sprint", "RPE 8", "@ 7/10"): which Pace / Load level should each mean? Today the parser only reads the app's own words ("Pace Hard", "Load Moderate") and leaves the rest at the default effort. (2026-10-22, Claude Code)
+- [ ] Men/women amounts in pasted text ("15/12 cal", "400/300 m"): store them as a range for the class (12–15 cal), or the first (men's) number like loads' first Rx? Today the parser asks the coach to rewrite them. (2026-10-22, Claude Code)
 - [ ] AMRAP partial rounds as coaches write them, "7 + 12" (7 rounds and 12 reps into the next): accept it? Turning "+12" into part of a round needs a rule — e.g. the share of the round's reps, or of its estimated time when the round mixes reps, calories and metres. Today the app takes decimals only ("7.5"). (2026-10-22, Claude Code)
 
 
@@ -21,10 +23,13 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
     - [ ] Drag and drop for blocks and lines (keyboard and menus today). (2026-10-21, Claude Code)
     - [ ] Restore an archived gym exercise (archive only today). (2026-10-21, Claude Code)
     - [ ] Gym time zone: "today" on the calendar and a new workout's default date use UTC (right for Iceland). Needed before gyms elsewhere. (2026-10-21, Claude Code)
-  - [ ] **4c** Paste text → parser → check-and-confirm screen; raw text stored. Daniel provides 20–50 real workouts as text before 4c starts. (2026-10-21, Daniel)
-    - [ ] Look up exercises with `normalizeAlias` and strip plurals ("kb swings" → "kb swing"); lookup order gym alias → core alias → ambiguous term → unmatched. (2026-10-21, Claude Code)
-    - [ ] Ambiguous terms asked once and saved as a gym alias: any coach may save the answer; owner/head coach edit or delete; audit trigger on `exercise_aliases`; RLS change (coach insert limited to ambiguous terms). (2026-10-21, Daniel)
-    - [ ] Read "2 × 22.5 kg" / "single DB" into the line's `implement_count` override. (2026-10-21, Claude Code)
+  - [x] **4c** Paste text → parser → check-and-confirm screen; raw text stored — built 2026-10-22 from common whiteboard formats and the three §7 workouts (Daniel's real workouts become test cases when he sends them; they no longer block). (2026-10-21, Daniel)
+    - [x] Look up exercises with `normalizeAlias` and strip plurals ("kb swings" → "kb swing"); lookup order gym alias → core alias → ambiguous term → unmatched. (2026-10-21, Claude Code)
+    - [x] Ambiguous terms asked once and saved as a gym alias: any coach may save the answer; owner/head coach edit or delete; audit trigger on `exercise_aliases`; RLS change (coach insert limited to ambiguous terms). (2026-10-21, Daniel)
+    - [x] Read "2 × 22.5 kg" into the line's implement count (through the load, as the builder does). (2026-10-21, Claude Code)
+    - [ ] Read "single DB" / "1 KB" into the implement count of a two-implement exercise (careful: "single-arm" is a different exercise). (2026-10-22, Claude Code)
+    - [ ] Add Daniel's real workouts as parser test cases when he sends them; extend the grammar where they need it. (2026-10-22, Daniel)
+    - [ ] Paste into an existing workout (add blocks to it) — today a paste makes a new workout. (2026-10-22, Claude Code)
   - [x] **4d** `block_results`: table (data model §6), RLS, audit, pgTAP, and the phone-friendly after-class logging screen — built 2026-10-22 (Results, G then R). (2026-10-21, Daniel)
     - [ ] Show logged results on the calendar (Step 5 calendar cells: "2 results"). (2026-10-22, Claude Code)
     - [ ] A gym's class times as a list to pick from when logging (today the class is free text, e.g. "06:00"). (2026-10-22, Claude Code)
