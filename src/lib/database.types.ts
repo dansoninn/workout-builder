@@ -634,6 +634,9 @@ isOneToOne: false
             "accept_invitation":
 { Args: { "p_token": string }; Returns: string
                            },
+"copy_workout":
+{ Args: { "p_org": string,"p_source": string,"p_targets": Json }; Returns: number
+                           },
 "create_invitation":
 { Args: { "p_email": string,"p_org": string,"p_role": Database["public"]['Enums']["org_role"] }; Returns: string
                            },
