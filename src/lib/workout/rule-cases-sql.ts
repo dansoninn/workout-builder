@@ -18,6 +18,7 @@ export function ruleCasesSql(): string {
       c.rule === "params" ? `private.block_params_valid(${quote(c.format)}, ${json})`
       : c.rule === "quantity" ? `private.item_quantity_valid(${json})`
       : c.rule === "load" ? `private.item_load_valid(${json})`
+      : c.rule === "guidelines" ? `private.guidelines_problem(${json}) is null`
       : `private.pace_is_valid(${json})`;
     const label = `${c.rule}${c.rule === "params" ? ` ${c.format}` : ""}: ${c.why} (${c.valid ? "valid" : "invalid"})`;
     return `select is(${call}, ${c.valid}, ${quote(label)});`;
