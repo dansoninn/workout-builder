@@ -279,6 +279,12 @@ What the **group** actually did in a block, logged by a coach after class. Not p
 
 Rules: rounds only on AMRAP blocks, finish times only on For Time blocks; low ≤ high. RLS: everyone in the gym reads; owner, head coach and coach write. Audited. Results never overwrite a pace by themselves (see BACKLOG: per-gym pace calibration).
 
+As built in 4d (migration `001900`, approved rules above plus these guards):
+- A result needs its block's measure (an AMRAP result has rounds, a For Time result has finish times), never both; only blocks of **scheduled** workouts take results (not templates).
+- Rounds ≥ 0, below 1000, at most two decimals; finish times whole seconds, 1 s to 24 h, and **never over the block's time cap** (anyone capped counts as the cap). One rule function, `private.block_result_problem`, mirrored in `src/lib/workout/results.ts` and tested on one list of cases.
+- `logged_by` is always the signed-in user; a result stays with its block and its gym. No hard delete for users: `deleted_at` (soft delete, undo in the app).
+- **A block keeps its results:** while live results point at it, the block cannot be removed or change format (the builder's save says so). Hard deletes that cascade from a workout or a gym still go through.
+
 ---
 
 ## 7. Computed data, audit, safety

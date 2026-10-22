@@ -99,7 +99,7 @@ Rules:
 | Keys | Action | Where |
 |---|---|---|
 | ⌘ K | Command palette: every page and action; the builder adds Save, Publish, Add block, Template | Anywhere |
-| G then B / C / A / E / S | Builder / Calendar / Analytics / Exercises / Settings | Anywhere |
+| G then B / C / R / A / E / S | Builder / Calendar / Results / Analytics / Exercises / Settings | Anywhere |
 | G then P | Your profile | Anywhere |
 | ? | All shortcuts | Anywhere |
 | ⌘ S | Save the workout | Builder |
@@ -117,4 +117,4 @@ WCAG 2.2 AA as the floor: contrast as above (tested), full keyboard use, visible
 
 ## 9. Layout
 
-App shell: sidebar (240 px) with gym switcher, "Go to or do… ⌘K", navigation (shortcut keys appear on hover and focus) and user menu; content area with a page header (title, one primary action). Below 1024 px the sidebar becomes a sheet opened from a slim top bar. The frame renders instantly; the sidebar and each page show skeletons of their own shape while data arrives. Settings pages share a tab row (Gym · Members · Tracks · Profile). The builder (4b) is two panes: workout on the left, live load panel on the right. Desktop and tablet for programming; phones for viewing and logging results.
+App shell: sidebar (240 px) with gym switcher, "Go to or do… ⌘K", navigation (shortcut keys appear on hover and focus) and user menu; content area with a page header (title, one primary action). Below 1024 px the sidebar becomes a sheet opened from a slim top bar. The frame renders instantly; the sidebar and each page show skeletons of their own shape while data arrives. Settings pages share a tab row (Gym · Members · Tracks · Profile). The builder (4b) is two panes: workout on the left, live load panel on the right. Desktop and tablet for programming; phones for viewing and logging results. Results (4d) is phone-first: one column, 44 px fields and buttons below 640 px (32 px above), number pads (`inputMode`), and 16 px input text on phones everywhere so iOS does not zoom on tap.
