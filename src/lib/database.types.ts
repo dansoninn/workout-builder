@@ -171,6 +171,46 @@ isOneToOne: false
       referencedColumns: ["id","org_id"]
     }
                   ]
+                },"calendar_days": {
+                  Row: {
+                    "closed": boolean,"date": string,"holiday_of": string | null,"id": string,"name": string,"org_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "closed"?: boolean,"date": string,"holiday_of"?: string | null,"id"?: string,"name": string,"org_id": string
+                  }
+                  Update: {
+                    "closed"?: boolean,"date"?: string,"holiday_of"?: string | null,"id"?: string,"name"?: string,"org_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "calendar_days_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"day_focuses": {
+                  Row: {
+                    "archived_at": string | null,"color": string | null,"created_at": string,"id": string,"name": string,"org_id": string,"position": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"id"?: string,"name": string,"org_id": string,"position"?: number
+                  }
+                  Update: {
+                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"id"?: string,"name"?: string,"org_id"?: string,"position"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "day_focuses_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"effort_levels": {
                   Row: {
                     "key": string,"label_en": string,"position": number,"rir_max": number | null,"rir_min": number,"rpe_calc": number,"rpe_max": number,"rpe_min": number
@@ -547,6 +587,38 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"program_days": {
+                  Row: {
+                    "date": string,"focus_id": string,"id": string,"org_id": string,"track_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "date": string,"focus_id": string,"id"?: string,"org_id": string,"track_id": string
+                  }
+                  Update: {
+                    "date"?: string,"focus_id"?: string,"id"?: string,"org_id"?: string,"track_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "program_days_focus_id_org_id_fkey"
+      columns: ["focus_id","org_id"]
+isOneToOne: false
+      referencedRelation: "day_focuses"
+      referencedColumns: ["id","org_id"]
+    },{
+      foreignKeyName: "program_days_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "program_days_track_id_org_id_fkey"
+      columns: ["track_id","org_id"]
+isOneToOne: false
+      referencedRelation: "tracks"
+      referencedColumns: ["id","org_id"]
+    }
+                  ]
                 },"taxonomy_versions": {
                   Row: {
                     "notes": string,"published_at": string,"version": number
@@ -563,14 +635,14 @@ isOneToOne: false
                   ]
                 },"tracks": {
                   Row: {
-                    "archived_at": string | null,"color": string | null,"created_at": string,"guidelines": Json | null,"id": string,"name": string,"org_id": string,"position": number
+                    "archived_at": string | null,"color": string | null,"created_at": string,"ends_on": string | null,"guidelines": Json | null,"id": string,"name": string,"org_id": string,"position": number,"starts_on": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"guidelines"?: Json | null,"id"?: string,"name": string,"org_id": string,"position"?: number
+                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"ends_on"?: string | null,"guidelines"?: Json | null,"id"?: string,"name": string,"org_id": string,"position"?: number,"starts_on"?: string | null
                   }
                   Update: {
-                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"guidelines"?: Json | null,"id"?: string,"name"?: string,"org_id"?: string,"position"?: number
+                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"ends_on"?: string | null,"guidelines"?: Json | null,"id"?: string,"name"?: string,"org_id"?: string,"position"?: number,"starts_on"?: string | null
                   }
                   Relationships: [
                     {

@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PERIOD_PRESETS } from "@/lib/analytics/period";
 import { cn } from "@/lib/utils";
 
 import type { TrackOption } from "../builder/builder";
 import { ProgramPicker } from "./program-picker";
 
-/** The period (7, 14 or 30 days ending today, or any range) and the programs, kept in the address. */
+/** The period (7, 14 or 30 days ending today, or any range), the programs and a day focus, kept in the address. */
 export function PeriodControls({
   slug,
   days,
@@ -18,6 +19,8 @@ export function PeriodControls({
   to,
   programIds,
   tracks,
+  focuses,
+  focusId,
 }: {
   slug: string;
   /** The preset in use, or null for a custom range. */
@@ -27,13 +30,17 @@ export function PeriodControls({
   /** The programs shown: one, or several the coach chose. */
   programIds: string[];
   tracks: TrackOption[];
+  /** The gym's day focuses (Settings → Days). */
+  focuses: { id: string; name: string }[];
+  /** Only the days with this focus; null for every day. */
+  focusId: string | null;
 }) {
   const router = useRouter();
   const id = useId();
   const [custom, setCustom] = useState({ from, to });
   const go = (params: Record<string, string | null>) => {
     const query = new URLSearchParams();
-    for (const [key, value] of Object.entries({ programs: programIds.join(","), ...params })) if (value) query.set(key, value);
+    for (const [key, value] of Object.entries({ programs: programIds.join(","), focus: focusId, ...params })) if (value) query.set(key, value);
     router.push(`/${slug}/analytics?${query}`);
   };
 
@@ -85,6 +92,30 @@ export function PeriodControls({
         selected={programIds}
         onChange={(ids) => go({ programs: ids.join(","), ...(days ? { days: String(days) } : { from, to }) })}
       />
+      {focuses.length > 0 && (
+        <div className="grid gap-1">
+          <label htmlFor={`${id}-focus`} className="text-xs font-medium text-muted-foreground">
+            Day focus
+          </label>
+          <Select
+            items={[{ value: "all", label: "All days" }, ...focuses.map((f) => ({ value: f.id, label: `${f.name} days` }))]}
+            value={focusId ?? "all"}
+            onValueChange={(v) => go({ focus: v && v !== "all" ? String(v) : null, ...(days ? { days: String(days) } : { from, to }) })}
+          >
+            <SelectTrigger id={`${id}-focus`} className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All days</SelectItem>
+              {focuses.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.name} days
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
     </div>
   );
 }

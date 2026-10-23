@@ -9,7 +9,7 @@ create extension if not exists pgtap with schema extensions;
 
 select plan(32);
 
-insert into tests.ids (name) select unnest(array['invite', 'amrap', 'result', 'alias', 'own_exercise']);
+insert into tests.ids (name) select unnest(array['invite', 'amrap', 'result', 'alias', 'own_exercise', 'focus']);
 insert into public.invitations (id, org_id, email, role, token_hash) values
   (tests.id('invite'), tests.id('gym_a'), 'new@example.test', 'coach', private.hash_token('t0k3n'));
 insert into public.blocks (id, workout_id, org_id, position, label, intent, format, params, pace_effort) values
@@ -17,6 +17,9 @@ insert into public.blocks (id, workout_id, org_id, position, label, intent, form
 insert into public.block_results (id, org_id, block_id, rounds_low, rounds_high) values (tests.id('result'), tests.id('gym_a'), tests.id('amrap'), 6, 8);
 insert into public.exercise_pace_overrides (org_id, exercise_id, pace) values (tests.id('gym_a'), tests.id('ex_a'), '{"sec_per_rep": 3}');
 insert into public.member_preferences (org_id, user_id, calendar_all_programs) values (tests.id('gym_a'), tests.id('coach_a'), true);
+insert into public.day_focuses (id, org_id, name) values (tests.id('focus'), tests.id('gym_a'), 'Squat');
+insert into public.program_days (org_id, track_id, date, focus_id) values (tests.id('gym_a'), tests.id('track_a'), '2026-10-26', tests.id('focus'));
+insert into public.calendar_days (org_id, date, name) values (tests.id('gym_a'), '2026-12-25', 'Christmas Day');
 
 select has_function('public', 'delete_gym', array['uuid', 'text'], 'delete_gym exists');
 select is((select count(*)::int from cron.job where jobname = 'erase-deleted-gyms'), 1, 'The nightly erasure is scheduled');
@@ -81,6 +84,9 @@ select is(
     union all select org_id from public.exercise_pace_overrides where org_id = tests.id('gym_a')
     union all select org_id from public.invitations where org_id = tests.id('gym_a')
     union all select org_id from public.member_preferences where org_id = tests.id('gym_a')
+    union all select org_id from public.day_focuses where org_id = tests.id('gym_a')
+    union all select org_id from public.program_days where org_id = tests.id('gym_a')
+    union all select org_id from public.calendar_days where org_id = tests.id('gym_a')
   ) as everything),
   0, 'Nothing of the gym is left in any table');
 select is_empty($$ select 1 from public.audit_log where org_id = tests.id('gym_a') $$, 'not even its audit log');

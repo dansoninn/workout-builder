@@ -88,3 +88,25 @@ export async function rememberCalendarProgram(slug: string, choice: unknown): Pr
   if (error) return { ok: false, error: "Could not remember the program." };
   return { ok: true };
 }
+
+const focusSchema = z.strictObject({ trackId: z.uuid(), date: z.iso.date(), focusId: z.uuid().nullable() });
+
+/** A program's focus for a day (PP, Squat …), or none. Coaches set it ahead of the workouts. */
+export async function setDayFocus(slug: string, input: unknown): Promise<ActionResult> {
+  const gym = await gymForAction(slug, can.program);
+  const parsed = focusSchema.safeParse(input);
+  if (!gym || !parsed.success) return { ok: false, error: NOT_ALLOWED };
+  const { trackId, date, focusId } = parsed.data;
+
+  const supabase = await createClient();
+  const { error } = focusId
+    ? await supabase
+        .from("program_days")
+        .upsert({ org_id: gym.id, track_id: trackId, date, focus_id: focusId }, { onConflict: "track_id,date" })
+    : await supabase.from("program_days").delete().eq("org_id", gym.id).eq("track_id", trackId).eq("date", date);
+  if (error?.code === "23514") return { ok: false, error: "That day focus was archived. Reload the page." };
+  if (error?.code === "23503") return { ok: false, error: "That program or day focus no longer exists. Reload the page." };
+  if (error) return { ok: false, error: "Could not set the day's focus. Try again." };
+  refresh();
+  return { ok: true };
+}

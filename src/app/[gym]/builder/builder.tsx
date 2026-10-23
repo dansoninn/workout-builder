@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarPlusIcon, ClipboardCheckIcon, ClipboardPasteIcon, CopyIcon, EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UndoIcon } from "lucide-react";
+import { CalendarPlusIcon, CircleAlertIcon, ClipboardCheckIcon, ClipboardPasteIcon, CopyIcon, EllipsisIcon, PlusIcon, RotateCcwIcon, Trash2Icon, UndoIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { useCallback, useDeferredValue, useEffect, useId, useMemo, useState, useTransition } from "react";
@@ -28,8 +28,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Kbd } from "@/components/ui/kbd";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { runsOn } from "@/lib/calendar/holidays";
 import { ENGINE_CONFIG } from "@/lib/engine/config";
 import { computeWorkout } from "@/lib/engine/workout";
+import { programDates } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import {
   blockLabel,
@@ -51,12 +53,13 @@ import { BlockEditor, focusField } from "./block-editor";
 import { LoadPanel, type PanelIssue } from "./load-panel";
 import { type DraftAction, useDraft } from "./use-draft";
 
-export type TrackOption = { id: string; name: string; color: string | null; archived: boolean };
+export type TrackOption = { id: string; name: string; color: string | null; archived: boolean; startsOn: string | null; endsOn: string | null };
 
 export function Builder({
   slug,
   library,
   tracks,
+  closedDays,
   initial,
   isNew,
   canEdit,
@@ -64,6 +67,8 @@ export function Builder({
   slug: string;
   library: Library;
   tracks: TrackOption[];
+  /** The gym's closed days (Settings → Days), for a warning on the date. */
+  closedDays: { date: string; name: string }[];
   initial: DraftWorkout;
   isNew: boolean;
   canEdit: boolean;
@@ -432,6 +437,7 @@ export function Builder({
                 </SelectContent>
               </Select>
             </div>
+            <DateWarning date={draft.kind === "scheduled" ? draft.date : null} track={tracks.find((t) => t.id === draft.trackId)} closedDays={closedDays} />
             {!readOnly && (
               <p className="ml-auto hidden text-xs text-muted-foreground xl:block">
                 <Kbd>Enter</Kbd> new line · <Kbd>⌘</Kbd>
@@ -532,5 +538,22 @@ export function Builder({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/** A workout on a closed day, or outside its program's dates: allowed, and said (item 4 of Daniel's list, 2026-10-23). */
+function DateWarning({ date, track, closedDays }: { date: string | null; track: TrackOption | undefined; closedDays: { date: string; name: string }[] }) {
+  if (!date) return null;
+  const closed = closedDays.find((d) => d.date === date);
+  const outside = track && !runsOn(track, date);
+  if (!closed && !outside) return null;
+  return (
+    <p className="flex basis-full items-start gap-1.5 rounded-md bg-warning-subtle px-2.5 py-1.5 text-xs" role="status">
+      <CircleAlertIcon className="mt-px size-3.5 shrink-0 text-warning" aria-hidden />
+      <span>
+        {closed && `${closed.name}: the gym is closed that day. `}
+        {outside && `${track.name} runs ${programDates(track).replace(/^From/, "from").replace(/^Until/, "until")}: this date is outside it.`}
+      </span>
+    </p>
   );
 }

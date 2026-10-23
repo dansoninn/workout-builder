@@ -28,6 +28,7 @@ export const SETTINGS_PAGES: readonly { key: string; label: string; path: string
   { key: "gym", label: "Gym", path: "settings/gym" },
   { key: "members", label: "Members", path: "settings/members" },
   { key: "programs", label: "Programs", path: "settings/programs" },
+  { key: "days", label: "Days", path: "settings/days" },
   { key: "paces", label: "Paces", path: "settings/paces" },
   { key: "guidelines", label: "Guidelines", path: "settings/guidelines" },
   { key: "profile", label: "Profile", path: "settings/profile", shortcut: "p" },

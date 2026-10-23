@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-23 by Claude Code
 **Working mode:** continuous (CLAUDE.md).
-**Now:** your list of 2026-10-23 (Afrek's 2024 programming), in your order. Done: 1 partner rule, 2 parser notations, 3 library coverage report. Next: 4 day focus, closed days, program dates; then 5 program import. Part 1 of Step 6 (name, domain, purchases) is postponed, as you said.
+**Now:** your list of 2026-10-23 (Afrek's 2024 programming), in your order. Done: 1 partner rule, 2 parser notations, 3 library coverage report, 4 day focus, holidays and closed days, program dates. Next: 5 program import. Part 1 of Step 6 (name, domain, purchases) is postponed, as you said.
 
 ## Decisions for you
 Nothing is blocked; each item says what I did meanwhile. **1 and 2 matter most.**
@@ -16,7 +16,12 @@ Nothing is blocked; each item says what I did meanwhile. **1 and 2 matter most.*
 3. **Partner workouts, my readings** (calc spec §4.5, decision 21): a team of 3 counts as partners (half each) for now, and says so; "Partner" alone = split the work; "split" and "I go, you go" give the same numbers (each does half), only the label differs; an AMRAP with "each" = taking turns (half the rounds each).
 4. **Counting real notations, my readings** (calc spec decision 22): a range of sets ("4–5 sets") counts the lower number, a range of minutes ("20–25 min") the middle — the check screen says so; "find heaviest in 12–15 min" = as many sets as fit, **all at Load Hard, so all count as hard sets**.
 5. **A bare "row"**: your rule (machine only with cal/m, else ask) is built. I also count a "Row" **station of a timed block with no amount** ("6. Row" in intervals, "B1. Row" in alternating minutes) as the machine: Afrek has ~30 of those and they are all the rower. Asking each time is the strict reading.
-6. **Part 1 of Step 6** (name, domain, legal entity, Vercel/Supabase Pro, email, lawyer): postponed by you; the list is unchanged in `docs/PLAN-step-6.md`.
+6. **Days on the calendar, my readings** (data model spec, "Days on the calendar"):
+   - **Day focus is per program**: Afrek's column A belongs to the main class; STYRKUR writes its own focus in its cells. A gym can give every program the same focus on a day, one by one.
+   - **A holiday is added as closed**; untick "Closed" for the ones the gym is open on (it keeps its name on the calendar).
+   - **A closed day, or a day outside a program's dates, warns but never blocks** a workout (the builder, a calendar move). History outside a season is kept.
+   - **Analytics for one day focus** ("Squat days") shows those days' workouts; warnings, monotony and the change from the week before are left out, since they need every day.
+7. **Part 1 of Step 6** (name, domain, legal entity, Vercel/Supabase Pro, email, lawyer): postponed by you; the list is unchanged in `docs/PLAN-step-6.md`.
 
 ## What changed since your Afrek message (2026-10-23)
 Each part is its own pull request, merged when CI was fully green, database changes applied to the hosted project just before.
@@ -42,12 +47,20 @@ Every rule is tested on other gyms' styles too (`parse-notations.test.ts`). On A
 - The proposals live in `src/lib/library/proposed-additions.ts`, checked by tests against the library's rules (weights sum to 1, at most three muscles, no alias twice, every alias finds its exercise). Approving moves them into the library with one migration.
 - Matching got more general on the way (parser version 3): an implement word before an exercise ("KB farmers carry", "KB split squat", also "G2OH w plate"); "rubber band" = band; strict / explosive / tempo / slow as how, not which; your **"row" rule**.
 
+### 4. Day focus, holidays and closed days, program dates
+- **Settings → Days** (new): the gym's **day focuses** (PP, Squat, DL, Oly / Core, Mix, Partner — your own list, with colours, ordered, archived not deleted), and its **holidays and closed days** by year: **"Add Iceland's public holidays for 2026"** puts all 16 on the calendar (Easter-based ones worked out; two on one day become one entry), each one can be kept open, renamed or removed; add your own days ("Closed for a competition").
+- **Calendar:** each day shows the holiday or closed day, and the program's **day focus** — coaches set it from the day ("+ Focus", a menu), ahead of the workouts. "All programs" names each program's focus. Closed days are tinted; a program's days outside its dates say **"Not running"**.
+- **Programs with dates:** "Runs from" and "Until" in Settings → Programs (both optional). Workouts outside them are kept.
+- **Warnings, never blocks:** the builder says "Christmas Day: the gym is closed that day" or "Þrek runs 5 Jan 2026 – 31 May 2026: this date is outside it"; a calendar move says the same in its message.
+- **Analytics → Day focus:** "Squat days" shows only the workouts on days a program has that focus.
+- Owners and head coaches keep the lists; coaches set a day's focus; viewers see it all. Audited, erased with a deleted gym, in the gym's export.
+
 ## How it was verified
 | What | Result |
 |---|---|
-| Unit tests (Vitest) | **558 of 558** (new: partner engine and parser, the notations in other gyms' styles, the row rule, proposed library checks, the spreadsheet reader on a made-up workbook) |
-| Database tests (pgTAP) | 26 files; new: partner mode (12), line and block details (14); the shared rule cases regenerated |
-| Browser tests (Playwright) | new: a partner block keeps how partners share the work; alternatives, one side and a cap are pasted, saved and shown |
+| Unit tests (Vitest) | **563 of 563** (new: partner engine and parser, the notations in other gyms' styles, the row rule, proposed library checks, the spreadsheet reader on a made-up workbook, Easter and Iceland's holidays, program dates) |
+| Database tests (pgTAP) | 27 files; new: partner mode (12), line and block details (14), days and program dates (30); gym erasure covers the new tables; the shared rule cases regenerated |
+| Browser tests (Playwright) | new: a partner block keeps how partners share the work; alternatives, one side and a cap are pasted, saved and shown; day focus from Settings to the calendar to Analytics; Iceland's holidays, a closed day and a program's dates on the calendar and in the builder (with accessibility scans) |
 | Note | This Mac cannot run the local database, so database and browser tests ran on GitHub for every pull request. |
 
 ## Pull requests
@@ -56,9 +69,9 @@ Every rule is tested on other gyms' styles too (`parse-notations.test.ts`). On A
 | #24 | Your backlog and the programming README | — | merged |
 | #25 | Partner workouts (calc version 2) | 003200 | merged, applied |
 | #26 | Parser: Afrek's notations, written generally | — | merged |
-| #27 | Alternatives, one side, caps, stretching, time boxes (calc version 3) | 003300 | CI |
-| #28 | Library coverage report and proposals; the row rule | — | this one |
+| #27 | Alternatives, one side, caps, stretching, time boxes (calc version 3) | 003300 | merged, applied |
+| #28 | Library coverage report and proposals; the row rule | — | CI |
+| #29 | Day focus, holidays and closed days, program dates | 003400 | CI |
 
 ## Next
-4. Day focus per day (calendar, analytics filter); closed days and holidays (Icelandic public holidays, editable per gym); programs with start and end dates.
 5. Program import (the full BACKLOG spec), tested on made-up files in Afrek's layout and run locally on the real one.

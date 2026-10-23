@@ -15,6 +15,18 @@ export const TRACK_COLORS: readonly { value: string; label: string }[] = [
   { value: "#7A7F8A", label: "Grey" },
 ];
 
+const dateFormat = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+const date = (iso: string) => dateFormat.format(new Date(`${iso}T00:00:00Z`));
+
+/** "5 Jan 2026 – 31 May 2026", "From 1 Sep 2026", "Until 31 May 2026"; "" for a program without dates. */
+export function programDates(program: { startsOn: string | null; endsOn: string | null }): string {
+  const { startsOn, endsOn } = program;
+  if (startsOn && endsOn) return `${date(startsOn)} – ${date(endsOn)}`;
+  if (startsOn) return `From ${date(startsOn)}`;
+  if (endsOn) return `Until ${date(endsOn)}`;
+  return "";
+}
+
 export function trackColorLabel(color: string | null): string {
   return TRACK_COLORS.find((c) => c.value.toLowerCase() === color?.toLowerCase())?.label ?? "No colour";
 }

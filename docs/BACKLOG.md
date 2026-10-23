@@ -32,9 +32,10 @@ Calculation (needs Daniel):
   - sRPE per athlete uses the block duration with the effort of the work; hard sets and exposure use the per-athlete volume. Update calc spec and tests.
 
 Programs & calendar:
-- [ ] **Day focus per day** (PP, Squat, DL, Oly / Core, Mix, Partner) shown on the calendar, read by import (col A), filterable in analytics ("all Squat days this quarter"). The focus runs as a rotation across weekdays, not fixed weekdays → optional "focus rotation" helper when planning.
-- [ ] **Holidays / closed days** on the calendar (Icelandic public holidays preset, gym can edit); import reads them from col A.
-- [ ] Programs can be seasonal (Þrek, Liðleiki Jan–May): program start/end dates, history kept.
+- [x] **Day focus per day** (PP, Squat, DL, Oly / Core, Mix, Partner) shown on the calendar, read by import (col A), filterable in analytics ("all Squat days this quarter"). The focus runs as a rotation across weekdays, not fixed weekdays → optional "focus rotation" helper when planning. — built 2026-10-23 (PR #29): Settings → Days (the gym's list), per program per day on the calendar, Analytics "Day focus" filter. Focus rotation helper → below.
+- [x] **Holidays / closed days** on the calendar (Icelandic public holidays preset, gym can edit); import reads them from col A. — built 2026-10-23 (PR #29): Settings → Days, Iceland's holidays for a year in one click, each editable; warnings on the calendar, in the builder and on a move.
+- [x] Programs can be seasonal (Þrek, Liðleiki Jan–May): program start/end dates, history kept. — built 2026-10-23 (PR #29): start and end dates in Settings → Programs; "Not running" days; a warning, never a block.
+- [ ] Focus rotation helper: fill a program's day focuses for weeks ahead from a rotation (PP → Squat → DL → …), skipping closed days. (2026-10-23, Claude Code)
 
 Exercise library:
 - [x] 794 distinct exercise names in one year. Before Afrek go-live: run this file through the parser, produce a coverage report (matched / ambiguous / unknown, ranked by frequency) and propose library additions for Daniel's approval (e.g. heavy ball floor press, ball over shoulder, beat swing, windmill, russian leg lifts, straight leg toe touches, dynamic side plank, side/forward raises, bent over shoulder fly, rubber band lat pull down / hamstring curl, half-kneeling KB chop, halo, Hindu push-up, flutter kicks, KB SLRDL, dips in rack). — Report and proposals built 2026-10-23: docs/library-coverage.md, src/lib/library/proposed-additions.ts (46 new, 34 changes; 47% → 76% of mentions matched). **Waiting for Daniel's approval** before seeding.

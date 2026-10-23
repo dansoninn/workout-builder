@@ -19,7 +19,7 @@ async function Programs({ gym }: { gym: GymMembership }) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tracks")
-    .select("id, name, color, archived_at, position")
+    .select("id, name, color, archived_at, position, starts_on, ends_on")
     .eq("org_id", gym.id)
     .order("position")
     .order("name");
@@ -29,7 +29,7 @@ async function Programs({ gym }: { gym: GymMembership }) {
     <ProgramsManager
       slug={gym.slug}
       canManage={can.manageTracks(gym.role)}
-      tracks={data.map((t) => ({ id: t.id, name: t.name, color: t.color, archived: t.archived_at !== null }))}
+      tracks={data.map((t) => ({ id: t.id, name: t.name, color: t.color, archived: t.archived_at !== null, startsOn: t.starts_on, endsOn: t.ends_on }))}
     />
   );
 }
