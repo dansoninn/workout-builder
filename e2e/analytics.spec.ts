@@ -119,7 +119,7 @@ test("analytics shows one program by default; several only when chosen, always n
   // Both, chosen: named together, each workout with its program, load per program.
   await page.getByRole("button", { name: /^Program Class$/ }).click();
   await page.getByRole("checkbox", { name: "Strength club" }).check();
-  await page.getByRole("button", { name: "Show" }).click();
+  await page.getByRole("button", { name: "Show these programs" }).click();
   await expect(page).toHaveURL(/programs=/);
   await expect(page.getByText("Class + Strength club, together.")).toBeVisible();
   await expect(workouts.getByRole("link")).toHaveText([/WOD 1\s*Class/, /WOD 2\s*Strength club/]);
