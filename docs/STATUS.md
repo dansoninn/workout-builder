@@ -36,7 +36,7 @@ Each part is its own pull request; each merges when CI is fully green, and its d
 - **Export the gym's data (6c):** Settings → Gym → "Export the gym's data" (owners): one zip with everything the gym has stored, as JSON and as spreadsheets (Icelandic letters work in Excel), with a README.
 - **Delete your account (6c):** Settings → Profile. Your sign-in, name and memberships go; what you wrote stays with each gym, shown as "a former member". Not while you are a gym's only owner (it says which gym).
 - **Delete a gym (6c):** Settings → Gym (owners, type its name). Gone for everyone at once; its owners can **bring it back for 30 days** ("Gyms you deleted"); then a nightly job erases it for good, with everything in it and its history.
-- **Cookies (6c):** checked by a test: only the sign-in session, and one that remembers the last gym you opened (Question 6).
+- **Cookies (6c):** checked by a test: only the sign-in cookies (the session, and short-lived codes Supabase sets while an account is created or an email link is used) and one that remembers the last gym you opened (Question 6).
 - **Runbook (6e), first draft:** `docs/RUNBOOK.md`: restore the database, roll back a deploy, rotate a leaked key, who to tell after a data breach. The drill needs the separate production project.
 
 ### Found and fixed on the way
