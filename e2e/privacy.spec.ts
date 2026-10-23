@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { expect, type Page, test } from "@playwright/test";
 import { strFromU8, unzipSync } from "fflate";
 
-import { acceptAsNewUser, invite, ownerWithGym, uniqueEmail } from "./helpers";
+import { acceptAsNewUser, expectAccessible, invite, ownerWithGym, uniqueEmail } from "./helpers";
 
 /** A saved workout titled `title`, made in the builder. */
 async function workout(page: Page, slug: string, title: string) {
@@ -50,4 +50,38 @@ test("an owner exports the gym's data as JSON and CSV, with nothing of another g
   expect((await coach.request.get(`/${slug}/settings/gym/export`)).status()).toBe(404);
   await coachContext.close();
   await other.close();
+});
+
+test("a coach deletes their account; their workout stays with the gym; the only owner is told what to do first", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  const { slug } = await ownerWithGym(page);
+  const coachEmail = uniqueEmail("coach");
+  const { context, page: coach } = await acceptAsNewUser(browser, await invite(page, slug, coachEmail, "Coach"), "Cora Coach");
+  await workout(coach, slug, "Cora's engine");
+
+  await coach.goto(`/${slug}/settings/profile`);
+  await coach.getByRole("button", { name: "Delete my account…" }).click();
+  const dialog = coach.getByRole("dialog", { name: "Delete your account?" });
+  await dialog.getByLabel(`Type ${coachEmail} to confirm`).fill("someone@else.test");
+  await dialog.getByRole("button", { name: "Delete my account" }).click();
+  await expect(dialog.getByText("Type your email address exactly as shown")).toBeVisible();
+  await dialog.getByLabel(`Type ${coachEmail} to confirm`).fill(coachEmail);
+  await dialog.getByRole("button", { name: "Delete my account" }).click();
+  await expect(coach.getByRole("heading", { name: "Your account was deleted" })).toBeVisible();
+  // Signed out: the gym's pages ask to sign in.
+  await coach.goto(`/${slug}/calendar`);
+  await expect(coach).toHaveURL(/\/sign-in/);
+  await context.close();
+
+  // The gym keeps the workout; the coach is no longer a member.
+  await page.goto(`/${slug}/calendar`);
+  await expect(page.getByRole("link", { name: /Cora's engine/ })).toBeVisible();
+  await page.goto(`/${slug}/settings/members`);
+  await expect(page.getByText("Cora Coach")).toHaveCount(0);
+
+  // The gym's only owner cannot leave it without an owner.
+  await page.goto(`/${slug}/settings/profile`);
+  await expect(page.getByText(/You are the only owner of .+\. Make someone else an owner/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Delete my account…" })).toHaveCount(0);
+  await expectAccessible(page, "profile with account deletion");
 });

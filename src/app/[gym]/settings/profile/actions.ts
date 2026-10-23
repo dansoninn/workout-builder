@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { displayNameSchema, fieldErrorsOf, type FormState, keepValues, newPasswordSchema } from "@/lib/forms";
@@ -43,4 +44,25 @@ export async function changePassword(_prev: FormState, formData: FormData): Prom
   }
   if (error) return { error: "Could not change the password. Try again." };
   return { ok: true };
+}
+
+/**
+ * Deletes the signed-in person's account (PLAN-step-6 6c): sign-in, name and
+ * memberships. What they wrote stays with each gym, by "a former member". The
+ * database refuses while they are a gym's only owner. Confirmed by typing
+ * their email address.
+ */
+export async function deleteAccount(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "Sign in again to delete your account." };
+  const values = keepValues(formData, ["confirm"]);
+  const typed = String(formData.get("confirm") ?? "").trim().toLowerCase();
+  if (typed !== user.email.toLowerCase()) return { fieldErrors: { confirm: "Type your email address exactly as shown" }, values };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_my_account");
+  if (error) return { error: error.code === "23514" ? error.message : "Could not delete your account. Try again.", values };
+  // The account is gone; clear this browser's session without asking the auth server about it.
+  await supabase.auth.signOut({ scope: "local" });
+  redirect("/auth/account-deleted");
 }

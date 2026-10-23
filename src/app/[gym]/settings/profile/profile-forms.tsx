@@ -1,15 +1,25 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { toast } from "sonner";
 
 import { FormError, SubmitButton, TextField } from "@/components/forms";
 import { THEMES, useMounted } from "@/components/theme";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { type FormState, initialFormState } from "@/lib/forms";
 import { cn } from "@/lib/utils";
 
-import { changePassword, updateProfile } from "./actions";
+import { changePassword, deleteAccount, updateProfile } from "./actions";
 
 /** Runs a form action and confirms success with a toast. */
 function useFormWithToast(
@@ -105,5 +115,59 @@ export function ThemeChoice() {
         ))}
       </div>
     </fieldset>
+  );
+}
+
+/**
+ * Deleting your own account, behind a confirmation that asks for your email
+ * address. Not offered while you are the only owner of a gym.
+ */
+export function DeleteAccount({ email, soleOwnerOf }: { email: string; soleOwnerOf: string[] }) {
+  const [open, setOpen] = useState(false);
+  const [state, action] = useActionState(deleteAccount, initialFormState);
+
+  if (soleOwnerOf.length > 0) {
+    return (
+      <p className="max-w-prose text-muted-foreground">
+        You are the only owner of {soleOwnerOf.join(", ")}. Make someone else an owner in Settings → Members, or delete the gym,
+        before deleting your account.
+      </p>
+    );
+  }
+  return (
+    <>
+      <Button variant="destructive" className="w-fit" onClick={() => setOpen(true)}>
+        Delete my account…
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete your account?</DialogTitle>
+            <DialogDescription>
+              Your sign-in, your name and your place in every gym are deleted at once and cannot be brought back. What you wrote
+              stays with each gym, shown as written by a former member.
+            </DialogDescription>
+          </DialogHeader>
+          <form action={action} className="grid gap-4" noValidate>
+            <FormError>{state.error}</FormError>
+            <TextField
+              label={`Type ${email} to confirm`}
+              name="confirm"
+              type="email"
+              autoComplete="off"
+              autoFocus
+              defaultValue={state.values?.confirm}
+              error={state.fieldErrors?.confirm}
+            />
+            <DialogFooter>
+              <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
+              <SubmitButton variant="destructive" pendingLabel="Deleting…">
+                Delete my account
+              </SubmitButton>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
