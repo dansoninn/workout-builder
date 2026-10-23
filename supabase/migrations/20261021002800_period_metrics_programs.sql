@@ -1,9 +1,9 @@
 -- Analytics per program (Daniel's decision 4, 2026-10-23): one program by
 -- default; several only when the coach selects them, always named; never
--- mixed silently. period_metrics now takes the programs asked for, and no
--- longer has an "everything" default: the app always says which programs.
-
-drop function public.period_metrics(uuid, date, date, int, uuid);
+-- mixed silently. period_metrics now takes the programs asked for, with no
+-- "everything" default: the app always says which programs. The old form
+-- (one program or all) stays until the app that uses this one is live, so a
+-- deploy never breaks analytics; the next migration drops it.
 
 /**
  * A period's scheduled workouts in the given programs, with their stored
