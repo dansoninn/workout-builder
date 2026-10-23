@@ -39,6 +39,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  // Starting a program import sends the document's text once: at most 4 MB (src/lib/import/schema.ts; Vercel takes 4.5 MB).
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   // Keep the dev-only badge clear of the account menu (bottom left).
   devIndicators: { position: "bottom-right" },
   // End-to-end tests build into their own folder so they never mix with `next dev`.

@@ -99,7 +99,7 @@ Exercise library:
 - [ ] Core library changes after go-live: the seed migration is frozen. Step 3 used the pattern of one generated follow-up migration per change (implement counts, paces); a general "diff the library into a migration" tool is still open. (2026-10-21, Claude Code)
 
 ## Product ideas (parked — not in MVP)
-- [ ] **Program import (after Afrek go-live)** — import whole programming documents (weeks, months, a year) into a program's calendar and analytics. Daniel, 2026-10-23. Requirements:
+- [x] **Program import (after Afrek go-live)** — built 2026-10-23 (PRs #30, #31), see STATUS; follow-ups below. — import whole programming documents (weeks, months, a year) into a program's calendar and analytics. Daniel, 2026-10-23. Requirements:
   - **Its own workspace** ("Import"), separate from the builder: the whole process happens there, nothing touches the calendar until the coach confirms.
   - **Input:** Excel/Google Sheets export (.xlsx, .csv), Word (.docx), PDF, or pasted text. One import = one target program.
   - **Structure step:** the app proposes how the document is laid out (which column/heading is the date, the day, the block, the lines) and the coach corrects it once; the mapping can be saved per gym for the next import.
@@ -118,6 +118,12 @@ Exercise library:
     - **Save and resume:** a large import (a year) can be paused and finished later; nothing is lost.
     - **Personal data guard (GDPR):** detect athlete names, phone numbers or emails in documents and offer to strip them before import.
     - **"Your programming, analysed" report after import:** the period in the four lenses with the main findings in plain words (e.g. "12 weeks: knee:hip 3.8, no heavy hinge in 5 of 12 weeks, wall balls in 40% of sessions"), exportable as PDF. **This is the strongest onboarding and sales moment: a new gym uploads its last 3 months and sees its programming analysed in 10 minutes.**
+- [ ] Program import follow-ups (2026-10-23, Claude Code):
+  - [ ] Read PDF files directly (a PDF reader in the browser); today the coach pastes a PDF's text.
+  - [ ] The gym's own named workouts: a template's name recognised in Paste and Import like a benchmark ("Afrek Hero"); "Add a benchmark" in the builder.
+  - [ ] Several programs of one document in one go (one import = one program today, as decided).
+  - [ ] Time a year's commit on the separate staging project (Part 1): one transaction, and Supabase stops a signed-in user's statement after 8 s. Estimated about a second for 300 workouts; if a year comes close, commit in a few transactions under one batch.
+  - [ ] Personal data: names other than Icelandic full names (a first name alone, foreign names) are not found; the coach is told to look.
 - [ ] Export analytics to CSV / PDF report. (from Lovable handover)
 - [ ] Exercise bank import/export (CSV/JSON) with duplicate detection. (from Lovable handover)
 - [ ] Analytics filters by pattern / plane / region; "warnings only" toggle. (from Lovable handover)

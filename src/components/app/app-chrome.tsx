@@ -55,7 +55,7 @@ export function AppChrome(props: Props) {
 
   return (
     <>
-      <aside className="hidden w-60 shrink-0 border-r border-border bg-surface-sunken lg:block">
+      <aside className="hidden w-60 shrink-0 border-r border-border bg-surface-sunken lg:block print:hidden">
         <SidebarContent {...props} />
       </aside>
       <Sheet open={navOpen} onOpenChange={setNavOpen}>

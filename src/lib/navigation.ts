@@ -3,6 +3,7 @@ import {
   ChartColumnIcon,
   ClipboardCheckIcon,
   DumbbellIcon,
+  FileUpIcon,
   LayoutListIcon,
   type LucideIcon,
   SettingsIcon,
@@ -18,6 +19,7 @@ export const SECTIONS: readonly {
 }[] = [
   { key: "builder", label: "Builder", path: "builder", shortcut: "b", icon: LayoutListIcon },
   { key: "calendar", label: "Calendar", path: "calendar", shortcut: "c", icon: CalendarDaysIcon },
+  { key: "import", label: "Import", path: "import", shortcut: "i", icon: FileUpIcon },
   { key: "results", label: "Results", path: "results", shortcut: "r", icon: ClipboardCheckIcon },
   { key: "analytics", label: "Analytics", path: "analytics", shortcut: "a", icon: ChartColumnIcon },
   { key: "exercises", label: "Exercises", path: "exercises", shortcut: "e", icon: DumbbellIcon },

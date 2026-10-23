@@ -287,3 +287,45 @@ export function nextMonday(iso: string): string {
   const shift = (8 - d.getUTCDay()) % 7;
   return new Date(d.getTime() + shift * 86_400_000).toISOString().slice(0, 10);
 }
+
+// ---------------------------------------------------------------------------
+// A gym's layout, kept for its next import
+// ---------------------------------------------------------------------------
+
+/**
+ * The coach's corrections from an earlier import, on a new document laid
+ * out the same way (BACKLOG "Program import": "the mapping can be saved per
+ * gym"). What the new document says for itself stays: its year, its sheets,
+ * where its headings are. Taken over: the columns of each program (by name,
+ * moved with its heading), the label column, each sheet's month (by the
+ * sheet's name), the order of day and month, the weekdays "Day 1, Day 2" are.
+ * Null when the earlier layout is not for a document like this one.
+ */
+export function reuseLayout(proposed: Layout, earlier: Layout): Layout | null {
+  if (proposed.kind === "text" && earlier.kind === "text") {
+    if (proposed.days.by !== earlier.days.by) return null;
+    if (proposed.days.by === "week-day" && earlier.days.by === "week-day") return { kind: "text", days: { ...proposed.days, weekdays: earlier.days.weekdays } };
+    if (proposed.days.by === "date" && earlier.days.by === "date") return { kind: "text", days: { ...proposed.days, dayFirst: earlier.days.dayFirst } };
+    return proposed;
+  }
+  if (proposed.kind !== "grid" || earlier.kind !== "grid") return null;
+  const named = (name: string) => earlier.programs.find((p) => p.name.trim().toLowerCase() === name.trim().toLowerCase());
+  if (!proposed.programs.some((p) => named(p.name))) return null;
+  const programs = proposed.programs.map((p) => {
+    const before = named(p.name);
+    if (!before) return p;
+    // Columns move with the heading: an earlier column two to the right of its heading is two to the right here.
+    const move = (c: number | null) => (c === null ? null : p.headingColumn !== null && before.headingColumn !== null ? c - before.headingColumn + p.headingColumn : c);
+    return { ...p, workoutColumns: before.workoutColumns.map((c) => move(c)!), focusColumn: move(before.focusColumn), titleColumn: move(before.titleColumn) };
+  });
+  const dates: GridDates =
+    proposed.dates.from === "day-of-month" && earlier.dates.from === "day-of-month"
+      ? {
+          ...proposed.dates,
+          months: Object.fromEntries(Object.entries(proposed.dates.months).map(([sheet, m]) => [sheet, (earlier.dates as { months: Record<string, number | null> }).months[sheet] ?? m])),
+        }
+      : proposed.dates.from === "date" && earlier.dates.from === "date"
+        ? { ...proposed.dates, dayFirst: earlier.dates.dayFirst }
+        : proposed.dates;
+  return { ...proposed, programs, dates, sharedFocusColumn: earlier.sharedFocusColumn };
+}

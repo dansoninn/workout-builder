@@ -1,4 +1,5 @@
 import type { BlockIntent, PartnerMode } from "@/lib/engine/types";
+import { benchmarkOf } from "@/lib/library/benchmarks";
 import { normalizeAlias } from "@/lib/normalize-alias";
 import type { EffortKey } from "@/lib/taxonomy";
 
@@ -782,6 +783,9 @@ const INSTRUCTION_LINE =
   /^(?:(?:use|using|grab)\s+(?:a\s+|an\s+|one\s+|two\s+|\d\s*x\s+|pair\s+of\s+)?.*\b(?:kbs?|dbs?|kettlebells?|dumbbells?|plates?|barbells?|bands?|boxe?s?|balls?)(?:'?s)?\b.*|-*\s*next\s+round\s*-*)$/i;
 
 export function parseWorkoutText(text: string, library: Library, answers: Answers = {}): ParseResult {
+  // A workout written only as a benchmark's name ("Fran", "Murph") is that benchmark, here and in an import.
+  const benchmark = benchmarkOf(text);
+  const source = benchmark ? `${benchmark.name}\n${benchmark.text}` : text;
   const lines: ParsedLine[] = [];
   const blocks: Building[] = [];
   const items = new Map<string, { item: DraftItem; building: Building }>();
@@ -925,7 +929,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
   };
 
-  text.replace(/\r\n?/g, "\n").split("\n").forEach((original, index) => {
+  source.replace(/\r\n?/g, "\n").split("\n").forEach((original, index) => {
     const line: ParsedLine = { line: index, text: original, status: "ok", meaning: "", problems: [], block: null, items: [], efforts: [], blocking: false };
     lines.push(line);
     let tidied = tidy(original);

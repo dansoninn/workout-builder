@@ -49,6 +49,8 @@ export interface PlannedWorkout extends DraftWorkout {
 
 export interface ImportPlan {
   workouts: PlannedWorkout[];
+  /** Days that cannot be saved as written (an AMRAP without its time): fixed or left out before the import. */
+  cannotSave: { dayKey: string; date: string; message: string }[];
   templates: DraftWorkout[];
   /** Workouts of the program the import replaces. */
   replace: string[];
@@ -61,6 +63,9 @@ export interface ImportPlan {
   aliases: { term: string; exerciseId: string }[];
   summary: {
     workouts: number;
+    /** Sessions described in words only: imported with their text, counting nothing. */
+    described: number;
+    cannotSave: number;
     ready: number;
     drafts: number;
     published: number;
@@ -85,11 +90,12 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
   for (const w of ctx.existing) byDate.set(w.date, [...(byDate.get(w.date) ?? []), w.id]);
 
   const workouts: PlannedWorkout[] = [];
+  const cannotSave: ImportPlan["cannotSave"] = [];
   const replace = new Set<string>();
   let keptExisting = 0;
   const importable = reading.days.filter((r): r is ReadDay & { parsed: NonNullable<ReadDay["parsed"]> } => r.parsed !== null && r.day.date !== null && r.status !== "skipped" && r.status !== "no-date");
   for (const r of importable) {
-    if (r.parsed.blocks.length === 0) continue;
+    // A session described in words ("Deep, slow stretches for the whole body") is imported too: its text is its title, and it counts nothing.
     const date = r.day.date!;
     const there = byDate.get(date) ?? [];
     if (there.length > 0 && choices.conflicts === "skip") {
@@ -109,7 +115,14 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
       rawText: r.text,
       parserVersion: PARSER_VERSION,
     };
-    const ready = r.status === "ok" && draftProblems(draft, library).length === 0;
+    // What the builder would not save is not imported either; the coach fixes the day or leaves it out.
+    const [problem] = draftProblems(draft, library);
+    if (problem) {
+      const where = problem.block >= 0 ? `Block ${String.fromCharCode(65 + problem.block)}: ` : "";
+      cannotSave.push({ dayKey: r.day.key, date, message: `${where}${problem.message}` });
+      continue;
+    }
+    const ready = r.status === "ok";
     workouts.push({ ...draft, dayKey: r.day.key, ready, publish: ready && choices.publish });
   }
 
@@ -133,8 +146,10 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
         blocks: fresh(first.parsed.blocks),
         rawText: first.text,
         parserVersion: PARSER_VERSION,
-      }];
-    });
+      } satisfies DraftWorkout];
+    })
+    // Only what the builder would save, and something to start from: a day that cannot be saved, or only words, makes no template.
+    .filter((t) => t.blocks.length > 0 && draftProblems(t, library).length === 0);
 
   // Day focuses and closed days from the labels: new focuses and closed days are the gym's lists (owners and head coaches).
   const known = new Map(ctx.focusNames.map((n) => [lower(n), n]));
@@ -172,6 +187,7 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
   const dates = workouts.map((w) => w.date!).sort();
   return {
     workouts,
+    cannotSave,
     templates,
     replace: [...replace],
     days,
@@ -180,6 +196,8 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
     aliases: [...aliases].map(([term, exerciseId]) => ({ term, exerciseId })),
     summary: {
       workouts: workouts.length,
+      described: workouts.filter((w) => w.blocks.length === 0).length,
+      cannotSave: cannotSave.length,
       ready: workouts.filter((w) => w.ready).length,
       drafts: workouts.filter((w) => !w.publish).length,
       published: workouts.filter((w) => w.publish).length,
