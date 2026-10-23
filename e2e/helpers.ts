@@ -93,8 +93,10 @@ export async function openAccountMenu(page: Page) {
 
 /** No WCAG 2.2 A/AA violations on the current page. */
 export async function expectAccessible(page: Page, label: string) {
-  // Scan the settled screen: mid-fade colours would fail contrast at random.
+  // Scan the settled screen: mid-fade colours would fail contrast at random, and
+  // after a redirect the page's title can arrive a moment after its content.
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running"));
+  await expect(page).toHaveTitle(/\S/);
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();

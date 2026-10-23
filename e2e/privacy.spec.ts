@@ -127,7 +127,8 @@ test("cookies: only the sign-in session and the last gym opened; nothing that tr
   const { slug } = await ownerWithGym(page);
   for (const path of ["calendar", "analytics", "builder/paste", "settings/profile"]) await page.goto(`/${slug}/${path}`);
   const cookies = await context.cookies();
-  const session = /^sb-[a-z0-9-]+-auth-token(\.\d+|-code-verifier)?$/;
+  // Supabase's sign-in cookies: the session (maybe in parts) and the short-lived code verifiers of email links.
+  const session = /^sb-[a-z0-9-]+-auth-token(\.\d+|(-flows?(-[0-9a-f]+)?)?-code-verifier)?$/;
   expect(cookies.map((c) => c.name).filter((name) => !session.test(name) && name !== "wb_gym")).toEqual([]);
   // The last gym: its address only, readable by the server only, for this site only.
   const gym = cookies.find((c) => c.name === "wb_gym");
