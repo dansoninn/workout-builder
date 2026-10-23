@@ -11,12 +11,14 @@ import type { Measure } from "@/lib/engine/types";
 import { can } from "@/lib/permissions";
 import type { GymMembership } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { calendarProgramView, programViewParam } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import { addDays, addMonths, isoDate, monthLabel, monthWeeks, weekDays, weekLabel, weekNumber, weekStart } from "@/lib/week";
 
 import { loadTracks } from "../builder/load";
 import { ApplyTemplateButton } from "./apply-template";
 import { CalendarBoard, type CalendarWorkout } from "./calendar-board";
+import { ProgramSwitcher } from "./program-switcher";
 
 export const metadata: Metadata = { title: "Calendar" };
 
@@ -48,8 +50,10 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
   const supabase = await createClient();
   // Only the numbers the calendar shows, not the whole stored metrics.
   const metrics = "workout_metrics (calc_version, sessionMin:metrics->sessionMin, sRpe:metrics->sRpe)";
-  const [tracks, scheduled, templates] = await Promise.all([
+  // Every program's workouts in one query; the page shows the chosen program's.
+  const [tracks, remembered, scheduled, templates] = await Promise.all([
     loadTracks(gym.id),
+    supabase.from("member_preferences").select("calendar_program_id, calendar_all_programs").eq("org_id", gym.id).maybeSingle(),
     supabase
       .from("workouts")
       .select(`id, date, title, status, track_id, ${metrics}, blocks (block_results (deleted_at))`)
@@ -63,8 +67,18 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
   ]);
   if (scheduled.error) throw scheduled.error;
 
+  // One program by default, each its own space; all programs only when chosen (decision 3).
+  const choice = calendarProgramView(
+    programViewParam(query),
+    remembered.data ? { programId: remembered.data.calendar_program_id, all: remembered.data.calendar_all_programs } : null,
+    tracks,
+  );
+  const programId = choice.all ? null : choice.programId;
+  const inView = (w: Row) => programId === null || w.track_id === programId;
+  const templateRows = ((templates.data ?? []) as unknown as Row[]).filter(inView);
+
   const current = (w: Row) => w.workout_metrics.find((m) => m.calc_version === CALC_VERSION);
-  const workouts: CalendarWorkout[] = (scheduled.data as unknown as Row[]).map((w) => ({
+  const workouts: CalendarWorkout[] = (scheduled.data as unknown as Row[]).filter(inView).map((w) => ({
     id: w.id,
     date: w.date!,
     title: w.title,
@@ -76,7 +90,8 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
   }));
   const canProgram = can.program(gym.role);
   const href = (path: string) => `/${gym.slug}/${path}`;
-  const at = (v: "month" | "week", date: string) => `${href("calendar")}?view=${v}&date=${date}`;
+  const at = (v: "month" | "week", date: string) => `${href("calendar")}?view=${v}&date=${date}&program=${programId ?? "all"}`;
+  const programColor = (id: string) => tracks.find((t) => t.id === id)?.color ?? "var(--border-strong)";
   const [previous, next] = view === "week" ? [addDays(anchor, -7), addDays(anchor, 7)] : [addMonths(anchor, -1), addMonths(anchor, 1)];
 
   return (
@@ -86,12 +101,20 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
         description={view === "week" ? `Week ${weekNumber(days[0]!)} · ${weekLabel(days[0]!)}` : monthLabel(anchor)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            <ProgramSwitcher
+              slug={gym.slug}
+              programs={tracks.filter((t) => !t.archived || t.id === programId)}
+              value={programId ?? "all"}
+              query={`view=${view}&date=${anchor}`}
+            />
             {canProgram && (
               <ApplyTemplateButton
+                key={programId ?? "all"}
                 slug={gym.slug}
-                templates={((templates.data ?? []) as unknown as Row[]).map((t) => ({ id: t.id, title: t.title || "Untitled template", trackId: t.track_id }))}
+                templates={templateRows.map((t) => ({ id: t.id, title: t.title || "Untitled template", trackId: t.track_id }))}
                 tracks={tracks}
                 today={today}
+                initialTrackId={programId}
               />
             )}
             <nav aria-label="View" className="flex rounded-md border border-border p-0.5">
@@ -131,6 +154,7 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
         month={view === "month" ? anchor.slice(0, 7) : null}
         today={today}
         tracks={tracks}
+        programId={programId}
         workouts={workouts}
         canProgram={canProgram}
       />
@@ -142,26 +166,32 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
             <h2 id="templates" className="text-lg font-semibold">
               Templates
             </h2>
-            <p className="text-muted-foreground">Workouts without a date, to start from.</p>
+            <p className="text-muted-foreground">
+              Workouts without a date, to start from{programId ? ` in ${tracks.find((t) => t.id === programId)?.name}` : ""}.
+            </p>
           </div>
           {canProgram && (
-            <ButtonLink href={`${href("builder")}?template=1`} variant="outline">
+            <ButtonLink href={`${href("builder")}?template=1${programId ? `&program=${programId}` : ""}`} variant="outline">
               <PlusIcon /> New template
             </ButtonLink>
           )}
         </div>
-        {(templates.data ?? []).length === 0 ? (
+        {templateRows.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border-strong px-4 py-6 text-center text-muted-foreground">
             No templates yet. In the builder, choose “Save as template”.
           </p>
         ) : (
           <ul className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
-            {(templates.data as unknown as Row[]).map((w) => {
+            {templateRows.map((w) => {
               const m = current(w);
               return (
                 <li key={w.id}>
                   <Link href={href(`builder/${w.id}`)} className="grid gap-0.5 rounded-md border border-border bg-surface px-3 py-2 hover:bg-hover">
-                    <span className="truncate font-medium">{w.title || "Untitled template"}</span>
+                    <span className="flex items-center gap-1.5">
+                      {programId === null && <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ backgroundColor: programColor(w.track_id) }} />}
+                      <span className="truncate font-medium">{w.title || "Untitled template"}</span>
+                    </span>
+                    {programId === null && <span className="sr-only">{tracks.find((t) => t.id === w.track_id)?.name}</span>}
                     <span className="flex gap-2 text-xs text-muted-foreground">
                       {m?.sessionMin && <Estimate measure={m.sessionMin} unit="min" />}
                       {m?.sRpe && <Estimate measure={m.sRpe} unit="AU" />}

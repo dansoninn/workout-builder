@@ -33,7 +33,8 @@ export interface CalendarWorkout {
 const DRAG_TYPE = "application/x-workout";
 
 /**
- * The calendar's days with their workouts. Coaches move a workout by dragging
+ * The calendar's days with the workouts of one program, or of all programs
+ * (each marked with its colour and name). Coaches move a workout by dragging
  * it to another day (and, in the week view, another program), or with its
  * "Move" button (keyboard and touch). The card moves at once; if the server
  * refuses, it goes back and a message says why.
@@ -45,6 +46,7 @@ export function CalendarBoard({
   month,
   today,
   tracks,
+  programId,
   workouts,
   canProgram,
 }: {
@@ -56,6 +58,8 @@ export function CalendarBoard({
   month: string | null;
   today: string;
   tracks: TrackOption[];
+  /** The program shown, or null for all programs. */
+  programId: string | null;
   workouts: CalendarWorkout[];
   canProgram: boolean;
 }) {
@@ -76,7 +80,8 @@ export function CalendarBoard({
       const result = await moveWorkout(slug, { workoutId: workout.id, date, trackId });
       if (!result.ok) return void toast.error(result.error);
       if (undo) return void toast.success("Moved back");
-      toast.success(`${workout.title || "Untitled workout"} moved to ${dayLabel(date)}`, {
+      const program = trackId !== workout.trackId ? tracks.find((t) => t.id === trackId)?.name : undefined;
+      toast.success(`${workout.title || "Untitled workout"} moved to ${dayLabel(date)}${program ? `, ${program}` : ""}`, {
         action: { label: "Undo", onClick: () => move({ ...workout, date, trackId }, workout.date, workout.trackId, true) },
       });
     });
@@ -108,7 +113,7 @@ export function CalendarBoard({
       key={w.id}
       workout={w}
       href={href(`builder/${w.id}`)}
-      track={view === "month" ? tracks.find((t) => t.id === w.trackId) : undefined}
+      track={view === "month" && programId === null ? tracks.find((t) => t.id === w.trackId) : undefined}
       canMove={canProgram}
       dragging={dragging === w.id}
       onDragStart={(e) => {
@@ -144,17 +149,25 @@ export function CalendarBoard({
       {view === "month" ? (
         <MonthGrid days={days} month={month!} today={today} over={over} dropTarget={dropTarget}>
           {(day) => {
-            const here = shown.filter((w) => w.date === day);
+            const here = shown.filter((w) => w.date === day && (programId === null || w.trackId === programId));
             return (
               <>
                 {here.map(card)}
-                {addLink(day, defaultTrack, dayLabel(day), true, here.length > 0)}
+                {addLink(day, programId ?? defaultTrack, dayLabel(day), true, here.length > 0)}
               </>
             );
           }}
         </MonthGrid>
       ) : (
-        <WeekTable days={days} today={today} tracks={tracks} workouts={shown} over={over} dropTarget={dropTarget}>
+        <WeekTable
+          days={days}
+          today={today}
+          // One program: its column. All programs: the active ones, plus any archived one with workouts this week.
+          columns={programId ? tracks.filter((t) => t.id === programId) : tracks.filter((t) => !t.archived || shown.some((w) => w.trackId === t.id))}
+          workouts={shown}
+          over={over}
+          dropTarget={dropTarget}
+        >
           {(day, column) => {
             const here = shown.filter((w) => w.date === day && w.trackId === column.id);
             return (
@@ -306,7 +319,7 @@ function MonthGrid({
 function WeekTable({
   days,
   today,
-  tracks,
+  columns,
   workouts,
   over,
   dropTarget,
@@ -314,14 +327,12 @@ function WeekTable({
 }: {
   days: string[];
   today: string;
-  tracks: TrackOption[];
+  columns: TrackOption[];
   workouts: CalendarWorkout[];
   over: string | null;
   dropTarget: DropTarget;
   children: (day: string, column: TrackOption) => React.ReactNode;
 }) {
-  // Columns: active programs, plus any archived program that has workouts this week.
-  const columns = tracks.filter((t) => !t.archived || workouts.some((w) => w.trackId === t.id));
   const weekTotal = (trackId: string): Measure | null =>
     workouts
       .filter((w) => w.trackId === trackId && w.sRpe)

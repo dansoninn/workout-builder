@@ -71,3 +71,20 @@ export async function applyTemplate(slug: string, input: unknown): Promise<Actio
   refresh();
   return { ok: true, ids: targets.map((t) => t.id) };
 }
+
+const viewSchema = z.union([z.literal("all"), z.uuid()]);
+
+/** Remembers which program this person's calendar shows in this gym, or all of them, for next time on any device. */
+export async function rememberCalendarProgram(slug: string, choice: unknown): Promise<ActionResult> {
+  const gym = await gymForAction(slug, () => true);
+  const parsed = viewSchema.safeParse(choice);
+  if (!gym || !parsed.success) return { ok: false, error: NOT_ALLOWED };
+
+  const all = parsed.data === "all";
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("member_preferences")
+    .upsert({ org_id: gym.id, calendar_all_programs: all, calendar_program_id: all ? null : parsed.data }, { onConflict: "org_id,user_id" });
+  if (error) return { ok: false, error: "Could not remember the program." };
+  return { ok: true };
+}

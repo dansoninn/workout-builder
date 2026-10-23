@@ -69,10 +69,11 @@ export function ApplyTemplateDialog({
     startTransition(async () => {
       const result = await applyTemplate(slug, { templateId, trackId, dates });
       if (!result.ok) return void setError(result.error);
-      toast.success(`${template?.title || "Template"} added to ${dates.length === 1 ? dayLabel(dates[0]!) : `${dates.length} days`}`);
+      const program = active.length > 1 ? ` in ${active.find((t) => t.id === trackId)?.name}` : "";
+      toast.success(`${template?.title || "Template"} added to ${dates.length === 1 ? dayLabel(dates[0]!) : `${dates.length} days`}${program}`);
       onOpenChange(false);
       setDates([]);
-      if (fixedTemplateId) router.push(`/${slug}/calendar?view=month&date=${dates[0]}`);
+      if (fixedTemplateId) router.push(`/${slug}/calendar?view=month&date=${dates[0]}&program=${trackId}`);
     });
   };
 
