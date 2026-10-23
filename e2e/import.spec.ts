@@ -33,7 +33,7 @@ test("import a month from a spreadsheet: answer once, preview, import, see it an
   await expectAccessible(page, "import, start");
 
   await page.getByLabel("A file").setInputFiles({ name: "studio-2026.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: studio() });
-  await expect(page.getByText("Found:")).toContainText("2 programs: CLASS, STRENGTH CLUB, 2026");
+  await expect(page.getByRole("status").filter({ hasText: "Found:" })).toContainText("2 programs: CLASS, STRENGTH CLUB, 2026");
   await page.getByRole("button", { name: "Start the import" }).click();
   await expect(page).toHaveURL(/\/import\/[0-9a-f-]{36}$/);
 
@@ -91,8 +91,9 @@ test("pasted text: personal data is taken out before anything is kept", async ({
   const { slug } = await ownerWithGym(page);
   await page.goto(`/${slug}/import`);
   await page.getByLabel("Or paste the text").fill("Monday 5.1.2026\nAMRAP 12\n10 burpees\nGreat work Jón Jónsson!\n\nTuesday 6.1.2026\n5 x 5 Back squat");
-  await expect(page.getByText("Found:")).toContainText("Text with a date at the top of each day.");
-  await expect(page.getByText("Personal data:")).toContainText("1 full name");
+  const found = page.getByRole("status").filter({ hasText: "Found:" });
+  await expect(found).toContainText("Text with a date at the top of each day.");
+  await expect(found).toContainText("Personal data: 1 full name");
   await page.getByRole("button", { name: "Start the import" }).click();
   await expect(page).toHaveURL(/\/import\/[0-9a-f-]{36}$/);
   await page.getByRole("button", { name: "3. Preview" }).click();
