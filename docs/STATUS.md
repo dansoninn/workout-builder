@@ -21,7 +21,7 @@ Everything else in Step 6 waits on these. **1 and 3 unblock the most.**
 | 10 | **Afrek's start date** | Sets the order. | Planning |
 
 ## What changed since your Programs message (2026-10-23)
-Each part is its own pull request; each merges when CI is fully green, and its database change goes to the hosted project just before. **The merge state of each is in the table at the end.**
+Each part is its own pull request, merged when CI was fully green, with its database change applied to the hosted project just before. **All are on production** (table at the end).
 
 ### Programs (your decisions 1–5)
 - **"Tracks" are "Programs"** everywhere you see or read (the database table is still `tracks`). Old links to Settings → Tracks still work.
@@ -42,6 +42,7 @@ Each part is its own pull request; each merges when CI is fully green, and its d
 ### Found and fixed on the way
 - **Paste could bring back the previous workout's text.** The text is saved in the browser shortly after typing; if "Make workout" finished first, the waiting save put the old text back, and the next paste started with it (a test caught a "WOD 1" holding WOD 1 and WOD 2). Fixed, with a test.
 - **Deleting a coach's account would have failed** once they had logged a result (who logged a result may never change), and would have marked their workouts as edited by them. Taking a deleted person's name off a row is now not an edit.
+- **The new Content-Security-Policy caught zod** (the validation library) probing for `eval` in the browser on some pages. Harmless (it falls back), but reported as a violation; zod is now told not to probe.
 
 ## Questions for Daniel
 Interpretations I made to keep going. Each is easy to change.
@@ -62,9 +63,9 @@ Interpretations I made to keep going. Each is easy to change.
 |---|---|
 | Unit tests (Vitest) | **443 of 443** (new: program choice for calendar and analytics, per-program warnings, CSV) |
 | Database tests (pgTAP) | **723** across 24 files (new: programs 22, member preferences 13, program guidelines 10, account deletion 17, gym deletion 32; older files updated so every workout has a program) |
-| Browser tests (Playwright, production build) | **48 of 48** on the export pull request, plus the account, gym and cookie tests on the last two (see the table) |
+| Browser tests (Playwright, production build) | **51 of 51** (new: programs order/archive/restore, calendar per program, analytics per program with a program's own guidelines, security headers and CSP, export, account deletion, gym deletion, cookies, paste starting empty) |
 | Accessibility (axe, WCAG 2.2 AA) | Calendar with all programs, Analytics with two programs, a program's guidelines, profile with account deletion, the create-your-gym page with a deleted gym |
-| Keys in the browser | "No keys in 360 files the browser can download" (CI) |
+| Keys in the browser | "No keys in 372 files the browser can download" (CI) |
 | Note | This Mac cannot run the local database (Docker is off under memory pressure), so database and browser tests ran on GitHub for every pull request. |
 
 ## Pull requests
@@ -73,12 +74,13 @@ Interpretations I made to keep going. Each is easy to change.
 | #14 | Tracks → Programs | — | merged |
 | #15 | Every workout has a program; reorder | 002600 | merged, applied |
 | #16 | Calendar per program | 002700 | merged, applied |
-| #17 | Analytics per program | 002800 | see below |
-| #18 | Guidelines per program | 002900 | see below |
-| #19 | Security: CSP, keys, audit; runbook | — | see below |
-| #20 | Export the gym's data | — | see below |
-| #21 | Delete your account | 003000 | see below |
-| #22 | Delete a gym (30 days to undo) | 003100 | see below |
+| #17 | Analytics per program (+ the paste fix) | 002800 | merged, applied |
+| #18 | Guidelines per program | 002900 | merged, applied |
+| #19 | Security: CSP, keys, audit; runbook | — | merged |
+| #20 | Export the gym's data | — | merged |
+| #21 | Delete your account | 003000 | merged, applied |
+| #22 | Delete a gym (30 days to undo); cookie check | 003100 | merged, applied (nightly erasure scheduled with pg_cron) |
+| #23 | This STATUS, BACKLOG | — | this one |
 
 ## Next
 Your Part 1 decisions. Then, in the plan's order: 6a separate production → 6b email and bot protection → 6c privacy policy, terms and DPA pages → 6d error monitoring → 6e the restore drill → 6f Afrek's setup.
