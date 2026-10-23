@@ -10,13 +10,23 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 - [x] Batch review answers 2026-10-22 (Daniel), built 2026-10-22: effort framework (four boxes, calc spec §4.4 and decision 15); "%" as load or effort; effort words, RPE and "@ n/10"; clearer parse hints; AMRAP "7 + 12" by the round's estimated time (decision 16); men/women amounts, first number (decision 17); default guidelines for new gyms (decision 18). Then plan Step 6 (pilot readiness) in docs/PLAN-step-6.md and stop for review. (2026-10-22, Daniel)
 - [ ] Later (not MVP): "Athlete / performance mode" for 6–12 week individual programs: precise %1RM, RIR, periodisation, no class buffers. General-public class programming stays the default. (2026-10-22, Daniel)
 
+## Tracks — Afrek launch requirement (audit 2026-10-23, Claude chat; Afrek runs 3–4 programs in parallel)
+- [ ] [Afrek launch requirement] Every workout must have a track: workouts.track_id NOT NULL (spec change data model §6; migrate existing null rows to the gym's first track), required in builder, paste, templates and copy_workout; remove "No track" from pickers and the calendar's "No track" column. **Needs Daniel's OK (spec change).** — medium
+- [ ] [Afrek launch requirement] Reorder tracks (owner/head coach): up/down or drag in Settings → Tracks, persisted in `position`, used everywhere tracks are listed. — small
+- [ ] [Afrek launch requirement] Calendar: filter to one track (month and week), plus the existing "all tracks" view with colours; remember the choice per user. — small
+- [ ] [Afrek launch requirement] Analytics: filter to a chosen SET of tracks (multi-select, e.g. Class + Strength club); `period_metrics` takes uuid[]. Never mix tracks silently: the default view must be either one track or an explicitly labelled combination, and the workout list shows each workout's track. **Default view needs Daniel's decision.** — medium
+- [ ] [Afrek launch requirement] Guidelines and warnings per track (gym defaults inherited, owner/head coach override per track); a combined view uses each track's own guidelines, not one gym-wide target. **Needs Daniel's decision.** — medium–large
+- [ ] [Afrek launch requirement] Block workouts on archived tracks in the database (save_workout, copy_workout, move), not only in the UI. — small
+- [ ] [Afrek launch requirement] Track names unique among a gym's active tracks in the database (partial unique index) and checked on restore. — small
+- [ ] [Afrek launch requirement] Tests: update of another gym's track; other gym's track sent through save_workout/copy_workout; null and archived tracks; reorder; calendar/analytics track filters (e2e). — small
+- [ ] (not launch) Results page filter by track; builder load panel shows the week's load for the same track. — small / medium
+
 ## Open questions (need Daniel)
 
 ## Next steps (planned order)
 - [ ] Step 4 — App (plan approved 2026-10-21: docs/PLAN-step-4.md). Four approval-gated sub-steps, each a pull request with a Vercel preview:
   - [ ] Change a gym's address (slug) safely: old links redirect to the new one. Read-only for now. (2026-10-21, Claude Code)
   - [ ] Let coaches and viewers leave a gym themselves (today only an owner can remove someone). (2026-10-21, Claude Code)
-  - [ ] Reorder tracks (the `position` column exists; new tracks go last). (2026-10-21, Claude Code)
   - [ ] Google sign-in (after email + password). (2026-10-21, Daniel)
   - [x] **4b** Approved and merged 2026-10-21 (pull request #2): the builder with the live load panel, calendar week list, templates, Exercises page, gym paces. (2026-10-21, Daniel)
     - [ ] Undo / redo in the builder. (2026-10-21, Claude Code)

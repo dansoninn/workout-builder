@@ -70,6 +70,25 @@ The gym is the **controller** of its coaches' and members' data; we are the **pr
 
 ---
 
+## Tracks — required before Afrek go-live
+
+Afrek runs 3–4 programs in parallel, so tracks must work end to end before the first real day. Audit 2026-10-23 (read-only, evidence in BACKLOG "Tracks — Afrek launch requirement").
+
+**What already works:** create, rename, recolour, archive and restore tracks (owner and head coach); a new gym starts with "Class"; the calendar shows all tracks with colours (month: dot + name; week: one column per track) and a workout can be moved between tracks; analytics can show one track or all; gym isolation is enforced by the database (a workout can never point to another gym's track) and tested.
+
+| Gap | Size | Decision needed |
+|---|---|---|
+| Every workout must have a track (today it can be empty) | medium | Yes — spec change |
+| Reorder tracks | small | No |
+| Calendar: filter to one track | small | No |
+| Analytics: choose several tracks together; never mix tracks silently by default | medium | Yes — what the default view is |
+| Guidelines and warnings per track, not one gym-wide target | medium–large | Yes — per-track guidelines |
+| Database blocks workouts on archived tracks | small | No |
+| Track names unique in the database, also on restore | small | No |
+| Missing tests (cross-gym via functions, null/archived, reorder, filters) | small | No |
+
+Not required for go-live: track filter on Results; the builder's load panel showing the week for the same track.
+
 ## Order and what waits on what
 1. **You decide 1–10.** Domain and Vercel Pro first: they unblock everything else.
 2. 6a (production and staging) → 6b (email needs the domain) → 6c (policy needs the entity) → 6d → 6e → 6f.
