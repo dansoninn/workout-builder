@@ -122,6 +122,7 @@ Exercise library:
   - [ ] Read PDF files directly (a PDF reader in the browser); today the coach pastes a PDF's text.
   - [ ] The gym's own named workouts: a template's name recognised in Paste and Import like a benchmark ("Afrek Hero"); "Add a benchmark" in the builder.
   - [ ] Several programs of one document in one go (one import = one program today, as decided).
+  - [ ] Time a year's commit on the separate staging project (Part 1): one transaction, and Supabase stops a signed-in user's statement after 8 s. Estimated about a second for 300 workouts; if a year comes close, commit in a few transactions under one batch.
   - [ ] Personal data: names other than Icelandic full names (a first name alone, foreign names) are not found; the coach is told to look.
 - [ ] Export analytics to CSV / PDF report. (from Lovable handover)
 - [ ] Exercise bank import/export (CSV/JSON) with duplicate detection. (from Lovable handover)
