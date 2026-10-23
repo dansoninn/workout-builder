@@ -148,6 +148,21 @@ Block planned RPE = the higher of pace and load effort for that block. In the bu
 
 ---
 
+### 4.5 Partner blocks ✅ (Daniel, 2026-10-23)
+Every number is **per athlete**, always as a class buffer. A block is a partner block in one of three ways (`blocks.partner_mode`):
+
+| Mode | The coach writes | Each athlete's volume | Block duration |
+|---|---|---|---|
+| `split` | "Partner, split the reps at will" | **50%** of the written amounts | as written: the team works through the whole amount (For time: the estimated finish of the whole amount) |
+| `alternate` | "I go, you go" | **50%**: partners take turns, each works about half the time (1:1 work : rest). Time-bound pieces (AMRAP, a time cap): the team's rounds are estimated and each athlete gets half of them | as written (the clock, or the finish of the whole amount) |
+| `each` | "I go, you go … five rounds each" | **100%**: each athlete does the full amount | **about 2×** the one-athlete estimate (sets, For time, EMOM, intervals, tabata); a time cap still caps it |
+
+- **Planned load (Lens 4)** = planned RPE (the effort of the work) × block duration; the rest while the partner works is part of the block.
+- **Hard sets, exposure, volume load and monostructural volume** use the per-athlete volume: with `split` and `alternate`, each line's performances and completed sets × 0.5, marked estimated.
+- AMRAP rounds shown on the board and logged as results are the **team's** rounds.
+- The fatigue factor uses the piece's estimate as before (for `each`, the one-athlete estimate before doubling).
+- *Interpreted (for review):* `split` and `alternate` give the same numbers (both: one partner works at a time); an AMRAP is time-bound, so `each` there counts as `alternate`; a block written only "Partner" is read as `split`.
+
 ## 5. Estimation rules (the buffer)
 
 | Case | Rule | Flag |
@@ -242,7 +257,7 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (~5
 - Raw workout text is stored alongside parsed data and is the source of truth.
 - Every computed metric snapshot stores `calc_version` and `taxonomy_version`.
 - Changing a formula or taxonomy → new version, history recomputed from raw + parsed data. History is never silently mixed across versions.
-- Calculation engine is a pure, deterministic function with unit tests; the three WODs above are the first test fixtures. Built in Step 3 (`src/lib/engine`, `CALC_VERSION = 1`); a change to a formula or to the rules in §5.1 bumps the version.
+- Calculation engine is a pure, deterministic function with unit tests; the three WODs above are the first test fixtures. Built in Step 3 (`src/lib/engine`, `CALC_VERSION = 1`); a change to a formula or to the rules in §5.1 bumps the version. **Version 2** (2026-10-23): partner blocks (§4.5). After a bump the app recomputes every stored workout of a gym from its stored lines the next time a coach opens the calendar or analytics, so no screen ever mixes versions.
 
 ---
 
@@ -268,6 +283,7 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (~5
 18. ✅ **Default guidelines for a new gym** (analytics warnings, §6): hard sets per week at least squat 4, hinge 4, horizontal push 3, horizontal pull 3, vertical push 2, vertical pull 3; push : pull 0.8–1.2; knee : hip 0.7–1.5; monotony at most 2.0; week-on-week planned load at most +15%. Labelled as the gym's guidelines; the owner edits them — approved 2026-10-22.
 19. ✅ **Analytics per program** (Daniel, 2026-10-23, decision 4): one program by default; several only when the coach selects them, always labelled with their names; never mixed silently. *Interpreted (for review):* when several programs are shown together, the lenses and planned load are their sum (labelled "Class + Strength club, together"); **warnings, monotony, strain and week-on-week change are each program's own**, since those numbers describe one program's week and a sum would describe nobody's. The week table then shows each program's planned load and the total.
 20. ✅ **Guidelines per program** (Daniel, 2026-10-23, decision 5): the gym's guidelines are every program's default; owners and head coaches can give a program its own. *Interpreted (for review):* a program's own set replaces the gym's as a whole; each program is checked against the guidelines that apply to it, also in a combined view.
+21. ✅ **Partner workouts** (Daniel, 2026-10-23): per-athlete volume, always as a class buffer. "Split reps at will" → each athlete does 50% of the reps. "I go, you go" → partners alternate, each works about half the time; time-bound pieces → each gets 50% of the team's estimated rounds; amounts written "each" → each does the full amount and the block takes about 2× as long. Planned load uses the block duration with the effort of the work; hard sets and exposure use the per-athlete volume (§4.5, calculation version 2).
 
 ---
 

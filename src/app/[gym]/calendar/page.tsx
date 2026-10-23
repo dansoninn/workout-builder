@@ -12,6 +12,7 @@ import { can } from "@/lib/permissions";
 import type { GymMembership } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { calendarProgramView, programViewParam } from "@/lib/tracks";
+import { refreshStaleMetrics } from "@/lib/workout/metrics";
 import { cn } from "@/lib/utils";
 import { addDays, addMonths, isoDate, monthLabel, monthWeeks, weekDays, weekLabel, weekNumber, weekStart } from "@/lib/week";
 
@@ -47,6 +48,8 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
   const anchor = legacyWeek ?? (typeof query.date === "string" && DATE.test(query.date) ? query.date : today);
   const days = view === "week" ? weekDays(weekStart(anchor)) : monthWeeks(anchor).flat();
 
+  // After a calculation version bump, a coach's visit works out the gym's workouts again first.
+  if (can.program(gym.role)) await refreshStaleMetrics(gym.id);
   const supabase = await createClient();
   // Only the numbers the calendar shows, not the whole stored metrics.
   const metrics = "workout_metrics (calc_version, sessionMin:metrics->sessionMin, sRpe:metrics->sRpe)";

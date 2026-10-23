@@ -220,7 +220,7 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 | params | jsonb | validated per format (see below) |
 | pace_effort | FK effort_levels NULL | |
 | load_effort | FK effort_levels NULL | |
-| partner | bool | |
+| partner_mode | enum NULL | partner block, and how partners share the work ✅ (calc spec §4.5, 2026-10-23): `split` (split the reps at will) · `alternate` (I go, you go) · `each` (I go, you go, amounts for each athlete); NULL = not a partner block. Migration `003200`; the older `partner` yes/no is now worked out from it (read-only) until no app of the previous version is left |
 | target_rounds | numeric NULL | coach's AMRAP estimate, overrides pace estimate |
 | rest_after_s | int NULL | ✅ rest after this block, before the next (s, ≥ 0). Counts in session length on the calendar, never in planned load — approved 2026-10-21 |
 | notes | text | |

@@ -18,6 +18,7 @@ import type { GymMembership } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { MODALITIES, MUSCLES, PATTERNS, PLANES } from "@/lib/taxonomy";
 import { analyticsPrograms, programsParam } from "@/lib/tracks";
+import { refreshStaleMetrics } from "@/lib/workout/metrics";
 import { addDays, dayLabel, isoDate } from "@/lib/week";
 
 import type { TrackOption } from "../builder/builder";
@@ -55,6 +56,8 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
   const shown = tracks.filter((t) => programIds.includes(t.id));
   const names = shown.map((t) => t.name).join(" + ");
   const combined = shown.length > 1;
+  // After a calculation version bump, a coach's visit works out the gym's workouts again first.
+  if (can.program(gym.role)) await refreshStaleMetrics(gym.id);
   const { summary, byProgram } = await loadPeriod(gym.id, from, to, programIds);
   // Each program against its own guidelines (its own set, else the gym's; decision 5), never mixed.
   const warnings = checkPrograms(byProgram);

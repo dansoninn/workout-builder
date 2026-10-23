@@ -94,9 +94,19 @@ export interface Item {
 
 export type BlockIntent = "strength" | "conditioning" | "skill" | "mobility";
 
+/**
+ * A partner block (calc spec §4.5, decided 2026-10-23); numbers are per
+ * athlete. `split`: the team shares the written amounts at will. `alternate`:
+ * "I go, you go", one works while the other rests. `each`: "I go, you go" with
+ * amounts written for each athlete ("five rounds each").
+ */
+export type PartnerMode = "split" | "alternate" | "each";
+
 interface BlockBase {
   label: string;
   intent: BlockIntent;
+  /** A partner block, and how the partners share the work; null or absent = alone. */
+  partner?: PartnerMode | null;
   paceEffort?: EffortKey | null;
   loadEffort?: EffortKey | null;
   /** Coach's AMRAP estimate; overrides the pace estimate. */

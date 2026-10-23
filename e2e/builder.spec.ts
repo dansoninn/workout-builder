@@ -266,3 +266,20 @@ test("a template on several dates, from the builder and from the calendar by key
   await expect(page.getByText(`Engine builder (template) added to ${label(saturday)}`)).toBeVisible();
   await expect(page.locator(`[data-drop-target="${saturday}"]`).getByRole("link", { name: /Engine builder/ })).toBeVisible();
 });
+
+test("a partner block says how partners share the work, and keeps it", async ({ page }) => {
+  const { slug } = await ownerWithGym(page);
+  await page.getByLabel("Workout title").fill("Partner day");
+  await chooseOption(page, "Block A format", "AMRAP");
+  await page.getByLabel("A1 exercise").fill("air squat");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("20");
+  const blockA = page.getByRole("region", { name: "Block A", exact: true }).filter({ visible: true });
+  await blockA.getByLabel("Partner", { exact: true }).click();
+  await page.getByRole("option", { name: "I go, you go", exact: true }).click();
+  await expect(blockA.getByLabel("Partner", { exact: true })).toHaveText(/I go, you go/);
+  await page.getByRole("button", { name: /^Save/ }).filter({ visible: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/${slug}/builder/[0-9a-f-]{36}$`));
+  await page.reload();
+  await expect(blockA.getByLabel("Partner", { exact: true })).toHaveText(/I go, you go/);
+});

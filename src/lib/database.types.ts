@@ -135,14 +135,14 @@ isOneToOne: false
                   ]
                 },"blocks": {
                   Row: {
-                    "format": Database["public"]['Enums']["block_format"],"id": string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"params": NonNullable<Json>,"partner": boolean,"position": number,"rest_after_s": number | null,"target_rounds": number | null,"title": string | null,"workout_id": string
+                    "format": Database["public"]['Enums']["block_format"],"id": string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"params": NonNullable<Json>,"partner": boolean | null,"partner_mode": Database["public"]['Enums']["partner_mode"] | null,"position": number,"rest_after_s": number | null,"target_rounds": number | null,"title": string | null,"workout_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "format": Database["public"]['Enums']["block_format"],"id"?: string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"params": NonNullable<Json>,"partner"?: boolean,"position": number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id": string
+                    "format": Database["public"]['Enums']["block_format"],"id"?: string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"params": NonNullable<Json>,"partner"?: never,"partner_mode"?: Database["public"]['Enums']["partner_mode"] | null,"position": number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id": string
                   }
                   Update: {
-                    "format"?: Database["public"]['Enums']["block_format"],"id"?: string,"intent"?: Database["public"]['Enums']["block_intent"],"label"?: string,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"params"?: NonNullable<Json>,"partner"?: boolean,"position"?: number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id"?: string
+                    "format"?: Database["public"]['Enums']["block_format"],"id"?: string,"intent"?: Database["public"]['Enums']["block_intent"],"label"?: string,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"params"?: NonNullable<Json>,"partner"?: never,"partner_mode"?: Database["public"]['Enums']["partner_mode"] | null,"position"?: number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id"?: string
                   }
                   Relationships: [
                     {
@@ -701,6 +701,9 @@ isOneToOne: false
 "restore_gym":
 { Args: { "p_org": string }; Returns: string
                            },
+"stale_workouts":
+{ Args: { "p_calc_version": number,"p_org": string }; Returns: string[]
+                           },
 "save_gym_exercise":
 { Args: { "p_exercise": Json,"p_org": string }; Returns: string
                            },
@@ -715,7 +718,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "audit_action": "insert"|"update"|"delete","block_format": "sets"|"every"|"amrap"|"for_time"|"intervals"|"tabata","block_intent": "strength"|"conditioning"|"skill"|"mobility","body_region": "lower"|"upper"|"core"|"systemic","exercise_kind": "movement"|"monostructural","exercise_status": "active"|"needs_review"|"archived","measure_unit": "reps"|"distance_m"|"calories"|"time_s","muscle_role": "primary"|"secondary","org_role": "owner"|"head_coach"|"coach"|"viewer","workout_kind": "scheduled"|"template","workout_status": "draft"|"published"
+            "audit_action": "insert"|"update"|"delete","block_format": "sets"|"every"|"amrap"|"for_time"|"intervals"|"tabata","block_intent": "strength"|"conditioning"|"skill"|"mobility","body_region": "lower"|"upper"|"core"|"systemic","exercise_kind": "movement"|"monostructural","exercise_status": "active"|"needs_review"|"archived","measure_unit": "reps"|"distance_m"|"calories"|"time_s","muscle_role": "primary"|"secondary","org_role": "owner"|"head_coach"|"coach"|"viewer","partner_mode": "split"|"alternate"|"each","workout_kind": "scheduled"|"template","workout_status": "draft"|"published"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -835,7 +838,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "audit_action": ["insert", "update", "delete"],"block_format": ["sets", "every", "amrap", "for_time", "intervals", "tabata"],"block_intent": ["strength", "conditioning", "skill", "mobility"],"body_region": ["lower", "upper", "core", "systemic"],"exercise_kind": ["movement", "monostructural"],"exercise_status": ["active", "needs_review", "archived"],"measure_unit": ["reps", "distance_m", "calories", "time_s"],"muscle_role": ["primary", "secondary"],"org_role": ["owner", "head_coach", "coach", "viewer"],"workout_kind": ["scheduled", "template"],"workout_status": ["draft", "published"]
+            "audit_action": ["insert", "update", "delete"],"block_format": ["sets", "every", "amrap", "for_time", "intervals", "tabata"],"block_intent": ["strength", "conditioning", "skill", "mobility"],"body_region": ["lower", "upper", "core", "systemic"],"exercise_kind": ["movement", "monostructural"],"exercise_status": ["active", "needs_review", "archived"],"measure_unit": ["reps", "distance_m", "calories", "time_s"],"muscle_role": ["primary", "secondary"],"org_role": ["owner", "head_coach", "coach", "viewer"],"partner_mode": ["split", "alternate", "each"],"workout_kind": ["scheduled", "template"],"workout_status": ["draft", "published"]
           }
         }
 } as const

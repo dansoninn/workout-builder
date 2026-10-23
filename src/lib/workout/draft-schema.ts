@@ -28,7 +28,7 @@ export const draftSchema = z.strictObject({
         params: z.record(z.string(), z.union([z.number(), z.boolean()]).optional()),
         paceEffort: effort,
         loadEffort,
-        partner: z.boolean(),
+        partner: z.enum(["split", "alternate", "each"]).nullable(),
         targetRounds: z.number().positive().nullable(),
         notes: z.string().max(2000),
         restAfterSec: z.number().int().min(0).nullable(),

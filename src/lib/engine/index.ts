@@ -6,5 +6,8 @@ export { paceFromJson, paceToJson, resolvePace } from "@/lib/engine/pace";
 export { computeBlock, computeRatios, computeWorkout, sumLenses } from "@/lib/engine/workout";
 export { weekOnWeekChange, weekSummary } from "@/lib/engine/weekly";
 
-/** Increment whenever a formula or ENGINE_CONFIG changes; stored with every metrics snapshot (calc spec §8). */
-export const CALC_VERSION = 1;
+/**
+ * Increment whenever a formula or ENGINE_CONFIG changes; stored with every
+ * metrics snapshot (calc spec §8). 2: partner blocks (§4.5, 2026-10-23).
+ */
+export const CALC_VERSION = 2;
