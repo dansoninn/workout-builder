@@ -1,8 +1,8 @@
-import type { BlockIntent } from "@/lib/engine/types";
+import type { BlockIntent, PartnerMode } from "@/lib/engine/types";
 import { normalizeAlias } from "@/lib/normalize-alias";
 import type { EffortKey } from "@/lib/taxonomy";
 
-import { type BlockParams, type DraftBlock, type DraftItem, FORMAT_LABELS, newBlock, newItem } from "./draft";
+import { type BlockParams, type DraftBlock, type DraftItem, FORMAT_LABELS, newBlock, newItem, PARTNER_LABELS } from "./draft";
 import { type EffortFound, effortFromPercent, takeEffortText } from "./effort-text";
 import { durationText, loadMeaning, parseDuration, parseLoad, parseQuantity, quantityMeaning } from "./fields";
 import { type Library, type LibraryExercise, searchExercises } from "./library";
@@ -460,6 +460,51 @@ interface Building {
   efforts: { found: EffortFound; line: ParsedLine }[];
 }
 
+// ---------------------------------------------------------------------------
+// Partner blocks (calc spec §4.5): how the partners share the work.
+// ---------------------------------------------------------------------------
+
+/** "I go, you go" (I go U go, IGUG), "take turns". */
+const TAKE_TURNS = /\bi\s*go,?\s*(?:you|u)\s*go\b|\b(?:you|u)\s*go,?\s*i\s*go\b|\big(?:u|y)g\b|\btake turns\b/i;
+/** "Split reps at will", "split the work", "split everything as needed" — not "split jerk" or "split squat". */
+const SPLIT_WORK =
+  /\bsplit\s+(?:(?:the\s+)?(?:reps|work|everything|it)(?:\s+(?:at will|as (?:needed|you (?:like|wish|want))|however))?|at will|as (?:needed|you (?:like|wish|want)))\b/i;
+/** Partner, in pairs, teams of 2 — not "a pair of dumbbells". */
+const PARTNERS = /\bpartners?\b|\bin pairs\b|\bpair up\b|\b(?:in\s+)?teams? of (?:2|two|3|three)\b/i;
+/** Amounts for each athlete: "five rounds each", "each partner" — not "each side" or "(each)" on a line. */
+const EACH_ATHLETE = /\b(?:rounds?|sets?)\s+each\b(?!\s*(?:side|arm|leg|hand|way|station|box))|\beach (?:partner|athlete|person)\b/i;
+
+/**
+ * A partner block's mode from the words of a heading or a line of its own:
+ * taking turns → alternate (with amounts for each athlete → each), splitting
+ * the work or just "partner" → split. Null when the words say nothing of it.
+ */
+export function readPartner(text: string): PartnerMode | null {
+  const turns = TAKE_TURNS.test(text);
+  const partners = PARTNERS.test(text);
+  if (!turns && !partners && !SPLIT_WORK.test(text)) return null;
+  if (EACH_ATHLETE.test(text) && (turns || partners)) return "each";
+  return turns ? "alternate" : "split";
+}
+
+/** Two partner modes for one block: amounts for each athlete win, then taking turns. */
+function strongerPartner(a: PartnerMode | null, b: PartnerMode | null): PartnerMode | null {
+  const rank = (m: PartnerMode | null) => (m === "each" ? 3 : m === "alternate" ? 2 : m === "split" ? 1 : 0);
+  return rank(b) > rank(a) ? b : a;
+}
+
+/** The partner words, taken out of a heading so what is left can be read. */
+function withoutPartnerWords(text: string): string {
+  return text
+    .replace(new RegExp(TAKE_TURNS.source, "gi"), "")
+    .replace(new RegExp(SPLIT_WORK.source, "gi"), "")
+    .replace(/\b(?:with a )?partners?\b(?:\s*(?:up|wod|workout)\b!?)?|\bin pairs\b|\bpair up\b|\b(?:in\s+)?teams? of (?:2|two|3|three)\b!?/gi, "")
+    .replace(/\(\s*\)/g, "")
+    .replace(/\s*([,;:!–—-])(?:\s*[,;!–—-])+/g, "$1")
+    .replace(/^[\s,;:!.–—-]+|[\s,;!–—-]+$/g, "")
+    .replace(/\s{2,}/g, " ");
+}
+
 const NOTE_LINE = /^(?:scale[sd]?|scaling|score|rx|note|notes|coach(?:'s)? notes?|goal|stimulus|target|options?|tip)\s*[:-]/i;
 
 export function parseWorkoutText(text: string, library: Library, answers: Answers = {}): ParseResult {
@@ -570,8 +615,13 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
     const heading = readHeading(tidied);
     const efforts = takeEffortText(heading.rest);
-    const read = readFormat(efforts.text);
-    const startsBlock = (heading.letter !== null && !heading.itemOfBlock) || heading.intent !== null || read !== null;
+    // Partner words ("Partner Up! - I go, you go") are read on their own, so what is left can be read as a format.
+    const partnerHere = readPartner(efforts.text);
+    const formatText = partnerHere ? withoutPartnerWords(efforts.text) : efforts.text;
+    const read = readFormat(formatText);
+    const partnerOnly = partnerHere !== null && !/[a-z0-9]/i.test(formatText);
+    const startsBlock =
+      (heading.letter !== null && !heading.itemOfBlock) || heading.intent !== null || read !== null || (partnerOnly && current === null);
 
     // The first line, when it is not a block or an exercise, is the workout's title ("WOD 1", "Engine day").
     if (!seenContent) {
@@ -630,9 +680,16 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       line.block = blocks.indexOf(open);
       return;
     }
-    if (open && /^(?:with a partner|partner(?:\s*wod)?|in pairs|teams? of 2)\.?$/i.test(tidied)) {
-      open.block.partner = true;
-      line.meaning = "Partner";
+    // In a partner block, amounts written for each athlete ("5 rounds each") make it "each".
+    if (open?.block.partner && EACH_ATHLETE.test(tidied)) open.block.partner = "each";
+    // A line of its own about partners: "Partner Up!", "Split reps at will", "I go, you go".
+    if (open && partnerHere && !startsBlock && !/\d/.test(formatText)) {
+      open.block.partner = strongerPartner(open.block.partner, partnerHere);
+      if (/\bteams? of (?:3|three)\b/i.test(tidied)) line.problems.push("Teams of 3: counted as partners (half each) for now");
+      const meaning = `Partner: ${PARTNER_LABELS[open.block.partner!].toLowerCase()}`;
+      if (/[a-z]/i.test(formatText)) note(line, open);
+      line.status = "ok";
+      line.meaning = /[a-z]/i.test(formatText) ? `${meaning}; the rest kept as a note` : meaning;
       line.block = blocks.indexOf(open);
       return;
     }
@@ -648,7 +705,8 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
         building.intentFrom = "section";
       }
       for (const found of efforts.found) building.efforts.push({ found, line });
-      if (/\b(?:partner|in pairs|teams? of 2)\b/i.test(tidied)) building.block.partner = true;
+      building.block.partner = strongerPartner(building.block.partner, readPartner(tidied));
+      if (/\bteams? of (?:3|three)\b/i.test(tidied)) line.problems.push("Teams of 3: counted as partners (half each) for now");
       if (read) {
         building.block.format = read.format;
         building.block.params = { ...read.params, ...(read.alternating ? { alternating: true } : {}) };
@@ -664,7 +722,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       line.block = blocks.indexOf(building);
 
       // Lines written after the heading: "AMRAP 8: 5 KB swing, 10 air squat" or "Tabata air squats".
-      const rest = (read ? read.rest : efforts.text).replace(/\b(?:with a )?partners?\b|\bin pairs\b|\bteams? of 2\b/gi, "").replace(/\(\s*\)/g, "").trim();
+      const rest = withoutPartnerWords(read ? read.rest : efforts.text).trim();
       const inline = rest.includes(":") ? rest.slice(rest.indexOf(":") + 1) : read || heading.letter ? rest : "";
       for (const part of inline.split(/\s*(?:,|;|\s\+\s)\s*/)) if (/[a-z0-9]/i.test(part)) addItem(part, line, null);
       return;
@@ -833,7 +891,7 @@ function headingMeaning(building: Building, index: number): string {
   const { block } = building;
   const intent = `${block.intent}${building.intentFrom === "section" ? "" : " (from the format)"}`;
   const efforts = [block.paceEffort && `Pace ${capitalise(block.paceEffort)}`, block.loadEffort && `Load ${capitalise(block.loadEffort)}`];
-  return [`Block ${letterOf(index)}`, formatMeaning(block), intent, ...efforts, block.partner && "partner"].filter(Boolean).join(" · ");
+  return [`Block ${letterOf(index)}`, formatMeaning(block), intent, ...efforts, block.partner && `partner, ${PARTNER_LABELS[block.partner].toLowerCase()}`].filter(Boolean).join(" · ");
 }
 
 function itemMeaning(item: DraftItem, resolution: Resolution | null): string {

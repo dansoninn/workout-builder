@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import { toEngineWorkout } from "./draft";
 import { loadLibrary } from "./load-library";
-import { loadWorkout } from "./load-workout";
+import { loadWorkout, loadWorkouts } from "./load-workout";
 
 /**
  * Recomputes a saved workout with the engine on the server, from what is in
@@ -72,4 +72,41 @@ export async function storeMetricsForCopies(orgId: string, sourceId: string, cop
     { onConflict: "workout_id,calc_version" },
   );
   if (error) throw error;
+}
+
+/** Workouts worked out again per round trip, and metrics rows written per request. */
+const CHUNK = 100;
+
+/**
+ * Works out again every workout of the gym whose stored numbers are not from
+ * the calculation version the app runs (after a version bump, calc spec §8),
+ * so no screen mixes versions. Runs for coaches (who may write metrics) when
+ * they open the calendar or analytics; cheap when nothing is stale.
+ */
+export async function refreshStaleMetrics(orgId: string): Promise<number> {
+  const supabase = await createClient();
+  const { data: stale, error } = await supabase.rpc("stale_workouts", { p_org: orgId, p_calc_version: CALC_VERSION });
+  if (error) throw error;
+  if (stale.length === 0) return 0;
+
+  const [library, taxonomy] = await Promise.all([
+    loadLibrary(orgId),
+    supabase.from("taxonomy_versions").select("version").order("version", { ascending: false }).limit(1).single(),
+  ]);
+  if (taxonomy.error) throw taxonomy.error;
+  for (let start = 0; start < stale.length; start += CHUNK) {
+    const stored = await loadWorkouts(orgId, stale.slice(start, start + CHUNK));
+    const rows = stored.map(({ draft }) => ({
+      workout_id: draft.id,
+      org_id: orgId,
+      calc_version: CALC_VERSION,
+      taxonomy_version: taxonomy.data.version,
+      computed_at: new Date().toISOString(),
+      metrics: JSON.parse(JSON.stringify(computeWorkout(toEngineWorkout(draft, library).workout, ENGINE_CONFIG))) as { [key: string]: Json },
+      confidence: {},
+    }));
+    const { error: upsertError } = await supabase.from("workout_metrics").upsert(rows, { onConflict: "workout_id,calc_version" });
+    if (upsertError) throw upsertError;
+  }
+  return stale.length;
 }

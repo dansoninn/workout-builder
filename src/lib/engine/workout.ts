@@ -149,6 +149,12 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
   const warn = (message: string, lines: Item[] = []) =>
     issues.push({ message, items: lines.map((item) => position.get(item) ?? -1).filter((i) => i >= 0) });
   const effort = resolveBlockEffort(block, config);
+  // Partner blocks (calc spec §4.5): every number is one athlete's. With "each",
+  // each athlete does the whole amount while the other rests, so the block takes
+  // about twice as long; an AMRAP is time-bound, so "each" there is "alternate".
+  const partner = block.partner ?? null;
+  const both = partner === "each" && block.format !== "amrap" ? 2 : 1;
+  const athleteShare = partner && both === 1 ? 0.5 : 1;
 
   const items = block.items.filter((item): item is MatchedItem => {
     if (item.exercise) return true;
@@ -220,14 +226,14 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
         ? exact(rest_s)
         : estimated(block.intent === "strength" ? config.defaultRestSec.strength : config.defaultRestSec.other);
       const work = roundWork(rows);
-      if (work) durationSec = scale(add(add(work, transitions(n - 1)), rest), sets);
+      if (work) durationSec = scale(add(add(work, transitions(n - 1)), rest), sets * both);
       else needsPace();
       break;
     }
     case "every": {
       const { interval_s, rounds: count } = block.params;
       rounds = exact(count);
-      durationSec = exact(interval_s * count);
+      durationSec = exact(interval_s * count * both);
       if (alternating) {
         // The slots take turns, one per interval, for `rounds` intervals; a
         // last rotation may be partial (EMOM 10 with 3 slots: slot 1 four
@@ -267,7 +273,7 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
       if (baseWork) {
         // Fatigue is chosen from the estimate before fatigue, then applied.
         rows = buildRows(fatigueFactor(finish(baseWork).mid / 60, config));
-        const total = finish(roundWork(rows) ?? baseWork);
+        const total = scale(finish(roundWork(rows) ?? baseWork), both);
         // Sum of paces, capped at the time cap (calc spec §5).
         capped = time_cap_s !== undefined && total.mid > time_cap_s;
         durationSec = time_cap_s !== undefined ? capAt(total, time_cap_s) : total;
@@ -280,18 +286,27 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
     case "intervals": {
       const { rounds: count, stations, work_s, rest_s, rest_between_rounds_s = 0 } = block.params;
       rounds = exact(count);
-      durationSec = exact(count * stations * (work_s + rest_s) + (count - 1) * rest_between_rounds_s);
+      durationSec = exact((count * stations * (work_s + rest_s) + (count - 1) * rest_between_rounds_s) * both);
       break;
     }
     case "tabata": {
       const { rounds: count, work_s, rest_s } = block.params;
       rounds = exact(count);
-      durationSec = exact(count * (work_s + rest_s));
+      durationSec = exact(count * (work_s + rest_s) * both);
       // Several exercises in one tabata alternate rounds: A, B, A, B, …
       performances = rotation(count, n);
       completedSets = rotation(count, n);
       break;
     }
+  }
+
+  // Shared partner work: each athlete does about half of what the team does
+  // (half the team's rounds in a time-bound piece), always an estimate.
+  if (athleteShare !== 1) {
+    const team = { performances, completedSets };
+    const share = (m: Measure | null) => (m ? { ...scale(m, athleteShare), confidence: "estimated" as const } : null);
+    performances = (index) => share(team.performances(index));
+    completedSets = (index) => share(team.completedSets(index));
   }
 
   const lenses = emptyLenses();

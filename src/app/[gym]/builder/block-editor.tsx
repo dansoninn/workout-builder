@@ -14,11 +14,20 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { defaultEfforts } from "@/lib/engine/effort";
-import type { BlockIntent } from "@/lib/engine/types";
+import type { BlockIntent, PartnerMode } from "@/lib/engine/types";
 import { INTENT_LABELS, semanticColor } from "@/lib/labels";
 import type { EffortKey } from "@/lib/taxonomy";
 import { cn } from "@/lib/utils";
-import { blockLabel, type DraftBlock, type DraftItem, type DraftProblem, FORMAT_LABELS, isAlternating, rotationText } from "@/lib/workout/draft";
+import {
+  blockLabel,
+  type DraftBlock,
+  type DraftItem,
+  type DraftProblem,
+  FORMAT_LABELS,
+  isAlternating,
+  PARTNER_LABELS,
+  rotationText,
+} from "@/lib/workout/draft";
 import type { Library } from "@/lib/workout/library";
 import { BLOCK_FORMATS, type BlockFormat } from "@/lib/workout/rules";
 
@@ -27,6 +36,10 @@ import { type LineKeys, LineRow } from "./line-row";
 import type { DraftAction } from "./use-draft";
 
 const INTENTS = Object.keys(INTENT_LABELS) as BlockIntent[];
+const PARTNER_ITEMS = [
+  { value: "none", label: "No" },
+  ...(Object.entries(PARTNER_LABELS) as [PartnerMode, string][]).map(([value, label]) => ({ value, label })),
+];
 
 export function BlockEditor({
   block,
@@ -252,11 +265,29 @@ function FormatFields({
       )}
     </SmallField>
   );
+  // How partners share the work (calc spec §4.5); the numbers are per athlete.
   const partner = (
-    <label className="flex h-8 items-center gap-1.5 text-xs font-medium text-muted-foreground">
-      <input type="checkbox" checked={block.partner} disabled={readOnly} onChange={(e) => set({ partner: e.target.checked })} className="accent-[var(--primary)]" />
-      Partner
-    </label>
+    <SmallField label="Partner">
+      {(id) => (
+        <Select
+          items={PARTNER_ITEMS}
+          value={block.partner ?? "none"}
+          disabled={readOnly}
+          onValueChange={(v) => set({ partner: v === "none" || !v ? null : (v as PartnerMode) })}
+        >
+          <SelectTrigger id={id} size="sm" className="w-44">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PARTNER_ITEMS.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
+    </SmallField>
   );
 
   switch (block.format) {

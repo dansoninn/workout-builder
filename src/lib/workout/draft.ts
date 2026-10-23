@@ -1,4 +1,4 @@
-import type { BlockIntent, Block as EngineBlock, Item as EngineItem, Load, Quantity, Workout } from "@/lib/engine/types";
+import type { BlockIntent, Block as EngineBlock, Item as EngineItem, Load, PartnerMode, Quantity, Workout } from "@/lib/engine/types";
 import type { EffortKey } from "@/lib/taxonomy";
 
 import { parseLoad, parseQuantity, rawLine } from "./fields";
@@ -40,7 +40,8 @@ export interface DraftBlock {
   params: BlockParams;
   paceEffort: EffortKey | null;
   loadEffort: Exclude<EffortKey, "max"> | null;
-  partner: boolean;
+  /** How partners share the work (calc spec §4.5); null = not a partner block. */
+  partner: PartnerMode | null;
   targetRounds: number | null;
   notes: string;
   /** Rest before the next block (s); in session length, never in planned load. */
@@ -69,6 +70,13 @@ export const FORMAT_LABELS: Record<BlockFormat, string> = {
   for_time: "For time",
   intervals: "Intervals",
   tabata: "Tabata",
+};
+
+/** How partners share the work, in the coach's words (calc spec §4.5). */
+export const PARTNER_LABELS: Record<PartnerMode, string> = {
+  split: "Split the work",
+  alternate: "I go, you go",
+  each: "I go, you go, each",
 };
 
 /** Sensible starting values when a coach picks a format. */
@@ -102,7 +110,7 @@ export function newBlock(format: BlockFormat = "sets", intent: BlockIntent = "st
     params: { ...DEFAULT_PARAMS[format] },
     paceEffort: null,
     loadEffort: null,
-    partner: false,
+    partner: null,
     targetRounds: null,
     notes: "",
     restAfterSec: null,
@@ -201,6 +209,7 @@ export function toEngineWorkout(draft: DraftWorkout, library: Library): { workou
       loadEffort: block.loadEffort,
       targetRounds: block.format === "amrap" ? block.targetRounds : null,
       restAfterSec: block.restAfterSec,
+      partner: block.partner,
       items,
       ...paramsFor(block),
     } as EngineBlock;
@@ -269,7 +278,7 @@ export function toSavePayload(draft: DraftWorkout, library: Library) {
         params,
         pace_effort: block.paceEffort,
         load_effort: block.loadEffort,
-        partner: block.partner,
+        partner_mode: block.partner,
         target_rounds: format === "amrap" ? block.targetRounds : null,
         notes: block.notes,
         rest_after_s: block.restAfterSec,

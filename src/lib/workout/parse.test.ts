@@ -208,8 +208,45 @@ describe("common whiteboard formats", () => {
 
   it("rest after a block, partner, and the app's own effort words", () => {
     const { blocks } = parse("AMRAP 10, partner\n10 burpees\nRest 3 min\nFor time\nPace Moderate\n20 pull-ups");
-    expect(blocks[0]).toMatchObject({ partner: true, restAfterSec: 180 });
-    expect(blocks[1]).toMatchObject({ paceEffort: "moderate" });
+    expect(blocks[0]).toMatchObject({ partner: "split", restAfterSec: 180 });
+    expect(blocks[1]).toMatchObject({ paceEffort: "moderate", partner: null });
+  });
+});
+
+describe("partner blocks (calc spec §4.5): how partners share the work", () => {
+  const partnerOf = (text: string) => parse(text).blocks.map((b) => b.partner);
+
+  it("splitting the work, in any common wording", () => {
+    expect(partnerOf("Partner WOD, for time\n100 wall balls")).toEqual(["split"]);
+    expect(partnerOf("For time, split reps at will\n100 wall balls")).toEqual(["split"]);
+    expect(partnerOf("AMRAP 20 in pairs\n10 burpees")).toEqual(["split"]);
+    expect(partnerOf("For time\nSplit the work as needed\n100 wall balls")).toEqual(["split"]);
+    expect(partnerOf("Partner Up - 40 Min AMRAP - Split at will\n10 burpees")).toEqual(["split"]);
+  });
+
+  it("taking turns: I go, you go (any spelling), or take turns", () => {
+    expect(partnerOf("AMRAP 12 - I go, you go\n10 burpees")).toEqual(["alternate"]);
+    expect(partnerOf("Partner AMRAP 14 min - I Go U Go\n10 burpees")).toEqual(["alternate"]);
+    expect(partnerOf("EMOM 20, partners take turns\n8 burpees")).toEqual(["alternate"]);
+    expect(partnerOf("5 rounds for time\nYou go, I go\n10 burpees")).toEqual(["alternate"]);
+  });
+
+  it("amounts written for each athlete: each does them all", () => {
+    expect(partnerOf("Partner Up! - I GO U GO\nFor time, 5 rounds each\n10 burpees\n10 air squats")).toEqual(["each"]);
+    expect(partnerOf("For time, I go you go, 5 rounds each\n10 burpees")).toEqual(["each"]);
+  });
+
+  it("not partner work: split jerks and squats, a pair of dumbbells, reps for each side", () => {
+    expect(partnerOf("5 x 3\nSplit jerk")).toEqual([null]);
+    expect(partnerOf("4 sets of 8\nBarbell split squat")).toEqual([null]);
+    expect(partnerOf("3 rounds for time (use a pair of light DB)\n10 DB thrusters")).toEqual([null]);
+    expect(partnerOf("4 x 6-8 (each)\nSingle-arm DB row")).toEqual([null]);
+  });
+
+  it("teams of 3 are read as partners and say so", () => {
+    const { blocks, lines } = parse("For time - in teams of 3\n100 wall balls");
+    expect(blocks[0]!.partner).toBe("split");
+    expect(lines[0]!.problems).toContain("Teams of 3: counted as partners (half each) for now");
   });
 });
 

@@ -389,3 +389,63 @@ describe("weekly load (calc spec Lens 4)", () => {
     expect(weekOnWeekChange(500, 0)).toBeNull();
   });
 });
+
+describe("partner blocks (calc spec §4.5, decided 2026-10-23): numbers per athlete", () => {
+  // Air squat 2 s a rep (test pace): 10 rounds of 20 = 200 reps = 400 s alone.
+  const forTime = (partner: Block["partner"], extra: { time_cap_s?: number } = {}) =>
+    computeBlock(block({ intent: "conditioning", format: "for_time", params: { rounds: 10, ...extra }, paceEffort: "hard", partner,
+      items: [item("Air squat", { type: "reps", value: 20 }, { loadEffort: "moderate" })] }), config);
+  const alone = forTime(null);
+
+  it("split the reps at will: each athlete does half; the team works through the whole amount", () => {
+    const split = forTime("split");
+    expect(split.exposure.reps.squat?.mid).toBeCloseTo(alone.exposure.reps.squat!.mid / 2, 6);
+    expect(split.exposure.reps.squat?.confidence).toBe("estimated");
+    expect(split.hardSets.byPattern.squat?.mid).toBeCloseTo(5, 6);
+    expect(split.durationMin).toEqual(alone.durationMin);
+    // Planned load: the work's effort over the whole block, rest while the partner works included.
+    expect(split.sRpe).toEqual(alone.sRpe);
+    expect(split.rounds).toEqual(alone.rounds);
+  });
+
+  it("I go, you go: each athlete half the team's work, the block as long as the team takes", () => {
+    const alternate = forTime("alternate");
+    expect(alternate.exposure.reps.squat?.mid).toBeCloseTo(100, 6);
+    expect(alternate.durationMin).toEqual(alone.durationMin);
+  });
+
+  it("an AMRAP: the team's rounds are estimated and each athlete gets half of them", () => {
+    const amrap = (partner: Block["partner"]) =>
+      computeBlock(block({ intent: "conditioning", format: "amrap", params: { time_s: 600 }, paceEffort: "hard", partner,
+        items: [item("Air squat", { type: "reps", value: 10 })] }), config);
+    const team = amrap("alternate");
+    expect(team.rounds).toEqual(amrap(null).rounds);
+    expect(team.exposure.reps.squat?.mid).toBeCloseTo(amrap(null).exposure.reps.squat!.mid / 2, 6);
+    expect(team.durationMin?.mid).toBeCloseTo(10, 6);
+    // Time-bound: "each" cannot make an AMRAP longer, so it counts as I go, you go.
+    expect(amrap("each").exposure.reps.squat?.mid).toBeCloseTo(team.exposure.reps.squat!.mid, 6);
+    expect(amrap("each").durationMin?.mid).toBeCloseTo(10, 6);
+  });
+
+  it("amounts written for each athlete: each does the full amount and the block takes about twice as long", () => {
+    const each = forTime("each");
+    expect(each.exposure.reps.squat).toEqual(alone.exposure.reps.squat);
+    expect(each.hardSets.byPattern.squat).toEqual(alone.hardSets.byPattern.squat);
+    expect(each.durationMin?.mid).toBeCloseTo(alone.durationMin!.mid * 2, 6);
+    expect(each.sRpe?.mid).toBeCloseTo(alone.sRpe!.mid * 2, 6);
+    // A time cap still caps the block.
+    const capped = forTime("each", { time_cap_s: 600 });
+    expect(capped.capped).toBe(true);
+    expect(capped.durationMin?.mid).toBeCloseTo(10, 6);
+  });
+
+  it("an EMOM taken in turns: half the intervals each, on the same clock; with each, twice the clock", () => {
+    const emom = (partner: Block["partner"]) =>
+      computeBlock(block({ intent: "conditioning", format: "every", params: { interval_s: 60, rounds: 10 }, paceEffort: "moderate", partner,
+        items: [item("Air squat", { type: "reps", value: 8 })] }), config);
+    expect(emom("alternate").exposure.reps.squat?.mid).toBeCloseTo(emom(null).exposure.reps.squat!.mid / 2, 6);
+    expect(emom("alternate").durationMin).toEqual(exact(10));
+    expect(emom("each").durationMin).toEqual(exact(20));
+    expect(emom("each").exposure.reps.squat).toEqual(emom(null).exposure.reps.squat);
+  });
+});
