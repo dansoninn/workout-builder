@@ -115,7 +115,6 @@ export function PreviewStep({
                           type="button"
                           disabled={!r}
                           onClick={() => r && onOpenDay(r.day.key)}
-                          aria-label={label}
                           title={label}
                           className={cn(
                             "flex h-12 w-full flex-col items-start justify-between rounded-sm border border-border p-1 text-left text-2xs transition-colors enabled:hover:bg-hover disabled:cursor-default",
@@ -123,11 +122,15 @@ export function PreviewStep({
                             there.has(date) && "border-2 border-dashed border-border-strong",
                           )}
                         >
-                          <span className="flex w-full items-center justify-between">
+                          {/* Seen: the day and its focus; heard: the whole day in words (its name comes from its content). */}
+                          <span aria-hidden className="flex w-full items-center justify-between">
                             <span className="tabular">{Number(date.slice(8))}</span>
                             {mark !== "none" && MARKS[mark].icon}
                           </span>
-                          <span className="w-full truncate text-muted-foreground">{r?.focus ?? ""}</span>
+                          <span aria-hidden className="w-full truncate text-muted-foreground">
+                            {r?.focus ?? ""}
+                          </span>
+                          <span className="sr-only">{label}</span>
                         </button>
                       </li>
                     );
