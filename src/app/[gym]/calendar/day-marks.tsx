@@ -80,9 +80,12 @@ export function DayFocusMenu({
             <p className="px-1.5 py-1 text-xs text-muted-foreground">No day focuses yet: an owner or head coach adds them in Settings → Days.</p>
           ) : (
             <DropdownMenuRadioGroup value={focus?.id ?? "none"} onValueChange={(value) => onChange(value === "none" ? null : String(value))}>
-              <DropdownMenuRadioItem value="none">No focus</DropdownMenuRadioItem>
+              {/* Choosing is done: the menu closes (radio items stay open by default). */}
+              <DropdownMenuRadioItem value="none" closeOnClick>
+                No focus
+              </DropdownMenuRadioItem>
               {offered.map((f) => (
-                <DropdownMenuRadioItem key={f.id} value={f.id}>
+                <DropdownMenuRadioItem key={f.id} value={f.id} closeOnClick>
                   <Dot color={f.color} /> {f.name}
                 </DropdownMenuRadioItem>
               ))}
