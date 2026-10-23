@@ -20,6 +20,7 @@ insert into public.member_preferences (org_id, user_id, calendar_all_programs) v
 insert into public.day_focuses (id, org_id, name) values (tests.id('focus'), tests.id('gym_a'), 'Squat');
 insert into public.program_days (org_id, track_id, date, focus_id) values (tests.id('gym_a'), tests.id('track_a'), '2026-10-26', tests.id('focus'));
 insert into public.calendar_days (org_id, date, name) values (tests.id('gym_a'), '2026-12-25', 'Christmas Day');
+insert into public.import_batches (org_id, track_id, source_name, source_kind, document) values (tests.id('gym_a'), tests.id('track_a'), 'plan.xlsx', 'xlsx', '{}');
 
 select has_function('public', 'delete_gym', array['uuid', 'text'], 'delete_gym exists');
 select is((select count(*)::int from cron.job where jobname = 'erase-deleted-gyms'), 1, 'The nightly erasure is scheduled');
@@ -87,6 +88,7 @@ select is(
     union all select org_id from public.day_focuses where org_id = tests.id('gym_a')
     union all select org_id from public.program_days where org_id = tests.id('gym_a')
     union all select org_id from public.calendar_days where org_id = tests.id('gym_a')
+    union all select org_id from public.import_batches where org_id = tests.id('gym_a')
   ) as everything),
   0, 'Nothing of the gym is left in any table');
 select is_empty($$ select 1 from public.audit_log where org_id = tests.id('gym_a') $$, 'not even its audit log');

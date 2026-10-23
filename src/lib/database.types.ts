@@ -173,14 +173,14 @@ isOneToOne: false
                   ]
                 },"calendar_days": {
                   Row: {
-                    "closed": boolean,"date": string,"holiday_of": string | null,"id": string,"name": string,"org_id": string
+                    "closed": boolean,"date": string,"holiday_of": string | null,"id": string,"import_batch_id": string | null,"name": string,"org_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "closed"?: boolean,"date": string,"holiday_of"?: string | null,"id"?: string,"name": string,"org_id": string
+                    "closed"?: boolean,"date": string,"holiday_of"?: string | null,"id"?: string,"import_batch_id"?: string | null,"name": string,"org_id": string
                   }
                   Update: {
-                    "closed"?: boolean,"date"?: string,"holiday_of"?: string | null,"id"?: string,"name"?: string,"org_id"?: string
+                    "closed"?: boolean,"date"?: string,"holiday_of"?: string | null,"id"?: string,"import_batch_id"?: string | null,"name"?: string,"org_id"?: string
                   }
                   Relationships: [
                     {
@@ -419,6 +419,32 @@ isOneToOne: false
       referencedColumns: ["key"]
     }
                   ]
+                },"import_batches": {
+                  Row: {
+                    "answers": Json,"choices": Json,"committed_at": string | null,"created_at": string,"created_by": string | null,"document": Json,"id": string,"layout": Json | null,"org_id": string,"program_index": number,"source_kind": string,"source_name": string,"status": Database["public"]['Enums']["import_status"],"summary": Json | null,"track_id": string,"undone_at": string | null,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "answers"?: Json,"choices"?: Json,"committed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"document": Json,"id"?: string,"layout"?: Json | null,"org_id": string,"program_index"?: number,"source_kind": string,"source_name": string,"status"?: Database["public"]['Enums']["import_status"],"summary"?: Json | null,"track_id": string,"undone_at"?: string | null,"updated_at"?: string
+                  }
+                  Update: {
+                    "answers"?: Json,"choices"?: Json,"committed_at"?: string | null,"created_at"?: string,"created_by"?: string | null,"document"?: Json,"id"?: string,"layout"?: Json | null,"org_id"?: string,"program_index"?: number,"source_kind"?: string,"source_name"?: string,"status"?: Database["public"]['Enums']["import_status"],"summary"?: Json | null,"track_id"?: string,"undone_at"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "import_batches_org_id_fkey"
+      columns: ["org_id"]
+isOneToOne: false
+      referencedRelation: "organizations"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "import_batches_track_id_org_id_fkey"
+      columns: ["track_id","org_id"]
+isOneToOne: false
+      referencedRelation: "tracks"
+      referencedColumns: ["id","org_id"]
+    }
+                  ]
                 },"invitations": {
                   Row: {
                     "accepted_at": string | null,"accepted_by": string | null,"created_at": string,"email": string,"expires_at": string,"id": string,"invited_by": string | null,"org_id": string,"revoked_at": string | null,"role": Database["public"]['Enums']["org_role"],"token_hash": string
@@ -589,14 +615,14 @@ isOneToOne: false
                   ]
                 },"program_days": {
                   Row: {
-                    "date": string,"focus_id": string,"id": string,"org_id": string,"track_id": string
+                    "date": string,"focus_id": string,"id": string,"import_batch_id": string | null,"org_id": string,"track_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "date": string,"focus_id": string,"id"?: string,"org_id": string,"track_id": string
+                    "date": string,"focus_id": string,"id"?: string,"import_batch_id"?: string | null,"org_id": string,"track_id": string
                   }
                   Update: {
-                    "date"?: string,"focus_id"?: string,"id"?: string,"org_id"?: string,"track_id"?: string
+                    "date"?: string,"focus_id"?: string,"id"?: string,"import_batch_id"?: string | null,"org_id"?: string,"track_id"?: string
                   }
                   Relationships: [
                     {
@@ -687,14 +713,14 @@ isOneToOne: false
                   ]
                 },"workouts": {
                   Row: {
-                    "created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"focus": string | null,"id": string,"kind": Database["public"]['Enums']["workout_kind"],"org_id": string,"parser_version": number | null,"raw_text": string | null,"status": Database["public"]['Enums']["workout_status"],"title": string | null,"track_id": string,"updated_at": string,"updated_by": string | null
+                    "created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"focus": string | null,"id": string,"import_batch_id": string | null,"kind": Database["public"]['Enums']["workout_kind"],"org_id": string,"parser_version": number | null,"raw_text": string | null,"status": Database["public"]['Enums']["workout_status"],"title": string | null,"track_id": string,"updated_at": string,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"focus"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["workout_kind"],"org_id": string,"parser_version"?: number | null,"raw_text"?: string | null,"status"?: Database["public"]['Enums']["workout_status"],"title"?: string | null,"track_id": string,"updated_at"?: string,"updated_by"?: string | null
+                    "created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"focus"?: string | null,"id"?: string,"import_batch_id"?: string | null,"kind": Database["public"]['Enums']["workout_kind"],"org_id": string,"parser_version"?: number | null,"raw_text"?: string | null,"status"?: Database["public"]['Enums']["workout_status"],"title"?: string | null,"track_id": string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"focus"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["workout_kind"],"org_id"?: string,"parser_version"?: number | null,"raw_text"?: string | null,"status"?: Database["public"]['Enums']["workout_status"],"title"?: string | null,"track_id"?: string,"updated_at"?: string,"updated_by"?: string | null
+                    "created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"focus"?: string | null,"id"?: string,"import_batch_id"?: string | null,"kind"?: Database["public"]['Enums']["workout_kind"],"org_id"?: string,"parser_version"?: number | null,"raw_text"?: string | null,"status"?: Database["public"]['Enums']["workout_status"],"title"?: string | null,"track_id"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -731,6 +757,9 @@ isOneToOne: false
           Functions: {
             "accept_invitation":
 { Args: { "p_token": string }; Returns: string
+                           },
+"commit_import":
+{ Args: { "p_aliases"?: Json,"p_batch": string,"p_closed"?: Json,"p_days"?: Json,"p_focuses"?: string[],"p_org": string,"p_replace"?: string[],"p_summary"?: Json,"p_workouts": Json }; Returns: Json
                            },
 "copy_workout":
 { Args: { "p_org": string,"p_source": string,"p_targets": Json }; Returns: number
@@ -773,6 +802,9 @@ isOneToOne: false
 "restore_gym":
 { Args: { "p_org": string }; Returns: string
                            },
+"undo_import":
+{ Args: { "p_batch": string,"p_org": string }; Returns: Json
+                           },
 "stale_workouts":
 { Args: { "p_calc_version": number,"p_org": string }; Returns: string[]
                            },
@@ -790,7 +822,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "audit_action": "insert"|"update"|"delete","block_format": "sets"|"every"|"amrap"|"for_time"|"intervals"|"tabata","block_intent": "strength"|"conditioning"|"skill"|"mobility","body_region": "lower"|"upper"|"core"|"systemic","exercise_kind": "movement"|"monostructural","exercise_status": "active"|"needs_review"|"archived","measure_unit": "reps"|"distance_m"|"calories"|"time_s","muscle_role": "primary"|"secondary","org_role": "owner"|"head_coach"|"coach"|"viewer","partner_mode": "split"|"alternate"|"each","workout_kind": "scheduled"|"template","workout_status": "draft"|"published"
+            "audit_action": "insert"|"update"|"delete","block_format": "sets"|"every"|"amrap"|"for_time"|"intervals"|"tabata","block_intent": "strength"|"conditioning"|"skill"|"mobility","body_region": "lower"|"upper"|"core"|"systemic","exercise_kind": "movement"|"monostructural","exercise_status": "active"|"needs_review"|"archived","import_status": "draft"|"committed"|"undone","measure_unit": "reps"|"distance_m"|"calories"|"time_s","muscle_role": "primary"|"secondary","org_role": "owner"|"head_coach"|"coach"|"viewer","partner_mode": "split"|"alternate"|"each","workout_kind": "scheduled"|"template","workout_status": "draft"|"published"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -910,7 +942,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "audit_action": ["insert", "update", "delete"],"block_format": ["sets", "every", "amrap", "for_time", "intervals", "tabata"],"block_intent": ["strength", "conditioning", "skill", "mobility"],"body_region": ["lower", "upper", "core", "systemic"],"exercise_kind": ["movement", "monostructural"],"exercise_status": ["active", "needs_review", "archived"],"measure_unit": ["reps", "distance_m", "calories", "time_s"],"muscle_role": ["primary", "secondary"],"org_role": ["owner", "head_coach", "coach", "viewer"],"partner_mode": ["split", "alternate", "each"],"workout_kind": ["scheduled", "template"],"workout_status": ["draft", "published"]
+            "audit_action": ["insert", "update", "delete"],"block_format": ["sets", "every", "amrap", "for_time", "intervals", "tabata"],"block_intent": ["strength", "conditioning", "skill", "mobility"],"body_region": ["lower", "upper", "core", "systemic"],"exercise_kind": ["movement", "monostructural"],"exercise_status": ["active", "needs_review", "archived"],"import_status": ["draft", "committed", "undone"],"measure_unit": ["reps", "distance_m", "calories", "time_s"],"muscle_role": ["primary", "secondary"],"org_role": ["owner", "head_coach", "coach", "viewer"],"partner_mode": ["split", "alternate", "each"],"workout_kind": ["scheduled", "template"],"workout_status": ["draft", "published"]
           }
         }
 } as const

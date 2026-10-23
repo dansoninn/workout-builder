@@ -448,3 +448,15 @@ describe("one side, written last", () => {
     ]);
   });
 });
+
+describe("a rep scheme on the line after the format", () => {
+  it('"For time:" then "21-15-9": one block, the scheme on every line without reps', () => {
+    for (const text of ["For time:\n21-15-9\nThrusters 43/30 kg\nPull-ups", "3 rounds for time\n21-15-9\nWall balls\nBurpees", "FOR TIME\n50-40-30-20-10\nDouble-unders\nSit-ups"]) {
+      const { blocks } = parse(text);
+      expect(blocks, text).toHaveLength(1);
+      expect(blocks[0]!.format).toBe("for_time");
+      expect(blocks[0]!.items.every((i) => /^\d+(?:-\d+)+$/.test(i.quantity)), text).toBe(true);
+    }
+    expect(parse("3 rounds for time\n21-15-9\nWall balls").blocks[0]!.params.rounds).toBe(3);
+  });
+});
