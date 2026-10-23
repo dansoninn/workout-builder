@@ -95,7 +95,7 @@ test("the §7 week in Analytics: the approved numbers, and warnings against the 
   await expect(page.getByLabel("Workout title").filter({ visible: true })).toHaveValue("WOD 3");
 });
 
-test("analytics shows one program by default; several only when chosen, always named, warnings per program", async ({ page }) => {
+test("analytics shows one program by default; several only when chosen, always named; each program against its own guidelines", async ({ page }) => {
   test.setTimeout(120_000);
   const { slug } = await ownerWithGym(page);
   await page.goto(`/${slug}/settings/programs`);
@@ -133,4 +133,23 @@ test("analytics shows one program by default; several only when chosen, always n
   await page.getByRole("button", { name: "Only Strength club" }).click();
   await expect(page.getByText("Class + Strength club, together.")).toHaveCount(0);
   await expect(workouts.getByRole("link")).toHaveText([/WOD 2/]);
+  await expect(page.getByText("Strength club uses the gym's guidelines")).toBeVisible();
+  const strengthOnly = page.url();
+
+  // Strength club gets its own guidelines (decision 5): only a monotony limit. Class keeps the gym's.
+  await page.goto(`/${slug}/settings/guidelines`);
+  await page.getByRole("navigation", { name: "Guidelines for" }).getByRole("link", { name: /Strength club/ }).click();
+  await expect(page.getByRole("radio", { name: "The gym's guidelines" })).toBeChecked();
+  await expect(page.getByLabel("Hinge").filter({ visible: true })).toBeDisabled();
+  await page.getByRole("radio", { name: "Its own guidelines" }).check();
+  for (const input of await page.locator("form input[inputmode=decimal]:visible").all()) await input.fill("");
+  await page.getByLabel("Monotony, at most").filter({ visible: true }).fill("2");
+  await page.getByRole("button", { name: "Save guidelines" }).filter({ visible: true }).click();
+  await expect(page.getByText("Guidelines saved")).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Guidelines for" }).getByRole("link", { name: /Strength club/ })).toContainText("own");
+  await expectAccessible(page, "a program's own guidelines");
+
+  await page.goto(strengthOnly);
+  await expect(page.getByText("Strength club uses its own guidelines")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Within your guidelines" })).toBeVisible();
 });

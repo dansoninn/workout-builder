@@ -267,6 +267,7 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (~5
 17. ✅ **Men/women amounts** ("15/12 cal", "400/300 m"): the first number is used in every calculation, like loads' first Rx; both are stored and shown — approved 2026-10-22.
 18. ✅ **Default guidelines for a new gym** (analytics warnings, §6): hard sets per week at least squat 4, hinge 4, horizontal push 3, horizontal pull 3, vertical push 2, vertical pull 3; push : pull 0.8–1.2; knee : hip 0.7–1.5; monotony at most 2.0; week-on-week planned load at most +15%. Labelled as the gym's guidelines; the owner edits them — approved 2026-10-22.
 19. ✅ **Analytics per program** (Daniel, 2026-10-23, decision 4): one program by default; several only when the coach selects them, always labelled with their names; never mixed silently. *Interpreted (for review):* when several programs are shown together, the lenses and planned load are their sum (labelled "Class + Strength club, together"); **warnings, monotony, strain and week-on-week change are each program's own**, since those numbers describe one program's week and a sum would describe nobody's. The week table then shows each program's planned load and the total.
+20. ✅ **Guidelines per program** (Daniel, 2026-10-23, decision 5): the gym's guidelines are every program's default; owners and head coaches can give a program its own. *Interpreted (for review):* a program's own set replaces the gym's as a whole; each program is checked against the guidelines that apply to it, also in a combined view.
 
 ---
 

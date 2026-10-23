@@ -55,8 +55,15 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
   const shown = tracks.filter((t) => programIds.includes(t.id));
   const names = shown.map((t) => t.name).join(" + ");
   const combined = shown.length > 1;
-  const { summary, byProgram, guidelines } = await loadPeriod(gym.id, from, to, programIds);
-  const warnings = checkPrograms(byProgram, () => guidelines);
+  const { summary, byProgram } = await loadPeriod(gym.id, from, to, programIds);
+  // Each program against its own guidelines (its own set, else the gym's; decision 5), never mixed.
+  const warnings = checkPrograms(byProgram);
+  // "Change them" opens the guidelines that apply: one program's own set, or the gym's.
+  const single = byProgram.length === 1 ? byProgram[0]! : null;
+  const settings =
+    single?.ownGuidelines
+      ? { href: `settings/guidelines?program=${single.programId}`, allowed: can.manageTracks(gym.role) }
+      : { href: "settings/guidelines", allowed: single ? can.editGym(gym.role) : can.manageTracks(gym.role) };
   const programOf = (id: string) => tracks.find((t) => t.id === id);
   const href = (path: string) => `/${gym.slug}/${path}`;
   const { lenses } = summary;
@@ -107,8 +114,13 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
             summary={summary}
             warnings={warnings}
             programName={combined ? (id) => programOf(id)?.name ?? "" : null}
-            configured={hasGuidelines(guidelines)}
-            canSet={can.editGym(gym.role)}
+            source={
+              single
+                ? `${names} uses ${single.ownGuidelines ? "its own guidelines" : "the gym's guidelines"}`
+                : "Each program is checked against its own guidelines (its own set, or the gym's)"
+            }
+            configured={byProgram.some((p) => hasGuidelines(p.guidelines))}
+            settings={settings.allowed ? href(settings.href) : null}
             href={href}
           />
 
@@ -238,28 +250,32 @@ function Warnings({
   summary,
   warnings,
   programName,
+  source,
   configured,
-  canSet,
+  settings,
   href,
 }: {
   summary: PeriodSummary;
   warnings: ProgramWarning[];
   /** Programs shown together: each warning names its program. */
   programName: ((id: string) => string) | null;
+  /** Which guidelines apply, in a sentence. */
+  source: string;
   configured: boolean;
-  canSet: boolean;
+  /** Where the guidelines that apply are changed, when this person may. */
+  settings: string | null;
   href: (path: string) => string;
 }) {
   if (!configured) {
     return (
       <p className="rounded-lg border border-dashed border-border-strong px-4 py-3 text-sm text-muted-foreground">
-        No warnings: your gym has not set its guidelines yet (minimum hard sets per pattern, balance ratios, monotony, week-on-week increase).{" "}
-        {canSet ? (
-          <Link href={href("settings/guidelines")} className="font-medium text-foreground underline underline-offset-2">
+        No warnings: no guidelines are set yet (minimum hard sets per pattern, balance ratios, monotony, week-on-week increase). {source}.{" "}
+        {settings ? (
+          <Link href={settings} className="font-medium text-foreground underline underline-offset-2">
             Set them in Settings
           </Link>
         ) : (
-          "The owner sets them in Settings."
+          "The owner and head coaches set them in Settings."
         )}
       </p>
     );
@@ -270,9 +286,9 @@ function Warnings({
         {warnings.length === 0 ? "Within your guidelines" : `${warnings.length} ${warnings.length === 1 ? "thing" : "things"} outside your guidelines`}
       </h2>
       <p className="text-sm text-muted-foreground">
-        Your gym&apos;s own guidelines, not scientific limits. {summary.days} days.{" "}
-        {canSet && (
-          <Link href={href("settings/guidelines")} className="font-medium text-foreground underline underline-offset-2">
+        {source}: your own, not scientific limits. {summary.days} days.{" "}
+        {settings && (
+          <Link href={settings} className="font-medium text-foreground underline underline-offset-2">
             Change them in Settings
           </Link>
         )}

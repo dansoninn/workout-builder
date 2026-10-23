@@ -563,14 +563,14 @@ isOneToOne: false
                   ]
                 },"tracks": {
                   Row: {
-                    "archived_at": string | null,"color": string | null,"created_at": string,"id": string,"name": string,"org_id": string,"position": number
+                    "archived_at": string | null,"color": string | null,"created_at": string,"guidelines": Json | null,"id": string,"name": string,"org_id": string,"position": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"id"?: string,"name": string,"org_id": string,"position"?: number
+                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"guidelines"?: Json | null,"id"?: string,"name": string,"org_id": string,"position"?: number
                   }
                   Update: {
-                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"id"?: string,"name"?: string,"org_id"?: string,"position"?: number
+                    "archived_at"?: string | null,"color"?: string | null,"created_at"?: string,"guidelines"?: Json | null,"id"?: string,"name"?: string,"org_id"?: string,"position"?: number
                   }
                   Relationships: [
                     {
