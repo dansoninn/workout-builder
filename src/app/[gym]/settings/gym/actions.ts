@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { gymForAction, NOT_ALLOWED } from "@/lib/actions";
@@ -35,4 +36,21 @@ export async function updateGym(slug: string, _prev: FormState, formData: FormDa
 
   refresh();
   return { ok: true, values };
+}
+
+/**
+ * Deletes the gym (owners; PLAN-step-6 6c), confirmed by typing its name. It
+ * disappears for everyone at once; its owners can bring it back for 30 days.
+ */
+export async function deleteGym(slug: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const gym = await gymForAction(slug, can.editGym);
+  if (!gym) return { error: NOT_ALLOWED };
+  const values = keepValues(formData, ["confirm"]);
+  const typed = String(formData.get("confirm") ?? "").trim();
+  if (typed.toLowerCase() !== gym.name.trim().toLowerCase()) return { fieldErrors: { confirm: "Type the gym's name exactly as shown" }, values };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_gym", { p_org: gym.id, p_name: typed });
+  if (error) return { error: error.code === "42501" ? NOT_ALLOWED : "Could not delete the gym. Try again.", values };
+  redirect("/");
 }

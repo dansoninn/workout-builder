@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { DeletedGyms } from "@/components/app/deleted-gyms";
 import { AuthHeading } from "@/components/auth/auth-page";
 import { getMyGyms, requireUser } from "@/lib/session";
 
@@ -24,16 +25,20 @@ export default function OnboardingPage() {
   );
 }
 
-/** Signed-in check, and a way back for people who already have a gym. */
+/** Signed-in check, a way back for people who already have a gym, and gyms they deleted that can still come back. */
 async function BackToGyms() {
   await requireUser("/onboarding");
   const [gym] = await getMyGyms();
-  if (!gym) return null;
   return (
-    <p className="mt-2 text-muted-foreground">
-      <Link href={`/${gym.slug}/builder`} className="font-medium text-primary-text underline-offset-4 hover:underline">
-        Back to {gym.name}
-      </Link>
-    </p>
+    <>
+      {gym && (
+        <p className="mt-2 text-muted-foreground">
+          <Link href={`/${gym.slug}/builder`} className="font-medium text-primary-text underline-offset-4 hover:underline">
+            Back to {gym.name}
+          </Link>
+        </p>
+      )}
+      <DeletedGyms className="mt-10 grid gap-1" />
+    </>
   );
 }

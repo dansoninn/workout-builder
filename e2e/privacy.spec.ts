@@ -85,3 +85,40 @@ test("a coach deletes their account; their workout stays with the gym; the only 
   await expect(page.getByRole("button", { name: "Delete my account…" })).toHaveCount(0);
   await expectAccessible(page, "profile with account deletion");
 });
+
+test("an owner deletes the gym: gone for everyone at once; for 30 days it can be brought back as it was", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  const { slug } = await ownerWithGym(page);
+  await workout(page, slug, "Last class");
+  const { context, page: coach } = await acceptAsNewUser(browser, await invite(page, slug, uniqueEmail("coach"), "Coach"), "Cora Coach");
+
+  await page.goto(`/${slug}/settings/gym`);
+  const name = (await page.getByLabel("Gym name").inputValue()).trim();
+  await page.getByRole("button", { name: "Delete this gym…" }).click();
+  const dialog = page.getByRole("dialog", { name: `Delete ${name}?` });
+  await dialog.getByLabel(`Type ${name} to confirm`).fill("Another gym");
+  await dialog.getByRole("button", { name: "Delete the gym" }).click();
+  await expect(dialog.getByText("Type the gym's name exactly as shown")).toBeVisible();
+  await dialog.getByLabel(`Type ${name} to confirm`).fill(name.toUpperCase());
+  await dialog.getByRole("button", { name: "Delete the gym" }).click();
+
+  // The owner has no other gym: "create your gym", with the deleted one listed.
+  await expect(page).toHaveURL(/\/onboarding$/);
+  const deleted = page.getByRole("region", { name: "Gyms you deleted" });
+  await expect(deleted.getByRole("listitem")).toHaveCount(1);
+  await expect(deleted).toContainText(name);
+  await expect(deleted).toContainText("Erased for good on");
+  await expectAccessible(page, "onboarding with a deleted gym");
+  // Gone for its coach too.
+  await coach.goto(`/${slug}/calendar`);
+  await expect(coach.getByRole("heading", { name: "Gym not found" })).toBeVisible();
+
+  // Brought back, as it was.
+  await deleted.getByRole("button", { name: `Bring back ${name}` }).click();
+  await expect(page).toHaveURL(new RegExp(`/${slug}/builder$`));
+  await page.goto(`/${slug}/calendar`);
+  await expect(page.getByRole("link", { name: /Last class/ })).toBeVisible();
+  await coach.goto(`/${slug}/calendar`);
+  await expect(coach.getByRole("link", { name: /Last class/ })).toBeVisible();
+  await context.close();
+});

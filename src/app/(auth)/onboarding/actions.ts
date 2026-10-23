@@ -43,3 +43,15 @@ export async function createGym(_prev: FormState, formData: FormData): Promise<F
 
   redirect(`/${parsed.data.slug}/builder`);
 }
+
+const restoreSchema = z.uuid();
+
+/** An owner brings back a gym they deleted, within 30 days (PLAN-step-6 6c), and opens it. */
+export async function restoreGym(gymId: string): Promise<{ error: string } | undefined> {
+  await requireUser();
+  if (!restoreSchema.safeParse(gymId).success) return { error: "That gym cannot be brought back." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("restore_gym", { p_org: gymId });
+  if (error || !data) return { error: "That gym cannot be brought back. It may already have been erased." };
+  redirect(`/${data}/builder`);
+}
