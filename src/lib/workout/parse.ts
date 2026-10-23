@@ -17,7 +17,7 @@ import type { BlockFormat } from "./rules";
  * and a line the parser cannot place is kept as a note. Efforts are only set
  * from the app's own words ("Pace Hard", "Load Moderate").
  */
-export const PARSER_VERSION = 1;
+export const PARSER_VERSION = 2;
 
 // ---------------------------------------------------------------------------
 // Exercise lookup: gym alias → core alias → generic word (ask) → unmatched.
@@ -111,13 +111,34 @@ function tidy(line: string): string {
     .replace(/[“”]/g, '"')
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/^(?:[-•*·▪>]+\s+|\d+\)\s+)/, "")
+    .replace(/^(?:[-•*·▪>]+\s*|\d+\)\s+)/, "")
+    // A line ending in "+" is done back to back with the next one: the same block either way.
+    .replace(/\s*\+$/, "")
+    // "21 - 15 - 9": a rep scheme written with spaces.
+    .replace(/\b\d+(?:\s+-\s+\d+){2,}\b/g, (scheme) => scheme.replace(/\s+/g, ""))
     .trim();
+}
+
+const WORD_NUMBERS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, twelve: 12 };
+
+/** "Five rounds", "three sets": the number in digits. */
+function digitsForWords(text: string): string {
+  return text.replace(/\b(one|two|three|four|five|six|seven|eight|nine|ten|twelve)\b(?=\s+(?:rounds?|sets?|times)\b)/gi, (w) => String(WORD_NUMBERS[w.toLowerCase()]));
 }
 
 /** "8" in minutes, "1:30", "90 s", "2 min" → seconds. */
 function seconds(text: string, bare: "min" | "s"): number | null {
   return parseDuration(text.replace(/'$/, " min").replace(/"$/, " s").replace(/\bm$/, "min"), bare);
+}
+
+/** "20" or "20-25" minutes as seconds: a range counts at its middle, and the coach is told. */
+function minutesBetween(low: string, high: string | undefined, problems: string[]): number | null {
+  const a = seconds(low, "min");
+  const b = high === undefined ? null : seconds(high, "min");
+  if (a === null || b === null || b <= a) return a;
+  const middle = Math.round((a + b) / 2);
+  problems.push(`${low}–${high} min: counted as ${durationText(middle)}`);
+  return middle;
 }
 
 /** An effort read from the text and what it set, for the check screen ("heavy" → Load Hard). */
@@ -150,6 +171,8 @@ const PER_SIDE = /\s*(?:\b(?:each|per)\s+(?:side|arm|leg)\b|\/\s*(?:side|arm|leg
 interface ItemParts {
   /** Something written that the app does not read yet (pounds). */
   problems: string[];
+  /** "Dbl. KB" = 2, "Single DB" = 1 (calc spec §9.8); null when the line does not say. */
+  implementCount: number | null;
   sets: number | null;
   quantity: string | null;
   words: string;
@@ -225,11 +248,58 @@ function splitItem(original: string): ItemParts {
   if (quantity) quantity = quantity.replace(/\s+/g, " ").trim().replace(/^:(\d\d)$/, "0:$1");
   if (perSide && quantity && /^\d+$/.test(quantity)) quantity = `${quantity}/${quantity}`;
 
-  const words = s
-    .replace(/^[\s,.:;-]*(?:x\s+|of\s+)?/i, "")
+  let words = s
+    .replace(/^[\s,.:;-]*(?:x\s+|of\s+)?(?:reps?\b\s*(?:of\s+)?)?/i, "")
     .replace(/[\s,.:;-]+$/, "")
     .trim();
-  return { problems, sets, quantity, words, load, notes, efforts: efforts.found };
+
+  // Heavy, medium, light in the line: the line's effort, Load on a weighted lift (calc spec §4.4).
+  // "Heavy ball" and "light ball" are implements (a heavy medicine ball), part of the exercise.
+  const found = [...efforts.found];
+  words = words.replace(/\b(?:(heavy|medium|light)(?:[- ]?ish)?(?:\s+to\s+(heavy|medium|light)(?:[- ]?ish)?)?)\b(?!\s*(?:ball|med(?:icine)?\s*ball))/gi, (source, a: string, b?: string) => {
+    const level = (w: string) => ({ heavy: "hard", medium: "moderate", light: "easy" })[w.toLowerCase()] as EffortKey;
+    const rank: EffortKey[] = ["easy", "moderate", "hard"];
+    const levels = [level(a), ...(b ? [level(b)] : [])];
+    found.push({ source: source.trim(), level: levels.sort((x, y) => rank.indexOf(y) - rank.indexOf(x))[0]!, axis: "loaded" });
+    return " ";
+  });
+  // Dbl. KB, Double DB: two implements; Single DB: one. Not "single-arm" or "single-leg", which are exercises.
+  let implementCount: number | null = null;
+  words = words
+    .replace(/\b(?:dbl\.?|double|pair of)\s*(?=(?:kb|db|kettlebells?|dumbbells?|bells?)\b)/gi, () => {
+      implementCount = 2;
+      return "";
+    })
+    .replace(/\bsingle\s+(?=(?:kb|db|kettlebell|dumbbell|plate)\b)/gi, () => {
+      implementCount = 1;
+      return "";
+    })
+    .replace(/\s+/g, " ")
+    .trim();
+  return { problems, implementCount, sets, quantity, words, load, notes, efforts: found };
+}
+
+/** Implement words alone ("KB", "Dbl. DB", "dumbbells"): an option that only changes the implement. */
+const IMPLEMENT_ONLY = /^(?:kb|db|bb|kettlebells?|dumbbells?|barbells?|plates?|sandbags?|med(?:icine)? balls?|wall balls?|bands?)$/i;
+
+/**
+ * Alternatives on a line ("Burpees/Sprawls", "V-ups or tuck ups", "KB or DB
+ * row", "50 x DU/100 x SU"): the first is counted, the others are kept with
+ * the line (BACKLOG, 2026-10-23). A slash inside a name ("Over/Under") is not
+ * an alternative: the first option must be an exercise, or an implement.
+ */
+function splitAlternatives(words: string, isExercise: (words: string) => boolean): { first: string; others: string[] } | null {
+  const options = words.split(/\s+or\s+|\s*\/\s*(?=[a-z\d])(?<=[a-z.]\s*\/\s*)/i).map((o) => o.trim()).filter(Boolean);
+  if (options.length < 2) return null;
+  const [first, ...others] = options;
+  // "KB or DB Row": the exercise is named once, at the end.
+  if (IMPLEMENT_ONLY.test(first!)) {
+    const last = others.at(-1)!;
+    const name = last.replace(/^(?:kb|db|bb|kettlebells?|dumbbells?|barbells?|plates?|sandbags?)\s+/i, "");
+    if (name === last || !name) return null;
+    return { first: `${first} ${name}`, others: [...others.slice(0, -1), last.slice(0, last.length - name.length).trim()] };
+  }
+  return isExercise(first!) ? { first: first!, others } : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -243,6 +313,12 @@ interface FormatRead {
   scheme: string | null;
   /** "3 rounds" without "for time": taken as sets, and said so. */
   roundsOnly: boolean;
+  /** Work and rest without rounds: the rounds may follow the stations ("X 2"). */
+  roundsPending?: boolean;
+  /** "Alt. 30 sec on - 20 sec off x 25": 25 intervals in all, the stations taking turns. */
+  totalIntervals?: number;
+  /** "x 3 rounds": the count is rounds, said so. */
+  roundsSaid?: boolean;
   alternating: boolean;
   /** What is left after the format: inline lines, or an exercise ("Tabata air squats"). */
   rest: string;
@@ -250,14 +326,26 @@ interface FormatRead {
 }
 
 const TIME = String.raw`(\d+(?::\d\d)?)`;
-const MIN = String.raw`(?:\s*(?:min(?:ute)?s?|'))?`;
+const MIN = String.raw`(?:\s*(?:min(?:ute)?s?\.?|'))?`;
 
 /** A format at the start of the text ("AMRAP 8", "E3M x 5", "For time", "4 rounds 90/30"), or null. */
 function readFormat(input: string): FormatRead | null {
   // Matched in lower case; what is left keeps the coach's own spelling (it becomes raw lines).
-  let s = input.toLowerCase();
-  let original = s.length === input.length ? input : s;
+  const prepared = digitsForWords(input);
+  let s = prepared.toLowerCase();
+  let original = s.length === prepared.length ? prepared : s;
   const problems: string[] = [];
+  // "Alt. EMOM x 20", "Alternating E2M": alternating minutes, said before the format.
+  const altFirst = s.match(/^alt(?:ernating)?\.?\s+(?=e\d|emom|every\b|\d)/);
+  if (altFirst) {
+    s = s.slice(altFirst[0].length);
+    original = original.slice(altFirst[0].length);
+  }
+  /** "x 4-5 sets": the lower number, and the coach is told. */
+  const count = (low: string, high: string | undefined, what: string) => {
+    if (high !== undefined && Number(high) > Number(low)) problems.push(`${low}–${high} ${what}: counted as ${low}`);
+    return Number(low);
+  };
   let read: Omit<FormatRead, "rest" | "problems" | "alternating"> | null = null;
   const take = (re: RegExp) => {
     const m = s.match(re);
@@ -273,17 +361,20 @@ function readFormat(input: string): FormatRead | null {
   };
 
   let m: RegExpMatchArray | null;
-  if ((m = take(new RegExp(`^amrap\\s*(?:in\\s*|of\\s*)?${TIME}${MIN}`))) || (m = take(new RegExp(`^${TIME}${MIN}\\s*amrap\\b`)))) {
-    make("amrap", { time_s: seconds(m[1]!, "min") ?? undefined });
+  if (
+    (m = take(new RegExp(`^amrap\\s*(?:in\\s*|of\\s*|for\\s*)?${TIME}(?:\\s*-\\s*${TIME})?${MIN}`))) ||
+    (m = take(new RegExp(`^${TIME}(?:\\s*-\\s*${TIME})?${MIN}\\s*amrap\\b`)))
+  ) {
+    make("amrap", { time_s: minutesBetween(m[1]!, m[2], problems) ?? undefined });
   } else if ((m = take(/^amrap\b/))) {
     make("amrap", { time_s: undefined });
     problems.push("Add the AMRAP's time, e.g. AMRAP 12");
-  } else if ((m = take(new RegExp(`^emom\\s*(?:x\\s*|for\\s*)?(\\d+)${MIN}`))) || (m = take(new RegExp(`^(\\d+)${MIN}\\s*emom\\b`)))) {
+  } else if ((m = take(new RegExp(`^emom\\s*(?:x\\s*|for\\s*)?(\\d+)${MIN}(?:\\s*(?:sets?|rounds?|intervals?)\\b)?`))) || (m = take(new RegExp(`^(\\d+)${MIN}\\s*(?:alt(?:ernating)?\\.?\\s*)?emom\\b`)))) {
     make("every", { interval_s: 60, rounds: Number(m[1]) });
-  } else if ((m = take(/^e(\d+(?::\d\d)?)\s*(m|s)(?:om)?\s*(?:x|for)\s*(\d+)(\s*(?:min(?:ute)?s?|'))?/))) {
+  } else if ((m = take(/^e(\d+(?:[.,]\d+)?(?::\d\d)?)\s*(m|s)(?:om)?\s*(?:x|for)\s*(\d+)(?:\s*-\s*(\d+))?(\s*(?:min(?:ute)?s?|'))?(?:\s*(?:sets?|rounds?|intervals?)\b)?/))) {
     const interval = seconds(m[1]!, m[2] === "s" ? "s" : "min");
-    const count = Number(m[3]);
-    make("every", { interval_s: interval ?? undefined, rounds: m[4] && interval ? Math.round((count * 60) / interval) : count });
+    const times = count(m[3]!, m[4], "sets");
+    make("every", { interval_s: interval ?? undefined, rounds: m[5] && interval ? Math.round((times * 60) / interval) : times });
   } else if ((m = take(/^every\s*(\d+(?::\d\d)?)\s*(min(?:ute)?s?|m|s|sec(?:ond)?s?|')?\s*(?:x|for)\s*(\d+)\s*(rounds?|sets?|min(?:ute)?s?|')?/))) {
     const interval = seconds(`${m[1]}${m[2] ? ` ${m[2]}` : ""}`, "min");
     const count = Number(m[3]);
@@ -294,19 +385,28 @@ function readFormat(input: string): FormatRead | null {
   } else if ((m = take(/^(\d+(?:-\d+){2,})\b/))) {
     make("for_time", { rounds: 1 }, { scheme: m[1]! });
   } else if (
-    (m = take(/^(\d+)\s*(?:rounds?|rds?|x|sets?)\s*(?:of\s*)?[,:]?\s*(\d+)\s*(s|secs?)?\s*(?:on|work)?\s*\/\s*(\d+)\s*(s|secs?)?\s*(?:off|rest)?(?=[\s,:;.]|$)/))
+    (m = take(/^(\d+)\s*(?:rounds?|rds?|x|sets?)\s*(?:of\s*)?[,:]?\s*(\d+)\s*(s|secs?)?\s*(?:on|work)?\s*\/\s*(\d+)\s*(s|secs?)?\s*(?:off|rest)?(?=[\s,:;.]|$)(?!\s*reps?\b)/))
   ) {
     make("intervals", { rounds: Number(m[1]), work_s: Number(m[2]), rest_s: Number(m[4]), stations: 1 }, { scheme: m[3] || m[5] ? "units" : null });
   } else if ((m = take(/^(\d+)\s*(?:s|secs?)?\s*(?:on|work)?\s*\/\s*(\d+)\s*(?:s|secs?)?\s*(?:off|rest)?\s*x\s*(\d+)\b/))) {
     make("intervals", { rounds: Number(m[3]), work_s: Number(m[1]), rest_s: Number(m[2]), stations: 1 }, { scheme: "units" });
+  } else if (
+    // "25 sec on - 15 sec off", "30sec ON, 12sec OFF x 6", "6x 30 sec on, 12 sec off", "90 sec on - 30 sec off x 3 rounds".
+    (m = take(/^(?:(\d+)\s*x\s*)?(\d+)\s*(?:s|secs?|seconds?)\s*(?:on|work)\b[\s,/-]*(\d+)\s*(?:s|secs?|seconds?)\s*(?:off|rest)\b(?:\s*x\s*(\d+)(\s*(?:rounds?|sets?)\b)?)?/))
+  ) {
+    const rounds = m[1] ?? m[4];
+    make("intervals", { rounds: rounds ? Number(rounds) : 1, work_s: Number(m[2]), rest_s: Number(m[3]), stations: 1 }, { scheme: "units", roundsPending: !rounds, roundsSaid: !!m[5] });
   } else if ((m = take(/^(\d+)\s*(?:rounds?|rds?)\s*(?:of\s*)?,?\s*(?:for\s*time|ft)\b/)) || (m = take(/^(\d+)\s*rft\b/))) {
     make("for_time", { rounds: Number(m[1]) });
   } else if ((m = take(/^(?:for\s*time|chipper|ft)\b/))) {
     make("for_time", { rounds: 1 });
-  } else if ((m = take(/^(\d+)\s*sets?\b/))) {
-    make("sets", { sets: Number(m[1]) });
-  } else if ((m = take(/^(\d+)\s*(?:rounds?|rds?)\b/))) {
-    make("sets", { sets: Number(m[1]) }, { roundsOnly: true });
+  } else if ((m = take(/^(\d+)(?:\s*-\s*(\d+))?\s*(?:x\s*)?sets?\b(?:\s*of\b)?/))) {
+    make("sets", { sets: count(m[1]!, m[2], "sets") });
+  } else if ((m = take(/^(\d+)(?:\s*-\s*(\d+))?\s*(?:x\s*)?(?:rounds?|rds?)\s*(?:each\s+)?of\b/))) {
+    // "3 rounds of:" lists a circuit: plainly sets.
+    make("sets", { sets: count(m[1]!, m[2], "rounds") });
+  } else if ((m = take(/^(\d+)(?:\s*-\s*(\d+))?\s*(?:rounds?|rds?)\b/))) {
+    make("sets", { sets: count(m[1]!, m[2], "rounds") }, { roundsOnly: true });
   }
   if (!read) return null;
   const result = read as Omit<FormatRead, "rest" | "problems" | "alternating">;
@@ -340,8 +440,18 @@ function readFormat(input: string): FormatRead | null {
     if (restSec !== null) result.params.rest_s = restSec;
   }
   const stations = take(/(?:x\s*)?(\d+)\s*stations?\b/);
-  const alternating = !!take(/\b(?:alternating|alt)\b/);
-  if (alternating && result.format !== "every") problems.push("Alternating minutes belong to an EMOM");
+  const alternating = !!altFirst || !!take(/\b(?:alternating|alt)\b\.?/);
+  // Brackets that describe the block: "(4 Rounds)", "(3 of Each)", "(Total time 18 min)", "(5 Rounds - Total 21 min)".
+  const bracketRounds = take(/\(\s*(\d+)\s*(?:rounds?|sets?)\b[^)]*\)/);
+  take(/\(\s*(?:\d+\s*of\s*each|total\s*time[^)]*)\s*\)/);
+  if (alternating && result.format === "intervals") {
+    // Work and rest taking turns ("Alt. 30 sec on - 20 sec off x 25 (5 rounds)"): the count is of intervals in all,
+    // unless it says rounds ("x 3 rounds").
+    if (!result.roundsSaid) result.totalIntervals = Number(result.params.rounds);
+    if (bracketRounds) result.params.rounds = Number(bracketRounds[1]);
+  } else if (alternating && result.format !== "every") {
+    problems.push("Alternating minutes belong to an EMOM");
+  }
 
   // Intervals without units ("4 x 8/8 ...") followed by an exercise are sets of a per-side amount, not 8 s on, 8 s off.
   const rest = original.replace(/^[\s,.;-]+/, "").replace(/[\s,.;-]+$/, "").trim();
@@ -359,8 +469,8 @@ function readFormat(input: string): FormatRead | null {
 
 const SECTION_WORDS: [RegExp, BlockIntent | null][] = [
   [/^(?:strength|weightlifting|olympic lifting|power|accessory|accessories)\b/i, "strength"],
-  [/^(?:skill|gymnastics)\b/i, "skill"],
-  [/^(?:mobility|warm[- ]?up|cool[- ]?down|stretch(?:ing)?)\b/i, "mobility"],
+  [/^(?:skill|gymnastics|technique(?:\s+work)?)\b/i, "skill"],
+  [/^(?:mobility|warm[- ]?up|cool[- ]?down|stretch(?:ing)?(?:\s+(?:and|&)\s+relax(?:ation)?)?|relax(?:ation)?)\b/i, "mobility"],
   [/^(?:metcon|wod|conditioning|finisher|engine)\b/i, "conditioning"],
 ];
 
@@ -369,6 +479,8 @@ interface Heading {
   letter: string | null;
   /** A1, A2 …: a line of block A (supersets), not a new block. */
   itemOfBlock: boolean;
+  /** The 1 in "B1.": in alternating minutes, the slot. */
+  item: number | null;
   intent: BlockIntent | null;
   section: string | null;
   rest: string;
@@ -378,14 +490,17 @@ function readHeading(text: string): Heading {
   let rest = text;
   let letter: string | null = null;
   let itemOfBlock = false;
+  let item: number | null = null;
   const part = rest.match(/^(?:part|block)\s+([a-z])\b[\s.:)-]*/i);
-  const label = rest.match(/^([A-H])(\d)?\s*[.):]\s*/);
+  // "A.", "B1)", "C:" — not "E2.5M", which is a format (every 2.5 minutes).
+  const label = rest.match(/^([A-H])(\d)?\s*[.):](?:\s+|$|(?=[^\d\s]))/);
   if (part) {
     letter = part[1]!.toUpperCase();
     rest = rest.slice(part[0].length);
   } else if (label) {
     letter = label[1]!;
     itemOfBlock = label[2] !== undefined;
+    item = label[2] !== undefined ? Number(label[2]) : null;
     rest = rest.slice(label[0].length);
   }
   let intent: BlockIntent | null = null;
@@ -399,8 +514,29 @@ function readHeading(text: string): Heading {
       break;
     }
   }
-  return { letter, itemOfBlock, intent, section, rest: rest.trim() };
+  // The word later in a block's name: "E. Empty Barbell Finisher", "A. Snatch Technique", "Stretch and Relax".
+  // Without a letter only words that are never an exercise, so "Couch stretch" stays a line.
+  const named = !intent && !/\d/.test(rest) && rest.match(letter && !itemOfBlock ? SECTION_IN_NAME : SECTION_ALONE);
+  if (named) {
+    intent = SECTION_INTENT[named.slice(1).find(Boolean)!.toLowerCase().replace(/[^a-z]/g, "")] ?? null;
+    section = rest.replace(/[\s:!.]+$/, "");
+    rest = "";
+  }
+  return { letter, itemOfBlock, item, intent, section, rest: rest.trim() };
 }
+
+const SECTION_IN_NAME = /\b(finisher|technique|mobility|stretch(?:ing)?|relax|cool[- ]?down|warm[- ]?up)\b/i;
+const SECTION_ALONE = /^(?:.*\b(finisher)!?|(stretch)(?:ing)?(?:\s+and\s+relax)?|(relax))\s*[:!.]?$/i;
+const SECTION_INTENT: Record<string, BlockIntent> = {
+  finisher: "conditioning",
+  technique: "skill",
+  mobility: "mobility",
+  stretch: "mobility",
+  stretching: "mobility",
+  relax: "mobility",
+  cooldown: "mobility",
+  warmup: "mobility",
+};
 
 
 // ---------------------------------------------------------------------------
@@ -454,6 +590,10 @@ interface Building {
   setsFromLine: boolean;
   /** "3 rounds" without "for time": a circuit, read as sets. */
   roundsOnly: boolean;
+  /** Work and rest without rounds yet: "X 2" after the stations gives them. */
+  roundsPending: boolean;
+  /** Alternating work and rest: the intervals in all, shared by the stations. */
+  totalIntervals: number | null;
   /** Every heading line of the block ("Metcon", then "EMOM 12"). */
   headingLines: ParsedLine[];
   /** The block's efforts, set once its lines are known ("heavy" is Load only if the block has a load). */
@@ -505,6 +645,10 @@ function withoutPartnerWords(text: string): string {
     .replace(/\s{2,}/g, " ");
 }
 
+/** "First:", "Then straight to:", "Straight to and finish with:", "Followed by:" — a new part of the workout. */
+const SEQUENCE =
+  /^(?:first|then(?:\s+(?:straight\s+)?(?:to|into))?|(?:and\s+)?(?:straight\s+(?:to|into)\s*(?:and\s+)?)?finish(?:\s+(?:with|off))?|straight\s+(?:to|into)|followed\s+by|after\s+that|next)\s*[:-]\s*/i;
+
 const NOTE_LINE = /^(?:scale[sd]?|scaling|score|rx|note|notes|coach(?:'s)? notes?|goal|stimulus|target|options?|tip)\s*[:-]/i;
 
 export function parseWorkoutText(text: string, library: Library, answers: Answers = {}): ParseResult {
@@ -516,13 +660,21 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
   /** The last line read, while it still lacks its amount ("Back squat" then "5 x 5 @ 80%"). */
   let waiting: { item: DraftItem; parsed: ParsedItem } | null = null;
   let seenContent = false;
+  /** In alternating minutes: the slot the lines are in ("2." starts slot 2). */
+  let slot: number | null = null;
 
   const startBlock = (letter: string | null): Building => {
-    const building: Building = { block: { ...newBlock(), items: [] }, letter, hasFormat: false, intentFrom: "format", scheme: null, headingLine: null, setsFromLine: false, roundsOnly: false, headingLines: [], efforts: [] };
+    const building: Building = { block: { ...newBlock(), items: [] }, letter, hasFormat: false, intentFrom: "format", scheme: null, headingLine: null, setsFromLine: false, roundsOnly: false, roundsPending: false, totalIntervals: null, headingLines: [], efforts: [] };
     blocks.push(building);
     current = building;
     waiting = null;
+    slot = null;
     return building;
+  };
+  /** The slot for a line of the current block, when its minutes alternate. */
+  const slotHere = () => {
+    const block = (current as Building | null)?.block;
+    return block?.format === "every" && block.params.alternating ? slot : null;
   };
   const note = (line: ParsedLine, building: Building) => {
     building.block.notes = [building.block.notes, line.text.trim()].filter(Boolean).join("\n");
@@ -543,9 +695,19 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
     if (!parts.words && !parts.quantity) return false;
 
+    // Alternatives: the first is counted, the others kept with the line.
+    const alternatives = parts.words
+      ? splitAlternatives(parts.words, (words) => resolveExercise(library, words, answers).kind !== "unmatched")
+      : null;
+    if (alternatives) {
+      parts.words = alternatives.first;
+      parts.notes.push(`or ${alternatives.others.join(", ")}`);
+    }
     const resolution = parts.words ? resolveExercise(library, parts.words, answers) : null;
-    // Words without an amount that are no exercise ("Leave nothing behind!"): a note, not a line.
-    if (resolution?.kind === "unmatched" && !parts.quantity && parts.sets === null && !parts.load) return false;
+    // Words without an amount that are no exercise ("Leave nothing behind!"): a note, not a line —
+    // except where lines have no amount (work windows, alternating minutes): there it is a station.
+    const stations = building.block.format === "intervals" || building.block.format === "tabata" || (building.block.format === "every" && building.block.params.alternating);
+    if (resolution?.kind === "unmatched" && !parts.quantity && parts.sets === null && !parts.load && !stations) return false;
     const item = { ...newItem(slot), rawLine: partText.trim() };
     if (resolution?.kind === "matched") item.exerciseId = resolution.exercise.id;
     if (parts.notes.length) item.notes = parts.notes.join("; ");
@@ -566,6 +728,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
     if (parts.quantity) item.quantity = parts.quantity;
     if (parts.load) item.load = parts.load;
+    if (parts.implementCount !== null && !/\d\s*x\s*\d/i.test(item.load)) item.implementCount = parts.implementCount;
     const exercise = resolution?.kind === "matched" ? resolution.exercise : null;
     const efforts = [...parts.efforts];
     // A bare "%" is a load on a loaded lift; on a row, a run or bodyweight work it is effort (calc spec §4.4).
@@ -608,17 +771,70 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
   text.replace(/\r\n?/g, "\n").split("\n").forEach((original, index) => {
     const line: ParsedLine = { line: index, text: original, status: "ok", meaning: "", problems: [], block: null, items: [], efforts: [], blocking: false };
     lines.push(line);
-    const tidied = tidy(original);
+    let tidied = tidy(original);
     if (!tidied) {
       line.status = "blank";
       return;
+    }
+    // "???": a day not planned yet.
+    if (/^\?{2,}$/.test(tidied)) {
+      line.status = "note";
+      line.meaning = "Not planned yet";
+      return;
+    }
+    // Parts that follow each other without letters: "First:", "Then straight to:", "Finish with:".
+    const sequence = tidied.match(SEQUENCE);
+    if (sequence) {
+      tidied = tidied.slice(sequence[0].length).trim();
+      seenContent = true;
+      const next = startBlock(null);
+      line.block = blocks.indexOf(next);
+      if (!tidied) {
+        line.meaning = "Next part";
+        return;
+      }
+    }
+    // "1." "2)": in alternating minutes the slot, in a list its number.
+    const numbered = tidied.match(/^(\d{1,2})[.)](?:\s+|$|(?=[a-z(]))/i);
+    if (numbered) {
+      const open = current as Building | null;
+      tidied = tidied.slice(numbered[0].length).trim();
+      if (open?.block.format === "every") {
+        open.block.params.alternating = true;
+        slot = Number(numbered[1]);
+      }
+      if (!tidied || /^\?+$/.test(tidied)) {
+        line.meaning = open?.block.format === "every" ? `Minute ${numbered[1]} of the rotation` : tidied ? "Not planned yet" : `Part ${numbered[1]}`;
+        line.block = open ? blocks.indexOf(open) : null;
+        return;
+      }
     }
     const heading = readHeading(tidied);
     const efforts = takeEffortText(heading.rest);
     // Partner words ("Partner Up! - I go, you go") are read on their own, so what is left can be read as a format.
     const partnerHere = readPartner(efforts.text);
     const formatText = partnerHere ? withoutPartnerWords(efforts.text) : efforts.text;
-    const read = readFormat(formatText);
+    let read = readFormat(formatText);
+    // A name, then the format: "Superset 2. - 5 Rounds of:", "Single DB Pump - 3 Rounds Of:" (not "Back squat: 5 x 5").
+    let named: string | null = null;
+    if (!read) {
+      const split =
+        formatText.match(/^([^:]*?[a-z][^:]*?)(?:\s+-\s*|\s*:\s*)((?:\d|alt|every|emom|amrap|for time|tabata|e\d).*)$/i) ??
+        // "Empty Barbell AMRAP 8 min", "Easy Pace AMRAP for 20 min": the name runs straight into the format.
+        formatText.match(/^([a-z][^:\d]*?)\s+((?:\d+\s*min\.?\s*)?(?:amrap|emom|for time|tabata)\b.*)$/i);
+      const name = split?.[1]!.replace(/[\s.:-]+$/, "");
+      if (split && name && !/\d/.test(name.replace(/\b(?:superset|super set|triset|tri-set|giant set|circuit|part|complex)\s*\d+$/i, ""))
+        && resolveExercise(library, name, answers).kind === "unmatched") {
+        const after = readFormat(split[2]!);
+        if (after) {
+          read = after;
+          // "Easy pace AMRAP": the words before are the block's effort, not a name.
+          const effort = takeEffortText(`@ ${name}`);
+          if (effort.found.length && !effort.text.replace(/@/g, "").trim()) efforts.found.push(...effort.found);
+          else named = name;
+        }
+      }
+    }
     const partnerOnly = partnerHere !== null && !/[a-z0-9]/i.test(formatText);
     const startsBlock =
       (heading.letter !== null && !heading.itemOfBlock) || heading.intent !== null || read !== null || (partnerOnly && current === null);
@@ -641,6 +857,40 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     const open = current as Building | null;
     if (NOTE_LINE.test(tidied)) {
       note(line, open ?? startBlock(null));
+      return;
+    }
+
+    // "Time Cap 18 min" on its own line: the For time block's cap.
+    const capLine = tidied.match(/^(?:time\s*cap|cap|tc)\s*:?\s*(\d+(?::\d\d)?)\s*(?:min(?:ute)?s?|')?\.?$/i);
+    if (capLine && open) {
+      const cap = seconds(capLine[1]!, "min");
+      if (open.block.format === "sets" && !open.setsFromLine) {
+        // A list, or "4 rounds (of)", and then a time cap: it is for time.
+        open.block.format = "for_time";
+        open.block.params = { rounds: open.hasFormat ? open.block.params.sets : 1 };
+        open.hasFormat = true;
+        open.roundsOnly = false;
+        if (open.headingLine) open.headingLine.problems = open.headingLine.problems.filter((p) => !p.startsWith("Not for time"));
+        if (open.intentFrom === "format") open.block.intent = "conditioning";
+      }
+      if (open.block.format === "for_time" && cap) {
+        open.block.params.time_cap_s = cap;
+        line.meaning = `Time cap ${durationText(cap)}`;
+      } else {
+        line.problems.push("A time cap belongs to a For time block");
+      }
+      line.block = blocks.indexOf(open);
+      return;
+    }
+    // "X 2" after a list of stations: how many times through.
+    const times = tidied.match(/^x\s*(\d+)(?:\s*(?:rounds?|sets?|times))?$/i);
+    if (times && open) {
+      const n = Number(times[1]);
+      if (open.block.format === "sets") open.block.params.sets = n;
+      else open.block.params.rounds = n;
+      open.roundsPending = false;
+      line.meaning = `${n} rounds`;
+      line.block = blocks.indexOf(open);
       return;
     }
 
@@ -695,11 +945,22 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
 
     if (startsBlock) {
+      // "A. Bench Press" then "5 sets of 4-8 reps": the lift is named first, its sets and reps under it.
+      const liftFirst =
+        read !== null && waiting !== null && open !== null && !open.hasFormat && !open.setsFromLine && heading.letter === null && !heading.intent &&
+        open.block.items.length === 1 && open.block.items[0] === (waiting as { item: DraftItem }).item;
       // A heading continues an empty block ("A. Strength" then "E3M x 5"), otherwise starts one.
-      const reuse = open && open.block.items.length === 0 && !(open.hasFormat && read) && (heading.letter === null || open.letter === null || open.letter === heading.letter);
+      const reuse = liftFirst || (open && open.block.items.length === 0 && !(open.hasFormat && read) && (heading.letter === null || open.letter === null || open.letter === heading.letter));
       const building = reuse ? open : startBlock(heading.letter);
       if (heading.letter) building.letter = heading.letter;
-      if (heading.section) building.block.title ||= capitalise(heading.section);
+      // A section word is tidied ("STRENGTH" → "Strength"); a block's own name keeps the coach's spelling.
+      if (heading.section) building.block.title ||= /\s/.test(heading.section) ? heading.section : capitalise(heading.section);
+      if (named) building.block.title ||= named;
+      const sectionInName = !heading.intent && named?.match(SECTION_IN_NAME);
+      if (sectionInName) {
+        building.block.intent = SECTION_INTENT[sectionInName[1]!.toLowerCase().replace(/[^a-z]/g, "")] ?? building.block.intent;
+        building.intentFrom = "section";
+      }
       if (heading.intent) {
         building.block.intent = heading.intent;
         building.intentFrom = "section";
@@ -713,6 +974,8 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
         building.hasFormat = true;
         building.scheme = read.scheme;
         building.roundsOnly = read.roundsOnly;
+        building.roundsPending = read.roundsPending ?? false;
+        building.totalIntervals = read.totalIntervals ?? null;
         if (read.roundsOnly) line.problems.push(`Not for time: read as ${read.params.sets} sets. Write "for time" if it is.`);
         line.problems.push(...read.problems);
         if (Object.values(read.params).some((v) => v === undefined)) line.blocking = true;
@@ -724,13 +987,26 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       // Lines written after the heading: "AMRAP 8: 5 KB swing, 10 air squat" or "Tabata air squats".
       const rest = withoutPartnerWords(read ? read.rest : efforts.text).trim();
       const inline = rest.includes(":") ? rest.slice(rest.indexOf(":") + 1) : read || heading.letter ? rest : "";
-      for (const part of inline.split(/\s*(?:,|;|\s\+\s)\s*/)) if (/[a-z0-9]/i.test(part)) addItem(part, line, null);
+      for (const part of inline.split(/\s*(?:,|;|\s\+\s)\s*/)) if (/[a-z0-9]/i.test(part)) addItem(part, line, slotHere());
       return;
     }
 
-    // A1. Bench 4 x 8 · A2. Row 4 x 10: lines of block A.
+    // A1. Bench 4 x 8 · A2. Row 4 x 10: lines of block A. In alternating minutes, B1 … B5 are its slots.
+    if (heading.itemOfBlock && open?.letter === null && open.block.format === "every") open.letter = heading.letter;
     if (heading.itemOfBlock && open?.letter !== heading.letter) startBlock(heading.letter);
-    if (!addItem(heading.itemOfBlock ? heading.rest : tidied, line, null)) {
+    else if (heading.itemOfBlock && open?.block.format === "every" && heading.item !== null) {
+      open.block.params.alternating = true;
+      slot = heading.item;
+    }
+    // "6 x Hang Snatch + 3/3 x S2OH + 6 x Front Squat": lines done back to back, written on one line.
+    const lineText = heading.itemOfBlock ? heading.rest : tidied;
+    const together = lineText.split(/\s+\+\s+/);
+    if (together.length > 1 && together.every((part) => QUANTITY_START.test(part))) {
+      for (const part of together) addItem(part, line, slotHere());
+      line.block = blocks.indexOf(current!);
+      return;
+    }
+    if (!addItem(lineText, line, slotHere())) {
       note(line, (current as Building | null) ?? startBlock(null));
       return;
     }
@@ -756,6 +1032,16 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     if (block.format === "intervals") {
       const stated = block.params.stations;
       block.params.stations = Math.max(1, block.items.length);
+      if (building.totalIntervals !== null) {
+        // The stations take turns over the intervals in all: rounds = intervals ÷ stations.
+        const perRound = block.params.stations;
+        const rounds = building.totalIntervals / perRound;
+        if (building.headingLine && Number.isInteger(rounds) && block.params.rounds !== rounds && block.params.rounds !== building.totalIntervals) {
+          building.headingLine.problems.push(`${building.totalIntervals} intervals with ${perRound} stations is ${rounds} rounds, not ${block.params.rounds}`);
+        }
+        if (block.params.rounds === building.totalIntervals) block.params.rounds = Math.max(1, Math.round(rounds));
+        if (!Number.isInteger(rounds)) building.headingLine?.problems.push(`${building.totalIntervals} intervals do not share evenly between ${perRound} stations`);
+      }
       if (building.headingLine && stated !== undefined && stated !== 1 && stated !== block.items.length) {
         building.headingLine.problems.push(`${stated} stations written, ${block.items.length} lines found`);
       }
