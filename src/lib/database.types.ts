@@ -680,7 +680,7 @@ isOneToOne: false
             }[]
                            },
 "period_metrics":
-{ Args: { "p_calc_version": number,"p_from": string,"p_org": string,"p_to": string,"p_track"?: string }; Returns: {
+{ Args: { "p_calc_version": number,"p_from": string,"p_org": string,"p_to": string,"p_tracks": string[] }; Returns: {
               "date": string,"metrics": Json,"title": string,"track_id": string,"workout_id": string
             }[]
                            },

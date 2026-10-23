@@ -46,3 +46,27 @@ export function calendarProgramView(
   const first = kept ?? programs.find((p) => !p.archived);
   return first ? { all: false, programId: first.id } : { all: true };
 }
+
+/** ?programs=<id>,<id> in the address (or ?program=<id> / ?track=<id> from older links); null when none is asked for. */
+export function programsParam(query: Record<string, string | string[] | undefined>): string[] | null {
+  const value = query.programs ?? query.program ?? query.track;
+  if (typeof value !== "string") return null;
+  const ids = value.split(",").filter((id) => /^[0-9a-f-]{36}$/.test(id));
+  return ids.length > 0 ? ids : null;
+}
+
+/**
+ * Analytics' programs (decision 4, 2026-10-23): one program by default (the
+ * person's calendar program, else the gym's first active one); several only
+ * when asked for. Always in the programs' own order; never an unknown id.
+ */
+export function analyticsPrograms(
+  asked: string[] | null,
+  remembered: string | null,
+  programs: readonly { id: string; archived: boolean }[],
+): string[] {
+  const chosen = programs.filter((p) => asked?.includes(p.id)).map((p) => p.id);
+  if (chosen.length > 0) return chosen;
+  const one = programs.find((p) => p.id === remembered && !p.archived) ?? programs.find((p) => !p.archived) ?? programs[0];
+  return one ? [one.id] : [];
+}

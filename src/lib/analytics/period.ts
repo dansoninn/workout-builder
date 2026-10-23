@@ -19,7 +19,8 @@ export interface PeriodWorkout {
   id: string;
   date: string;
   title: string | null;
-  trackId: string | null;
+  /** The workout's program. */
+  trackId: string;
   result: WorkoutResult;
 }
 

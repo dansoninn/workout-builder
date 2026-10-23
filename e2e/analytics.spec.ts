@@ -24,11 +24,15 @@ Max row
 Max cal bike
 Max lunges`;
 
-async function paste(page: Page, slug: string, date: string, text: string, answers: [string, string][] = []) {
+async function paste(page: Page, slug: string, date: string, text: string, answers: [string, string][] = [], program?: string) {
   await page.goto(`/${slug}/builder/paste`);
   const box = page.getByLabel("The workout, as you would write it on the whiteboard").filter({ visible: true });
   await box.fill(text);
   await page.getByLabel("Date").filter({ visible: true }).fill(date);
+  if (program) {
+    await page.getByLabel("Program").filter({ visible: true }).click();
+    await page.getByRole("option", { name: program }).click();
+  }
   for (const [line, exercise] of answers) {
     await page.getByRole("listitem").filter({ hasText: line }).filter({ visible: true }).getByRole("button", { name: exercise, exact: true }).click();
   }
@@ -89,4 +93,44 @@ test("the §7 week in Analytics: the approved numbers, and warnings against the 
   await page.goto(`/${slug}/analytics?from=${monday}&to=${addDays(monday, 6)}`);
   await page.getByRole("region", { name: /outside your guidelines/ }).getByRole("listitem").nth(1).getByRole("link", { name: "WOD 3" }).click();
   await expect(page.getByLabel("Workout title").filter({ visible: true })).toHaveValue("WOD 3");
+});
+
+test("analytics shows one program by default; several only when chosen, always named, warnings per program", async ({ page }) => {
+  test.setTimeout(120_000);
+  const { slug } = await ownerWithGym(page);
+  await page.goto(`/${slug}/settings/programs`);
+  await page.getByRole("button", { name: "New program" }).click();
+  await page.getByRole("dialog").getByLabel("Name").fill("Strength club");
+  await page.getByRole("dialog").getByRole("button", { name: "Create program" }).click();
+  await expect(page.getByText("Strength club created")).toBeVisible();
+
+  const today = iso(new Date());
+  const monday = addDays(today, -((new Date(`${today}T00:00:00Z`).getUTCDay() + 6) % 7) - 7);
+  await paste(page, slug, monday, WOD_1);
+  await paste(page, slug, addDays(monday, 2), WOD_2, [], "Strength club");
+
+  // One program by default: the gym's first.
+  const week = `from=${monday}&to=${addDays(monday, 6)}`;
+  await page.goto(`/${slug}/analytics?${week}`);
+  const workouts = page.getByRole("region", { name: "Workouts in this period" });
+  await expect(page.getByRole("button", { name: /^Program Class$/ })).toBeVisible();
+  await expect(workouts.getByRole("link")).toHaveText([/WOD 1/]);
+
+  // Both, chosen: named together, each workout with its program, load per program.
+  await page.getByRole("button", { name: /^Program Class$/ }).click();
+  await page.getByRole("checkbox", { name: "Strength club" }).check();
+  await page.getByRole("button", { name: "Show these programs" }).click();
+  await expect(page).toHaveURL(/programs=/);
+  await expect(page.getByText("Class + Strength club, together.")).toBeVisible();
+  await expect(workouts.getByRole("link")).toHaveText([/WOD 1\s*Class/, /WOD 2\s*Strength club/]);
+  await expect(page.getByRole("table", { name: "Planned load per calendar week, per program" })).toContainText("Together");
+  // Warnings name their program: each program is checked on its own.
+  await expect(page.getByRole("region", { name: /outside your guidelines/ }).getByRole("listitem").first()).toContainText(/^Warning: (Class|Strength club): /);
+  await expectAccessible(page, "analytics, two programs");
+
+  // "Only" goes back to one program in one click.
+  await page.getByRole("button", { name: /^Programs, together/ }).click();
+  await page.getByRole("button", { name: "Only Strength club" }).click();
+  await expect(page.getByText("Class + Strength club, together.")).toHaveCount(0);
+  await expect(workouts.getByRole("link")).toHaveText([/WOD 2/]);
 });

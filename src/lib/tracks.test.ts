@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { calendarProgramView, programViewParam } from "./tracks";
+import { analyticsPrograms, calendarProgramView, programsParam, programViewParam } from "./tracks";
 
 const CLASS = "11111111-1111-4111-8111-111111111111";
 const STRENGTH = "22222222-2222-4222-8222-222222222222";
@@ -45,5 +45,26 @@ describe("?program= in the address", () => {
     expect(programViewParam({ track: CLASS })).toBe(CLASS);
     expect(programViewParam({ program: "Class" })).toBeNull();
     expect(programViewParam({ program: [CLASS, STRENGTH] })).toBeNull();
+  });
+});
+
+describe("analytics' programs", () => {
+  it("is one program by default: the person's calendar program, else the gym's first", () => {
+    expect(analyticsPrograms(null, STRENGTH, programs)).toEqual([STRENGTH]);
+    expect(analyticsPrograms(null, null, programs)).toEqual([CLASS]);
+    expect(analyticsPrograms(null, OLD, programs)).toEqual([CLASS]);
+  });
+
+  it("is several only when asked for, in the programs' order, never an unknown one", () => {
+    expect(analyticsPrograms([STRENGTH, CLASS], null, programs)).toEqual([CLASS, STRENGTH]);
+    expect(analyticsPrograms([OLD], null, programs)).toEqual([OLD]);
+    expect(analyticsPrograms(["44444444-4444-4444-8444-444444444444"], null, programs)).toEqual([CLASS]);
+  });
+
+  it("reads ?programs=, and ?program= from older links", () => {
+    expect(programsParam({ programs: `${CLASS},${STRENGTH}` })).toEqual([CLASS, STRENGTH]);
+    expect(programsParam({ program: CLASS })).toEqual([CLASS]);
+    expect(programsParam({ programs: "all" })).toBeNull();
+    expect(programsParam({})).toBeNull();
   });
 });

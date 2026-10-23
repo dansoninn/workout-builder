@@ -86,3 +86,16 @@ test("viewers cannot paste a workout", async ({ page, browser }) => {
   await expect(viewer.getByLabel("The workout, as you would write it on the whiteboard")).toHaveCount(0);
   await context.close();
 });
+
+test("once the workout is made, the paste page starts empty again, even when made right after typing", async ({ page }) => {
+  const { slug } = await ownerWithGym(page);
+  await page.goto(`/${slug}/builder/paste`);
+  const box = () => page.getByLabel("The workout, as you would write it on the whiteboard").filter({ visible: true });
+  await box().fill("Quick one\n20 air squat");
+  // Straight away: the text's own delayed save (in this browser) is still waiting.
+  await page.getByRole("button", { name: "Make workout" }).filter({ visible: true }).click();
+  await expect(page).toHaveURL(/\/builder\/[0-9a-f-]{36}$/);
+  await page.waitForTimeout(800);
+  await page.goto(`/${slug}/builder/paste`);
+  await expect(box()).toHaveValue("");
+});

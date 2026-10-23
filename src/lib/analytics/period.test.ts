@@ -4,10 +4,10 @@ import { ENGINE_CONFIG } from "@/lib/engine/config";
 import { WOD_1, WOD_2, WOD_3 } from "@/lib/engine/fixtures/worked-wods";
 import { computeWorkout } from "@/lib/engine/workout";
 
-import { checkGuidelines, DEFAULT_GUIDELINES, guidelinesSchema, hasGuidelines, readGuidelines } from "./guidelines";
+import { checkGuidelines, checkPrograms, DEFAULT_GUIDELINES, guidelinesSchema, hasGuidelines, readGuidelines } from "./guidelines";
 import { type PeriodWorkout, summarisePeriod, weeksAround } from "./period";
 
-const workout = (id: string, date: string, result = computeWorkout(WOD_1, ENGINE_CONFIG)): PeriodWorkout => ({ id, date, title: id, trackId: null, result });
+const workout = (id: string, date: string, result = computeWorkout(WOD_1, ENGINE_CONFIG)): PeriodWorkout => ({ id, date, title: id, trackId: "class", result });
 
 /** Calc spec §7, "If these three were one week": Monday, Wednesday, Friday. */
 const WEEK = [
@@ -72,6 +72,25 @@ describe("the gym's guidelines", () => {
       "ratio:pushPull",
       "ratio:kneeHip",
     ]);
+  });
+
+  it("programs shown together are checked each on its own numbers, never mixed (decision 4)", () => {
+    // WOD 1 and 2 in Class, WOD 3 in Strength club.
+    const split = WEEK.map((w, i) => ({ ...w, trackId: i < 2 ? "class" : "strength" }));
+    const byProgram = ["class", "strength"].map((programId) => ({
+      programId,
+      summary: summarisePeriod(split.filter((w) => w.trackId === programId), "2026-10-19", "2026-10-25"),
+    }));
+    const warnings = checkPrograms(byProgram, () => ({ hardSetsPerWeek: { squat: 4 }, monotonyMax: 0.8 }));
+    // Together the week has 5 squat sets and monotony 0.85; each program alone tells another story.
+    expect(checkGuidelines(summary, { hardSetsPerWeek: { squat: 4 }, monotonyMax: 0.8 }).map((w) => w.key)).toEqual(["monotony:2026-10-19"]);
+    expect(warnings.map((w) => w.key)).toEqual(["strength:hard-sets:squat"]);
+    expect(warnings.every((w) => w.workouts.every((x) => x.trackId === w.programId))).toBe(true);
+  });
+
+  it("each program against its own guidelines", () => {
+    const byProgram = [{ programId: "class", summary }];
+    expect(checkPrograms(byProgram, (id) => (id === "class" ? { hardSetsPerWeek: { hinge: 2 } } : {})).map((w) => w.key)).toEqual(["class:hard-sets:hinge"]);
   });
 
   it("nothing warns that the gym has not set", () => {
