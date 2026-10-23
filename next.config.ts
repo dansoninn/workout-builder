@@ -1,6 +1,34 @@
 import type { NextConfig } from "next";
 
+const dev = process.env.NODE_ENV === "development";
+const onVercel = Boolean(process.env.VERCEL_ENV);
+// Vercel's toolbar (comments on preview deployments) loads from vercel.live; production never does.
+const toolbar = process.env.VERCEL_ENV === "preview";
+
+/**
+ * Content-Security-Policy (PLAN-step-6 6f). The browser only ever talks to
+ * this app: Supabase is called from the server, fonts are self-hosted, there
+ * are no third-party scripts. Inline scripts and styles stay allowed because
+ * Next.js inlines its page data and prerendered pages cannot carry a
+ * per-request nonce; everything else is limited to our own origin.
+ */
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}${toolbar ? " https://vercel.live" : ""}`,
+  `style-src 'self' 'unsafe-inline'${toolbar ? " https://vercel.live" : ""}`,
+  `img-src 'self' data: blob:${toolbar ? " https://vercel.live https://vercel.com" : ""}`,
+  `font-src 'self'${toolbar ? " https://vercel.live https://assets.vercel.com" : ""}`,
+  `connect-src 'self'${dev ? " ws:" : ""}${toolbar ? " https://vercel.live wss://ws-us3.pusher.com" : ""}`,
+  `frame-src ${toolbar ? "https://vercel.live" : "'none'"}`,
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  ...(onVercel ? ["upgrade-insecure-requests"] : []),
+].join("; ");
+
 const securityHeaders = [
+  { key: "Content-Security-Policy", value: contentSecurityPolicy },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Frame-Options", value: "DENY" },

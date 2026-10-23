@@ -60,6 +60,8 @@ jobs:
       - run: supabase start -x realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      # Nothing the browser can download holds a Supabase key (PLAN-step-6 6f).
+      - run: node scripts/check-bundle.mjs .next-e2e
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
