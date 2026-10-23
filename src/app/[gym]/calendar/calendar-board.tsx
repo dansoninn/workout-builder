@@ -130,7 +130,7 @@ export function CalendarBoard({
   const addLink = (date: string, trackId: string | null, label: string, quiet: boolean, another: boolean) =>
     canProgram && (
       <Link
-        href={`${href("builder")}?date=${date}${trackId ? `&track=${trackId}` : ""}`}
+        href={`${href("builder")}?date=${date}${trackId ? `&program=${trackId}` : ""}`}
         className={cn(
           "flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors duration-100 hover:bg-hover hover:text-foreground focus-visible:opacity-100",
           quiet && "md:opacity-0 md:group-hover/cell:opacity-100",
@@ -325,7 +325,7 @@ function WeekTable({
   // Columns: active tracks, plus any archived track or "no track" that has workouts this week.
   const columns: Column[] = [
     ...tracks.filter((t) => !t.archived || workouts.some((w) => w.trackId === t.id)),
-    ...(workouts.some((w) => w.trackId === null) ? [{ id: null, name: "No track", color: null, archived: false as const }] : []),
+    ...(workouts.some((w) => w.trackId === null) ? [{ id: null, name: "No program", color: null, archived: false as const }] : []),
   ];
   const weekTotal = (trackId: string | null): Measure | null =>
     workouts
@@ -335,7 +335,7 @@ function WeekTable({
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-surface">
       <table className="w-full min-w-[40rem] table-fixed border-collapse text-sm">
-        <caption className="sr-only">Workouts by day and track</caption>
+        <caption className="sr-only">Workouts by day and program</caption>
         <thead>
           <tr className="border-b border-border">
             <th scope="col" className="w-28 px-3 py-2 text-left text-xs font-medium text-muted-foreground">
@@ -413,7 +413,7 @@ function MoveDialog({
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Move {moving?.workout.title || "the workout"}</DialogTitle>
-          <DialogDescription>To another day or track. Its results and history move with it.</DialogDescription>
+          <DialogDescription>To another day or program. Its results and history move with it.</DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-4"
@@ -437,11 +437,11 @@ function MoveDialog({
           </div>
           <div className="grid gap-1.5">
             <label htmlFor={`${id}-track`} className="text-sm font-medium">
-              Track
+              Program
             </label>
             <Select items={trackItems} value={moving?.trackId ?? null} onValueChange={(v) => moving && onChange({ ...moving, trackId: v ?? null })}>
               <SelectTrigger id={`${id}-track`} className="w-full">
-                <SelectValue placeholder="No track" />
+                <SelectValue placeholder="No program" />
               </SelectTrigger>
               <SelectContent>
                 {trackItems.map((t) => (

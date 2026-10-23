@@ -8,11 +8,11 @@ import { loadLibrary } from "@/lib/workout/load-library";
 
 import { Builder } from "./builder";
 import { BuilderSkeleton } from "./builder-skeleton";
-import { loadTracks } from "./load";
+import { loadTracks, programParam } from "./load";
 
 export const metadata: Metadata = { title: "Builder" };
 
-/** A new workout, for ?date=YYYY-MM-DD and ?track=<id> when given (the calendar's "+"), else today and the first track. */
+/** A new workout, for ?date=YYYY-MM-DD and ?program=<id> when given (the calendar's "+"), else today and the first program. */
 export default function NewWorkoutPage({ params, searchParams }: PageProps<"/[gym]/builder">) {
   return (
     <GymPage
@@ -29,7 +29,8 @@ async function NewWorkout({ gym, searchParams }: { gym: GymMembership; searchPar
   const asked = typeof query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : null;
   const template = query.template === "1";
   const date = template ? null : (asked ?? new Date().toISOString().slice(0, 10));
-  const track = tracks.find((t) => t.id === query.track && !t.archived) ?? tracks.find((t) => !t.archived) ?? null;
+  const program = programParam(query);
+  const track = tracks.find((t) => t.id === program && !t.archived) ?? tracks.find((t) => !t.archived) ?? null;
   const initial = newWorkout(date, track?.id ?? null);
 
   return (

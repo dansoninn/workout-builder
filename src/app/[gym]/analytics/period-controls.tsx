@@ -32,10 +32,10 @@ export function PeriodControls({
   const [custom, setCustom] = useState({ from, to });
   const go = (params: Record<string, string | null>) => {
     const query = new URLSearchParams();
-    for (const [key, value] of Object.entries({ track: trackId, ...params })) if (value) query.set(key, value);
+    for (const [key, value] of Object.entries({ program: trackId, ...params })) if (value) query.set(key, value);
     router.push(`/${slug}/analytics?${query}`);
   };
-  const trackItems = [{ value: "all", label: "All tracks" }, ...tracks.filter((t) => !t.archived || t.id === trackId).map((t) => ({ value: t.id, label: t.name }))];
+  const trackItems = [{ value: "all", label: "All programs" }, ...tracks.filter((t) => !t.archived || t.id === trackId).map((t) => ({ value: t.id, label: t.name }))];
 
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -82,9 +82,9 @@ export function PeriodControls({
       </form>
       <div className="grid gap-1">
         <label htmlFor={`${id}-track`} className="text-xs font-medium text-muted-foreground">
-          Track
+          Program
         </label>
-        <Select items={trackItems} value={trackId ?? "all"} onValueChange={(v) => go({ track: v === "all" ? null : v, ...(days ? { days: String(days) } : { from, to }) })}>
+        <Select items={trackItems} value={trackId ?? "all"} onValueChange={(v) => go({ program: v === "all" ? null : v, ...(days ? { days: String(days) } : { from, to }) })}>
           <SelectTrigger id={`${id}-track`} className="w-44">
             <SelectValue />
           </SelectTrigger>

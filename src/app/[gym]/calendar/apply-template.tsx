@@ -99,11 +99,11 @@ export function ApplyTemplateDialog({
           )}
           <div className="grid gap-1.5">
             <label htmlFor={`${id}-track`} className="text-sm font-medium">
-              Track
+              Program
             </label>
             <Select items={active.map((t) => ({ value: t.id, label: t.name }))} value={trackId} onValueChange={(v) => setTrackId(v ?? null)}>
               <SelectTrigger id={`${id}-track`} className="w-full">
-                <SelectValue placeholder="No track" />
+                <SelectValue placeholder="No program" />
               </SelectTrigger>
               <SelectContent>
                 {active.map((t) => (

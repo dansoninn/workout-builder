@@ -152,11 +152,11 @@ export function PasteWorkout({
             </div>
             <div className="grid gap-1">
               <label className="text-xs font-medium text-muted-foreground" htmlFor={`${textId}-track`}>
-                Track
+                Program
               </label>
               <Select items={trackItems} value={trackId} onValueChange={(v) => setTrackId(v ?? null)}>
                 <SelectTrigger id={`${textId}-track`} size="default" className="w-44">
-                  <SelectValue placeholder="No track" />
+                  <SelectValue placeholder="No program" />
                 </SelectTrigger>
                 <SelectContent>
                   {trackItems.map((t) => (

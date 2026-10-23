@@ -1,5 +1,7 @@
 # Step 4 plan — from engine to a working app
 
+> **Naming (2026-10-23):** what this plan calls "tracks" are called **programs** in the app since Daniel's decision of 2026-10-23 (the database table is still `tracks`).
+
 **Status:** approved by Daniel on 2026-10-21, with the design-direction correction and answers below. 4a approved and merged (PR #1). 4b built, ready for review (branch step-4b).
 **Rule:** four sub-steps, each approval-gated, each on its own branch with a pull request and a Vercel preview link. Each ends with a STATUS update and stops.
 

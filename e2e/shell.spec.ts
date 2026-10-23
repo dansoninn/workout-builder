@@ -7,7 +7,7 @@ test("one gym's pages are 'not found' for members of another gym", async ({ page
   const otherContext = await browser.newContext();
   const { slug: otherSlug } = await ownerWithGym(await otherContext.newPage());
 
-  for (const path of ["builder", "settings/members", "settings/tracks"]) {
+  for (const path of ["builder", "settings/members", "settings/programs"]) {
     await page.goto(`/${otherSlug}/${path}`);
     await expect(page.getByRole("heading", { name: "Gym not found" })).toBeVisible();
   }
@@ -55,32 +55,35 @@ test("on a phone, the navigation opens from the menu button", async ({ page }) =
   await expect(page.getByRole("dialog", { name: "Navigation" })).toHaveCount(0);
 });
 
-test("a new gym starts with a Class track; owners create, rename and archive tracks", async ({ page }) => {
+test("a new gym starts with a Class program; owners create, rename and archive programs", async ({ page }) => {
   const { slug } = await ownerWithGym(page);
+  await page.goto(`/${slug}/settings/programs`);
+  // Links from before "Tracks" became "Programs" still arrive.
   await page.goto(`/${slug}/settings/tracks`);
-  const tracks = page.getByRole("region", { name: "Tracks" });
+  await expect(page).toHaveURL(new RegExp(`/${slug}/settings/programs$`));
+  const tracks = page.getByRole("region", { name: "Programs" });
   await expect(tracks.getByRole("listitem")).toHaveCount(1);
   await expect(tracks.getByText("Class", { exact: true })).toBeVisible();
 
-  await page.getByRole("button", { name: "New track" }).click();
+  await page.getByRole("button", { name: "New program" }).click();
   await page.getByRole("dialog").getByLabel("Name").fill("Strength club");
   await page.getByRole("dialog").getByTitle("Teal").click();
   await expect(page.getByRole("dialog").getByLabel("Teal")).toBeChecked();
-  await page.getByRole("dialog").getByRole("button", { name: "Create track" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Create program" }).click();
   await expect(page.getByText("Strength club created")).toBeVisible();
   await expect(tracks.getByRole("listitem")).toHaveCount(2);
 
-  // Names are unique among a gym's active tracks.
-  await page.getByRole("button", { name: "New track" }).click();
+  // Names are unique among a gym's active programs.
+  await page.getByRole("button", { name: "New program" }).click();
   await page.getByRole("dialog").getByLabel("Name").fill("class");
-  await page.getByRole("dialog").getByRole("button", { name: "Create track" }).click();
-  await expect(page.getByText("There is already a track with this name")).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "Create program" }).click();
+  await expect(page.getByText("There is already a program with this name")).toBeVisible();
   await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "Edit Class" }).click();
   await page.getByRole("dialog").getByLabel("Name").fill("Group class");
-  await page.getByRole("dialog").getByRole("button", { name: "Save track" }).click();
-  await expect(page.getByText("Track saved")).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "Save program" }).click();
+  await expect(page.getByText("Program saved")).toBeVisible();
 
   await page.getByRole("button", { name: "Archive Group class" }).click();
   await expect(page.getByRole("region", { name: "Archived" }).getByText("Group class")).toBeVisible();

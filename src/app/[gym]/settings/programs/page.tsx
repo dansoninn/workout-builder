@@ -6,15 +6,16 @@ import { can } from "@/lib/permissions";
 import type { GymMembership } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
-import { TracksManager } from "./tracks-manager";
+import { ProgramsManager } from "./programs-manager";
 
-export const metadata: Metadata = { title: "Tracks" };
+export const metadata: Metadata = { title: "Programs" };
 
-export default function TracksPage({ params }: PageProps<"/[gym]/settings/tracks">) {
-  return <GymPage params={params} fallback={<SectionSkeleton rows={2} />} render={(gym) => <Tracks gym={gym} />} />;
+export default function ProgramsPage({ params }: PageProps<"/[gym]/settings/programs">) {
+  return <GymPage params={params} fallback={<SectionSkeleton rows={2} />} render={(gym) => <Programs gym={gym} />} />;
 }
 
-async function Tracks({ gym }: { gym: GymMembership }) {
+/** The gym's programs (stored as `tracks`; "track" was the earlier name). */
+async function Programs({ gym }: { gym: GymMembership }) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("tracks")
@@ -25,7 +26,7 @@ async function Tracks({ gym }: { gym: GymMembership }) {
   if (error) throw error;
 
   return (
-    <TracksManager
+    <ProgramsManager
       slug={gym.slug}
       canManage={can.manageTracks(gym.role)}
       tracks={data.map((t) => ({ id: t.id, name: t.name, color: t.color, archived: t.archived_at !== null }))}

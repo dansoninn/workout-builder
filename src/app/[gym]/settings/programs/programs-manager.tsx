@@ -37,7 +37,7 @@ export function TrackDot({ color, className }: { color: string | null; className
   );
 }
 
-export function TracksManager({ slug, canManage, tracks }: { slug: string; canManage: boolean; tracks: Track[] }) {
+export function ProgramsManager({ slug, canManage, tracks }: { slug: string; canManage: boolean; tracks: Track[] }) {
   const [shown, setArchivedOptimistic] = useOptimistic(tracks, (state, change: { id: string; archived: boolean }) =>
     state.map((t) => (t.id === change.id ? { ...t, archived: change.archived } : t)),
   );
@@ -100,34 +100,34 @@ export function TracksManager({ slug, canManage, tracks }: { slug: string; canMa
   return (
     <div className="grid grid-cols-1 gap-10">
       <SettingsSection
-        title="Tracks"
-        description="Programming streams that run side by side, like Class, Strength club or Endurance."
+        title="Programs"
+        description="The gym's programs that run side by side, each named as you like: Class, Strength club, Endurance."
         action={
           canManage && (
             <Button onClick={() => openEditor("new")}>
-              <PlusIcon /> New track
+              <PlusIcon /> New program
             </Button>
           )
         }
       >
         {active.length === 0 ? (
           <div className="grid justify-items-center gap-2 rounded-lg border border-dashed border-border-strong px-4 py-8 text-center">
-            <p className="font-medium">{archived.length > 0 ? "No active tracks" : "No tracks yet"}</p>
+            <p className="font-medium">{archived.length > 0 ? "No active programs" : "No programs yet"}</p>
             <p className="max-w-sm text-muted-foreground">
               {canManage
-                ? `Every workout belongs to a track. Create one${archived.length > 0 ? ", or restore an archived one below" : ""}.`
-                : "An owner or head coach can create the gym's tracks."}
+                ? `Every workout belongs to a program. Create one${archived.length > 0 ? ", or restore an archived one below" : ""}.`
+                : "An owner or head coach can create the gym's programs."}
             </p>
             {canManage && (
               <Button variant="outline" className="mt-2" onClick={() => openEditor("new")}>
-                <PlusIcon /> Create a track
+                <PlusIcon /> Create a program
               </Button>
             )}
           </div>
         ) : (
           rows(active)
         )}
-        {!canManage && <ReadOnlyNote>Owners and head coaches manage tracks.</ReadOnlyNote>}
+        {!canManage && <ReadOnlyNote>Owners and head coaches manage programs.</ReadOnlyNote>}
       </SettingsSection>
 
       {archived.length > 0 && (
@@ -163,7 +163,7 @@ function TrackDialog({
   const [state, action] = useActionState(async (prev: FormState, formData: FormData) => {
     const result = await saveTrack(slug, track?.id ?? null, prev, formData);
     if (result.ok) {
-      toast.success(track ? "Track saved" : `${result.values?.name} created`);
+      toast.success(track ? "Program saved" : `${result.values?.name} created`);
       onOpenChange(false);
     }
     return result;
@@ -174,8 +174,8 @@ function TrackDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{track ? `Edit ${track.name}` : "New track"}</DialogTitle>
-          <DialogDescription>The colour marks this track&apos;s workouts in the calendar.</DialogDescription>
+          <DialogTitle>{track ? `Edit ${track.name}` : "New program"}</DialogTitle>
+          <DialogDescription>The colour marks this program&apos;s workouts in the calendar.</DialogDescription>
         </DialogHeader>
         <form action={action} className="grid gap-4" noValidate>
           <FormError>{state.error}</FormError>
@@ -214,7 +214,7 @@ function TrackDialog({
           </fieldset>
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
-            <SubmitButton pendingLabel="Saving…">{track ? "Save track" : "Create track"}</SubmitButton>
+            <SubmitButton pendingLabel="Saving…">{track ? "Save program" : "Create program"}</SubmitButton>
           </DialogFooter>
         </form>
       </DialogContent>

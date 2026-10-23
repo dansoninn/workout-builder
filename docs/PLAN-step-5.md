@@ -1,5 +1,7 @@
 # Plan — Step 5: calendar, templates, analytics
 
+> **Naming (2026-10-23):** what this plan calls "tracks" are called **programs** in the app since Daniel's decision of 2026-10-23 (the database table is still `tracks`).
+
 **Written:** 2026-10-22 by Claude Code, from Daniel's order of 2026-10-21 ("month calendar with drag & drop, template applied to several dates, Analytics over 7/14/30 days and custom range using the four lenses, warnings") and BACKLOG.
 **Working mode:** continuous — each sub-step on its own branch and pull request, merged when CI is green. Coaching questions go to STATUS ("Questions for Daniel"); work that does not depend on them continues.
 

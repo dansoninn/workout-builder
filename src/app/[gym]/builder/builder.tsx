@@ -250,7 +250,7 @@ export function Builder({
   // A new workout can come from text instead (4c), on the same date and track.
   const pasteHref =
     isNew && !savedOnce && !readOnly && draft.kind === "scheduled"
-      ? `/${slug}/builder/paste?${new URLSearchParams({ date: draft.date ?? "", ...(draft.trackId ? { track: draft.trackId } : {}) })}`
+      ? `/${slug}/builder/paste?${new URLSearchParams({ date: draft.date ?? "", ...(draft.trackId ? { program: draft.trackId } : {}) })}`
       : null;
 
   const commands = useMemo(
@@ -417,11 +417,11 @@ export function Builder({
             </div>
             <div className="grid gap-1">
               <label className="text-xs font-medium text-muted-foreground" htmlFor={trackId}>
-                Track
+                Program
               </label>
               <Select items={trackItems} value={draft.trackId} onValueChange={(v) => dispatch({ type: "workout", patch: { trackId: v ?? null } })} disabled={readOnly}>
                 <SelectTrigger id={trackId} size="default" className="w-44">
-                  <SelectValue placeholder="No track" />
+                  <SelectValue placeholder="No program" />
                 </SelectTrigger>
                 <SelectContent>
                   {trackItems.map((t) => (

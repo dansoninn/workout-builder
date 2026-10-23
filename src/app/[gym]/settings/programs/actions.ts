@@ -21,7 +21,7 @@ async function nameTaken(supabase: Supabase, orgId: string, name: string, except
   return (data ?? []).some((t) => t.id !== exceptId && t.name.trim().toLowerCase() === name.toLowerCase());
 }
 
-/** Creates a track (last in the order), or renames and recolours one when `trackId` is given. */
+/** Creates a program (stored in `tracks`, last in the order), or renames and recolours one when `trackId` is given. */
 export async function saveTrack(
   slug: string,
   trackId: string | null,
@@ -37,7 +37,7 @@ export async function saveTrack(
 
   const supabase = await createClient();
   if (await nameTaken(supabase, gym.id, parsed.data.name, trackId ?? undefined)) {
-    return { fieldErrors: { name: "There is already a track with this name" }, values };
+    return { fieldErrors: { name: "There is already a program with this name" }, values };
   }
 
   if (trackId) {
@@ -47,7 +47,7 @@ export async function saveTrack(
       .eq("id", trackId)
       .eq("org_id", gym.id)
       .select("id");
-    if (error || data.length === 0) return { error: "Could not save the track. Try again.", values };
+    if (error || data.length === 0) return { error: "Could not save the program. Try again.", values };
   } else {
     const { data: last } = await supabase
       .from("tracks")
@@ -59,14 +59,14 @@ export async function saveTrack(
     const { error } = await supabase
       .from("tracks")
       .insert({ ...parsed.data, org_id: gym.id, position: (last?.position ?? -1) + 1 });
-    if (error) return { error: "Could not create the track. Try again.", values };
+    if (error) return { error: "Could not create the program. Try again.", values };
   }
 
   refresh();
   return { ok: true, values };
 }
 
-/** Archive hides a track from new programming; its workouts stay. Restore brings it back. */
+/** Archive hides a program from new programming; its workouts stay. Restore brings it back. */
 export async function setTrackArchived(slug: string, trackId: string, archived: boolean): Promise<ActionResult> {
   const gym = await gymForAction(slug, can.manageTracks);
   if (!gym || !uuidSchema.safeParse(trackId).success) return { ok: false, error: NOT_ALLOWED };
@@ -78,7 +78,7 @@ export async function setTrackArchived(slug: string, trackId: string, archived: 
     .eq("id", trackId)
     .eq("org_id", gym.id)
     .select("id");
-  if (error || data.length === 0) return { ok: false, error: "Could not update the track. Try again." };
+  if (error || data.length === 0) return { ok: false, error: "Could not update the program. Try again." };
 
   refresh();
   return { ok: true };
