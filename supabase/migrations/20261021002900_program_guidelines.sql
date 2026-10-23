@@ -29,3 +29,7 @@ $$;
 create trigger tracks_guidelines_valid
   before insert or update of guidelines on public.tracks
   for each row execute function private.check_program_guidelines();
+
+-- The old period_metrics (one program or all, before decision 4), kept by
+-- migration 002800 until the app that asks for programs was live.
+drop function if exists public.period_metrics(uuid, date, date, int, uuid);
