@@ -122,3 +122,14 @@ test("an owner deletes the gym: gone for everyone at once; for 30 days it can be
   await expect(coach.getByRole("link", { name: /Last class/ })).toBeVisible();
   await context.close();
 });
+
+test("cookies: only the sign-in session and the last gym opened; nothing that tracks", async ({ page, context }) => {
+  const { slug } = await ownerWithGym(page);
+  for (const path of ["calendar", "analytics", "builder/paste", "settings/profile"]) await page.goto(`/${slug}/${path}`);
+  const cookies = await context.cookies();
+  const session = /^sb-[a-z0-9-]+-auth-token(\.\d+|-code-verifier)?$/;
+  expect(cookies.map((c) => c.name).filter((name) => !session.test(name) && name !== "wb_gym")).toEqual([]);
+  // The last gym: its address only, readable by the server only, for this site only.
+  const gym = cookies.find((c) => c.name === "wb_gym");
+  expect(gym).toMatchObject({ value: slug, httpOnly: true, sameSite: "Lax" });
+});
