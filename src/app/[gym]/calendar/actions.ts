@@ -8,9 +8,16 @@ import { can } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { storeMetricsForCopies } from "@/lib/workout/metrics";
 
-const moveSchema = z.strictObject({ workoutId: z.uuid(), date: z.iso.date(), trackId: z.uuid().nullable() });
+/** The database's answer when the chosen program cannot take a workout (archived, or gone). */
+function programError(error: { code?: string; message: string }): string | null {
+  if (error.code === "23514" && /archived/.test(error.message)) return error.message;
+  if (error.code === "23503") return "That program no longer exists. Reload the page.";
+  return null;
+}
 
-/** Moves a workout on the calendar to another day (and track). One audited update; templates and deleted workouts stay put. */
+const moveSchema = z.strictObject({ workoutId: z.uuid(), date: z.iso.date(), trackId: z.uuid() });
+
+/** Moves a workout on the calendar to another day (and program). One audited update; templates and deleted workouts stay put. */
 export async function moveWorkout(slug: string, input: unknown): Promise<ActionResult> {
   const gym = await gymForAction(slug, can.program);
   const parsed = moveSchema.safeParse(input);
@@ -26,7 +33,7 @@ export async function moveWorkout(slug: string, input: unknown): Promise<ActionR
     .eq("kind", "scheduled")
     .is("deleted_at", null)
     .select("id");
-  if (error) return { ok: false, error: error.code === "23503" ? "That program no longer exists." : "Could not move the workout. Try again." };
+  if (error) return { ok: false, error: programError(error) ?? "Could not move the workout. Try again." };
   if (data.length === 0) return { ok: false, error: "That workout was deleted or moved. Reload the page." };
   refresh();
   return { ok: true };
@@ -34,7 +41,7 @@ export async function moveWorkout(slug: string, input: unknown): Promise<ActionR
 
 const applySchema = z.strictObject({
   templateId: z.uuid(),
-  trackId: z.uuid().nullable(),
+  trackId: z.uuid(),
   dates: z.array(z.iso.date()).min(1).max(60),
 });
 
@@ -56,6 +63,8 @@ export async function applyTemplate(slug: string, input: unknown): Promise<Actio
   if (error) {
     if (error.code === "42501") return { ok: false, error: NOT_ALLOWED };
     if (error.code === "P0002") return { ok: false, error: "That template was deleted. Reload the page." };
+    const program = programError(error);
+    if (program) return { ok: false, error: program };
     return { ok: false, error: "Could not add the template to those dates. Nothing was added; try again." };
   }
   await storeMetricsForCopies(gym.id, templateId, targets.map((t) => t.id));

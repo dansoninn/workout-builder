@@ -56,7 +56,7 @@ const WOD_1: DraftWorkout = {
   id: crypto.randomUUID(),
   kind: "scheduled",
   date: "2026-10-22",
-  trackId: null,
+  trackId: "5b3c4e2a-8f1d-4c6e-9a7b-2d1e0f3c4b5a",
   title: "WOD 1",
   focus: "",
   status: "draft",
@@ -117,6 +117,10 @@ describe("the builder's draft", () => {
       { block: 0, item: 0, field: "quantity", message: "The second number must be larger, e.g. 8-10" },
       { block: 0, item: 1, field: "load", message: 'Did not understand "heavy". Try 75-80%, 22.5/15 kg, 2x22.5 or bw' },
     ]);
+  });
+
+  it("needs a program (every workout belongs to one)", () => {
+    expect(draftProblems({ ...WOD_1, trackId: null }, library)).toEqual([{ block: -1, item: null, field: "trackId", message: "Choose a program" }]);
   });
 
   it("keeps a line without an exercise (it blocks publishing, not saving)", () => {

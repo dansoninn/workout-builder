@@ -12,7 +12,7 @@ insert into public.tracks (id, org_id, name, color) values (tests.id('other_trac
 insert into public.workouts (id, org_id, track_id, kind, date, title) values
   (tests.id('later'),   tests.id('gym_a'), tests.id('other_track'), 'scheduled', '2026-10-24', 'Saturday'),
   (tests.id('deleted'), tests.id('gym_a'), tests.id('track_a'),     'scheduled', '2026-10-22', 'Gone');
-insert into public.workouts (id, org_id, kind, title) values (tests.id('tpl'), tests.id('gym_a'), 'template', 'T');
+insert into public.workouts (id, org_id, track_id, kind, title) values (tests.id('tpl'), tests.id('gym_a'), tests.id('track_a'), 'template', 'T');
 update public.workouts set deleted_at = now() where id = tests.id('deleted');
 insert into public.workout_metrics (workout_id, org_id, calc_version, taxonomy_version, metrics) values
   (tests.id('later'),   tests.id('gym_a'), 1, 1, '{"sRpe": {"low": 10, "mid": 10, "high": 10, "confidence": "exact"}}'),

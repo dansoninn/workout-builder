@@ -1,8 +1,9 @@
 "use client";
 
-import { PlusIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, PlusIcon } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useActionState, useOptimistic, useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import { toast } from "sonner";
 
 import { ReadOnlyNote, SettingsSection } from "@/components/app/settings";
@@ -23,7 +24,7 @@ import { type FormState, initialFormState } from "@/lib/forms";
 import { TRACK_COLORS, trackColorLabel } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 
-import { saveTrack, setTrackArchived } from "./actions";
+import { reorderPrograms, saveTrack, setTrackArchived } from "./actions";
 
 export type Track = { id: string; name: string; color: string | null; archived: boolean };
 
@@ -38,14 +39,22 @@ export function TrackDot({ color, className }: { color: string | null; className
 }
 
 export function ProgramsManager({ slug, canManage, tracks }: { slug: string; canManage: boolean; tracks: Track[] }) {
-  const [shown, setArchivedOptimistic] = useOptimistic(tracks, (state, change: { id: string; archived: boolean }) =>
+  const [optimistic, setArchivedOptimistic] = useOptimistic(tracks, (state, change: { id: string; archived: boolean }) =>
     state.map((t) => (t.id === change.id ? { ...t, archived: change.archived } : t)),
   );
+  // A new order shows at once; the server's order replaces it when it arrives.
+  const [order, setOrder] = useState<string[] | null>(null);
+  const [orderedFrom, setOrderedFrom] = useState(tracks);
+  if (orderedFrom !== tracks) {
+    setOrderedFrom(tracks);
+    setOrder(null);
+  }
+  const shown = order ? order.flatMap((id) => optimistic.filter((t) => t.id === id)) : optimistic;
   const [, startTransition] = useTransition();
   const [editing, setEditing] = useState<Track | "new" | null>(null);
   const [formKey, setFormKey] = useState(0);
 
-  // ⌘K → "New track" arrives as ?new=1.
+  // ⌘K → "New program" arrives as ?new=1.
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -67,9 +76,31 @@ export function ProgramsManager({ slug, canManage, tracks }: { slug: string; can
       else toast.error(result.error);
     });
 
+  // The order set here is the order everywhere (calendar columns, pickers). Archived programs follow, in theirs.
+  const onMove = (track: Track, direction: -1 | 1) => {
+    const ids = active.map((t) => t.id);
+    const from = ids.indexOf(track.id);
+    const to = from + direction;
+    if (from < 0 || to < 0 || to >= ids.length) return;
+    [ids[from], ids[to]] = [ids[to]!, ids[from]!];
+    const all = [...ids, ...archived.map((t) => t.id)];
+    flushSync(() => setOrder(all));
+    // The keyboard stays on the moved program: the same arrow, or the other one at either end.
+    const arrow = (d: number) => document.querySelector<HTMLButtonElement>(`[data-order="${track.id}:${d}"]`);
+    const same = arrow(direction);
+    (same && !same.disabled ? same : arrow(-direction))?.focus();
+    startTransition(async () => {
+      const result = await reorderPrograms(slug, all);
+      if (!result.ok) {
+        toast.error(result.error);
+        setOrder(null);
+      }
+    });
+  };
+
   const rows = (list: Track[]) => (
     <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
-      {list.map((t) => (
+      {list.map((t, index) => (
         <li key={t.id} className="flex h-11 items-center gap-3 px-3">
           <TrackDot color={t.color} />
           <span className={cn("flex-1 truncate font-medium", t.archived && "text-muted-foreground")}>{t.name}</span>
@@ -77,6 +108,30 @@ export function ProgramsManager({ slug, canManage, tracks }: { slug: string; can
           {t.archived && <Badge variant="outline">Archived</Badge>}
           {canManage && (
             <div className="flex gap-1">
+              {!t.archived && list.length > 1 && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    data-order={`${t.id}:-1`}
+                    disabled={index === 0}
+                    onClick={() => onMove(t, -1)}
+                    aria-label={`Move ${t.name} up`}
+                  >
+                    <ArrowUpIcon />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    data-order={`${t.id}:1`}
+                    disabled={index === list.length - 1}
+                    onClick={() => onMove(t, 1)}
+                    aria-label={`Move ${t.name} down`}
+                  >
+                    <ArrowDownIcon />
+                  </Button>
+                </>
+              )}
               {!t.archived && (
                 <Button variant="ghost" size="sm" onClick={() => openEditor(t)} aria-label={`Edit ${t.name}`}>
                   Edit
@@ -85,6 +140,7 @@ export function ProgramsManager({ slug, canManage, tracks }: { slug: string; can
               <Button
                 variant="ghost"
                 size="sm"
+                disabled={!t.archived && active.length === 1}
                 onClick={() => onArchive(t, !t.archived)}
                 aria-label={`${t.archived ? "Restore" : "Archive"} ${t.name}`}
               >
@@ -101,7 +157,7 @@ export function ProgramsManager({ slug, canManage, tracks }: { slug: string; can
     <div className="grid grid-cols-1 gap-10">
       <SettingsSection
         title="Programs"
-        description="The gym's programs that run side by side, each named as you like: Class, Strength club, Endurance."
+        description="The gym's programs that run side by side, each named as you like: Class, Strength club, Endurance. Their order here is their order everywhere."
         action={
           canManage && (
             <Button onClick={() => openEditor("new")}>
@@ -126,6 +182,9 @@ export function ProgramsManager({ slug, canManage, tracks }: { slug: string; can
           </div>
         ) : (
           rows(active)
+        )}
+        {canManage && active.length === 1 && (
+          <p className="text-xs text-muted-foreground">Every workout belongs to a program, so a gym always keeps at least one active.</p>
         )}
         {!canManage && <ReadOnlyNote>Owners and head coaches manage programs.</ReadOnlyNote>}
       </SettingsSection>

@@ -47,6 +47,7 @@ export async function saveTrack(
       .eq("id", trackId)
       .eq("org_id", gym.id)
       .select("id");
+    if (error?.code === "23505") return { fieldErrors: { name: "There is already a program with this name" }, values };
     if (error || data.length === 0) return { error: "Could not save the program. Try again.", values };
   } else {
     const { data: last } = await supabase
@@ -59,6 +60,7 @@ export async function saveTrack(
     const { error } = await supabase
       .from("tracks")
       .insert({ ...parsed.data, org_id: gym.id, position: (last?.position ?? -1) + 1 });
+    if (error?.code === "23505") return { fieldErrors: { name: "There is already a program with this name" }, values };
     if (error) return { error: "Could not create the program. Try again.", values };
   }
 
@@ -66,7 +68,11 @@ export async function saveTrack(
   return { ok: true, values };
 }
 
-/** Archive hides a program from new programming; its workouts stay. Restore brings it back. */
+/**
+ * Archive hides a program from new programming; its workouts stay. Restore
+ * brings it back, unless an active program has its name. A gym keeps at least
+ * one active program (the database checks both).
+ */
 export async function setTrackArchived(slug: string, trackId: string, archived: boolean): Promise<ActionResult> {
   const gym = await gymForAction(slug, can.manageTracks);
   if (!gym || !uuidSchema.safeParse(trackId).success) return { ok: false, error: NOT_ALLOWED };
@@ -78,7 +84,27 @@ export async function setTrackArchived(slug: string, trackId: string, archived: 
     .eq("id", trackId)
     .eq("org_id", gym.id)
     .select("id");
+  if (error?.code === "23505") return { ok: false, error: "An active program has the same name. Rename one of them first." };
+  if (error?.code === "23514") return { ok: false, error: error.message };
   if (error || data.length === 0) return { ok: false, error: "Could not update the program. Try again." };
+
+  refresh();
+  return { ok: true };
+}
+
+const orderSchema = z.array(z.uuid()).min(1).max(500);
+
+/** Puts the gym's programs in the order given: every program, archived ones too, each once. */
+export async function reorderPrograms(slug: string, ids: unknown): Promise<ActionResult> {
+  const gym = await gymForAction(slug, can.manageTracks);
+  const parsed = orderSchema.safeParse(ids);
+  if (!gym || !parsed.success) return { ok: false, error: NOT_ALLOWED };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reorder_programs", { p_org: gym.id, p_ids: parsed.data });
+  if (error?.code === "42501") return { ok: false, error: NOT_ALLOWED };
+  if (error?.code === "22023") return { ok: false, error: "The programs changed in the meantime. Reload the page and try again." };
+  if (error) return { ok: false, error: "Could not change the order. Try again." };
 
   refresh();
   return { ok: true };

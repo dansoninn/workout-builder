@@ -1,7 +1,7 @@
 # Workout Builder — Data Model Spec
 
 **Status:** v0.2 — approved
-**Amended:** 2026-10-21 — Step 1 review decisions ✅: tracks managed by owner + head coach (§3); sled removed from modalities, equipment becomes a locked list (§4, §5); monostructural exercises have no patterns (§5). Taxonomy version 2. English-only labels (§4). Step 2 review ✅: equipment list approved, `hip_flexors` muscle, ambiguous exercise terms (§5). Step 3 review ✅: implement count (§5, §6), pace defaults seeded with a shape check (§5), `block_results` for observed group results (§6).
+**Amended:** 2026-10-21 — Step 1 review decisions ✅: tracks managed by owner + head coach (§3); sled removed from modalities, equipment becomes a locked list (§4, §5); monostructural exercises have no patterns (§5). Taxonomy version 2. English-only labels (§4). Step 2 review ✅: equipment list approved, `hip_flexors` muscle, ambiguous exercise terms (§5). Step 3 review ✅: implement count (§5, §6), pace defaults seeded with a shape check (§5), `block_results` for observed group results (§6). 2026-10-23: programs (the `tracks` table) required on every workout, with their rules (§3, §6).
 **Date:** 2026-10-20
 **Depends on:** `SPEC-calculation-model.md` v0.2
 **Stack:** Supabase (Postgres 15+), EU region (Frankfurt). Schema lives in git as Supabase migrations.
@@ -105,6 +105,13 @@ Rules (enforced in the database, tested in pgTAP):
 
 Gyms program several programs in parallel (e.g. *Class*, *Strength club*, *Endurance*). `id`, `org_id`, `name`, `color`, `position`, `archived_at`. Created and edited by owners and head coaches, not coaches — approved 2026-10-21. Archived, never deleted. **A new gym starts with one program, "Class"**, which can be renamed or archived like any other ✅ (approved 2026-10-21).
 
+Rules (Afrek launch requirement, decisions of 2026-10-23; migration `002600`):
+- **Every workout belongs to a program** ✅ (decision 2): `workouts.track_id` is NOT NULL, for scheduled workouts and templates alike. Workouts that had none were moved to the gym's first active program (by `position`, then name); a gym with workouts but no program got "Class".
+- **No new workout on an archived program**: a workout cannot be created on, copied to or moved to an archived program (trigger on insert and on a change of `track_id`, so `save_workout`, `copy_workout` and a calendar move are all covered). Workouts already on a program when it is archived stay there and can still be edited.
+- **Names are unique among a gym's active programs**, ignoring case and outer spaces (partial unique index on `(org_id, lower(btrim(name)))` where not archived). Archived programs may share a name; restoring one whose name an active program has is refused. Existing duplicates were numbered ("Class (2)").
+- **A gym keeps at least one active program** (interpreted from decision 2: with none, nothing could be programmed). Archiving the last active one is refused.
+- **Order:** `position` is the order everywhere (calendar columns, pickers). `reorder_programs(org, ids)` sets it in one statement: owners and head coaches only, and `ids` must be every program of the gym (archived ones too), each once.
+
 ---
 
 ## 4. Reference taxonomy (global, read-only)
@@ -181,7 +188,7 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 |---|---|---|
 | id | uuid PK | |
 | org_id | uuid FK | |
-| track_id | uuid FK NULL | |
+| track_id | uuid FK | the workout's program; required ✅ (2026-10-23), never an archived program for a new or moved workout (§3) |
 | kind | enum | `scheduled` · `template` |
 | date | date NULL | required for scheduled, NULL for templates |
 | title | text NULL | |

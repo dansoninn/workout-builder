@@ -13,7 +13,7 @@ insert into tests.ids (name) values ('amrap_a'), ('for_time_a'), ('template_a'),
 insert into public.blocks (id, workout_id, org_id, position, label, intent, format, params, pace_effort) values
   (tests.id('amrap_a'),    tests.id('workout_a'), tests.id('gym_a'), 1, 'B', 'conditioning', 'amrap',    '{"time_s": 480}', 'hard'),
   (tests.id('for_time_a'), tests.id('workout_a'), tests.id('gym_a'), 2, 'C', 'conditioning', 'for_time', '{"rounds": 3, "time_cap_s": 900}', 'hard');
-insert into public.workouts (id, org_id, kind, title) values (tests.id('template_a'), tests.id('gym_a'), 'template', 'T');
+insert into public.workouts (id, org_id, track_id, kind, title) values (tests.id('template_a'), tests.id('gym_a'), tests.id('track_a'), 'template', 'T');
 insert into public.blocks (id, workout_id, org_id, position, label, intent, format, params) values
   (tests.id('template_block_a'), tests.id('template_a'), tests.id('gym_a'), 0, 'A', 'conditioning', 'amrap', '{"time_s": 600}');
 

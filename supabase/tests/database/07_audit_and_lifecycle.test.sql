@@ -29,7 +29,7 @@ select results_eq($$ select locale from public.profiles where id = tests.id('new
 -- Audit log records who changed what
 -- ---------------------------------------------------------------------------
 select tests.login_as('coach_a');
-insert into public.workouts (id, org_id, kind, title) values (tests.id('audit_workout'), tests.id('gym_a'), 'template', 'Before');
+insert into public.workouts (id, org_id, track_id, kind, title) values (tests.id('audit_workout'), tests.id('gym_a'), tests.id('track_a'), 'template', 'Before');
 update public.workouts set title = 'After' where id = tests.id('audit_workout');
 update public.workouts set title = 'After' where id = tests.id('audit_workout');
 delete from public.blocks where id = tests.id('block_a');

@@ -50,7 +50,7 @@ select isnt_empty($$ select 1 from public.audit_log where org_id = tests.id('gym
 -- Inserts into gym B are rejected
 -- ---------------------------------------------------------------------------
 select throws_ok($$
-  insert into public.workouts (org_id, kind, date) values (tests.id('gym_b'), 'scheduled', '2026-10-21')
+  insert into public.workouts (org_id, track_id, kind, date) values (tests.id('gym_b'), tests.id('track_b'), 'scheduled', '2026-10-21')
 $$, '42501', null, 'A owner cannot create a workout in gym B');
 
 select throws_ok($$
@@ -144,7 +144,7 @@ select tests.login_as('coach_b');
 select is_empty($$ select 1 from public.workouts where org_id = tests.id('gym_a') $$,
   'B coach cannot see gym A workouts');
 select throws_ok($$
-  insert into public.workouts (org_id, kind, date) values (tests.id('gym_a'), 'scheduled', '2026-10-21')
+  insert into public.workouts (org_id, track_id, kind, date) values (tests.id('gym_a'), tests.id('track_a'), 'scheduled', '2026-10-21')
 $$, '42501', null, 'B coach cannot create a workout in gym A');
 
 -- ---------------------------------------------------------------------------

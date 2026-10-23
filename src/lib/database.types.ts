@@ -589,14 +589,14 @@ isOneToOne: false
                   ]
                 },"workouts": {
                   Row: {
-                    "created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"focus": string | null,"id": string,"kind": Database["public"]['Enums']["workout_kind"],"org_id": string,"parser_version": number | null,"raw_text": string | null,"status": Database["public"]['Enums']["workout_status"],"title": string | null,"track_id": string | null,"updated_at": string,"updated_by": string | null
+                    "created_at": string,"created_by": string | null,"date": string | null,"deleted_at": string | null,"focus": string | null,"id": string,"kind": Database["public"]['Enums']["workout_kind"],"org_id": string,"parser_version": number | null,"raw_text": string | null,"status": Database["public"]['Enums']["workout_status"],"title": string | null,"track_id": string,"updated_at": string,"updated_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"focus"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["workout_kind"],"org_id": string,"parser_version"?: number | null,"raw_text"?: string | null,"status"?: Database["public"]['Enums']["workout_status"],"title"?: string | null,"track_id"?: string | null,"updated_at"?: string,"updated_by"?: string | null
+                    "created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"focus"?: string | null,"id"?: string,"kind": Database["public"]['Enums']["workout_kind"],"org_id": string,"parser_version"?: number | null,"raw_text"?: string | null,"status"?: Database["public"]['Enums']["workout_status"],"title"?: string | null,"track_id": string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"focus"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["workout_kind"],"org_id"?: string,"parser_version"?: number | null,"raw_text"?: string | null,"status"?: Database["public"]['Enums']["workout_status"],"title"?: string | null,"track_id"?: string | null,"updated_at"?: string,"updated_by"?: string | null
+                    "created_at"?: string,"created_by"?: string | null,"date"?: string | null,"deleted_at"?: string | null,"focus"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["workout_kind"],"org_id"?: string,"parser_version"?: number | null,"raw_text"?: string | null,"status"?: Database["public"]['Enums']["workout_status"],"title"?: string | null,"track_id"?: string,"updated_at"?: string,"updated_by"?: string | null
                   }
                   Relationships: [
                     {
@@ -657,6 +657,9 @@ isOneToOne: false
 { Args: { "p_calc_version": number,"p_from": string,"p_org": string,"p_to": string,"p_track"?: string }; Returns: {
               "date": string,"metrics": Json,"title": string,"track_id": string,"workout_id": string
             }[]
+                           },
+"reorder_programs":
+{ Args: { "p_ids": string[],"p_org": string }; Returns: undefined
                            },
 "save_gym_exercise":
 { Args: { "p_exercise": Json,"p_org": string }; Returns: string

@@ -14,7 +14,8 @@ import { storeMetrics } from "@/lib/workout/metrics";
 /** The database's own messages for rules a coach can break are written for people. */
 function savedError(error: { code?: string; message: string }): string {
   if (error.code === "42501") return NOT_ALLOWED;
-  if (error.code === "23514" && /published|slot|alternating|results/i.test(error.message)) return error.message;
+  if (error.code === "23514" && /published|slot|alternating|results|archived/i.test(error.message)) return error.message;
+  if (error.code === "23502") return "Choose a program.";
   if (error.code === "23505") return "This workout belongs to another gym or was deleted.";
   if (error.code === "23503") return "The program or an exercise no longer exists. Pick another.";
   return "Could not save. Your changes are kept in this browser; try again.";

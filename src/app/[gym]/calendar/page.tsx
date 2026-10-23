@@ -31,7 +31,7 @@ type Row = {
   date: string | null;
   title: string | null;
   status: "draft" | "published";
-  track_id: string | null;
+  track_id: string;
   workout_metrics: { calc_version: number; sessionMin: Measure | null; sRpe: Measure | null }[];
   blocks?: { block_results: { deleted_at: string | null }[] }[];
 };
@@ -89,7 +89,7 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
             {canProgram && (
               <ApplyTemplateButton
                 slug={gym.slug}
-                templates={((templates.data ?? []) as unknown as Row[]).map((t) => ({ id: t.id, title: t.title || "Untitled template" }))}
+                templates={((templates.data ?? []) as unknown as Row[]).map((t) => ({ id: t.id, title: t.title || "Untitled template", trackId: t.track_id }))}
                 tracks={tracks}
                 today={today}
               />

@@ -224,6 +224,7 @@ export type DraftProblem = { block: number; item: number | null; field: string; 
 export function draftProblems(draft: DraftWorkout, library: Library): DraftProblem[] {
   const problems: DraftProblem[] = [];
   if (draft.kind === "scheduled" && !draft.date) problems.push({ block: -1, item: null, field: "date", message: "Choose a date" });
+  if (!draft.trackId) problems.push({ block: -1, item: null, field: "trackId", message: "Choose a program" });
   draft.blocks.forEach((block, b) => {
     const { format, params } = paramsFor(block);
     const parsed = blockParamsSchemas[format].safeParse(params);

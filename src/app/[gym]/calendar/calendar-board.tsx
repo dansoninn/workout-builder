@@ -23,20 +23,18 @@ export interface CalendarWorkout {
   date: string;
   title: string | null;
   status: "draft" | "published";
-  trackId: string | null;
+  trackId: string;
   sessionMin: Measure | null;
   sRpe: Measure | null;
   /** Results logged for its blocks (4d). */
   results: number;
 }
 
-type Column = Pick<TrackOption, "id" | "name" | "color" | "archived"> | { id: null; name: string; color: null; archived: false };
-
 const DRAG_TYPE = "application/x-workout";
 
 /**
  * The calendar's days with their workouts. Coaches move a workout by dragging
- * it to another day (and, in the week view, another track), or with its
+ * it to another day (and, in the week view, another program), or with its
  * "Move" button (keyboard and touch). The card moves at once; if the server
  * refuses, it goes back and a message says why.
  */
@@ -61,17 +59,17 @@ export function CalendarBoard({
   workouts: CalendarWorkout[];
   canProgram: boolean;
 }) {
-  const [shown, moveShown] = useOptimistic(workouts, (state, move: { id: string; date: string; trackId: string | null }) =>
+  const [shown, moveShown] = useOptimistic(workouts, (state, move: { id: string; date: string; trackId: string }) =>
     state.map((w) => (w.id === move.id ? { ...w, date: move.date, trackId: move.trackId } : w)),
   );
   const [, startTransition] = useTransition();
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
-  const [moving, setMoving] = useState<{ workout: CalendarWorkout; date: string; trackId: string | null } | null>(null);
+  const [moving, setMoving] = useState<{ workout: CalendarWorkout; date: string; trackId: string } | null>(null);
   const href = (path: string) => `/${slug}/${path}`;
   const defaultTrack = tracks.find((t) => !t.archived)?.id ?? null;
 
-  const move = (workout: CalendarWorkout, date: string, trackId: string | null, undo = false) => {
+  const move = (workout: CalendarWorkout, date: string, trackId: string, undo = false) => {
     if (workout.date === date && workout.trackId === trackId) return;
     startTransition(async () => {
       moveShown({ id: workout.id, date, trackId });
@@ -84,8 +82,8 @@ export function CalendarBoard({
     });
   };
 
-  /** A day (and track) that takes a dropped workout. */
-  const dropTarget = (key: string, date: string, trackId: string | null | undefined) =>
+  /** A day (and program) that takes a dropped workout. */
+  const dropTarget = (key: string, date: string, trackId: string | undefined) =>
     canProgram
       ? {
           "data-drop-target": key,
@@ -162,7 +160,7 @@ export function CalendarBoard({
             return (
               <>
                 {here.map(card)}
-                {column.id !== null && !column.archived && addLink(day, column.id, `${dayLabel(day)}, ${column.name}`, here.length > 0, here.length > 0)}
+                {!column.archived && addLink(day, column.id, `${dayLabel(day)}, ${column.name}`, here.length > 0, here.length > 0)}
               </>
             );
           }}
@@ -246,7 +244,7 @@ function WorkoutCard({
   );
 }
 
-type DropTarget = (key: string, date: string, trackId: string | null | undefined) => Record<string, unknown>;
+type DropTarget = (key: string, date: string, trackId: string | undefined) => Record<string, unknown>;
 
 /** Monday-first weeks; on a phone, a list of days. */
 function MonthGrid({
@@ -304,7 +302,7 @@ function MonthGrid({
   );
 }
 
-/** One week, a column per track, and the week's planned load per track. */
+/** One week, a column per program, and the week's planned load per program. */
 function WeekTable({
   days,
   today,
@@ -320,14 +318,11 @@ function WeekTable({
   workouts: CalendarWorkout[];
   over: string | null;
   dropTarget: DropTarget;
-  children: (day: string, column: Column) => React.ReactNode;
+  children: (day: string, column: TrackOption) => React.ReactNode;
 }) {
-  // Columns: active tracks, plus any archived track or "no track" that has workouts this week.
-  const columns: Column[] = [
-    ...tracks.filter((t) => !t.archived || workouts.some((w) => w.trackId === t.id)),
-    ...(workouts.some((w) => w.trackId === null) ? [{ id: null, name: "No program", color: null, archived: false as const }] : []),
-  ];
-  const weekTotal = (trackId: string | null): Measure | null =>
+  // Columns: active programs, plus any archived program that has workouts this week.
+  const columns = tracks.filter((t) => !t.archived || workouts.some((w) => w.trackId === t.id));
+  const weekTotal = (trackId: string): Measure | null =>
     workouts
       .filter((w) => w.trackId === trackId && w.sRpe)
       .reduce<Measure | null>((total, w) => (total ? add(total, w.sRpe!) : w.sRpe), null);
@@ -342,7 +337,7 @@ function WeekTable({
               Day
             </th>
             {columns.map((t) => (
-              <th key={t.id ?? "none"} scope="col" className="px-3 py-2 text-left text-xs font-medium">
+              <th key={t.id} scope="col" className="px-3 py-2 text-left text-xs font-medium">
                 <span className="inline-flex items-center gap-1.5">
                   <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: t.color ?? "var(--border-strong)" }} />
                   {t.name}
@@ -360,10 +355,10 @@ function WeekTable({
                 {day === today && <span className="ml-1.5 text-xs font-normal text-primary-text">today</span>}
               </th>
               {columns.map((column) => {
-                const key = `${day}:${column.id ?? "none"}`;
+                const key = `${day}:${column.id}`;
                 return (
                   <td
-                    key={column.id ?? "none"}
+                    key={column.id}
                     {...dropTarget(key, day, column.id)}
                     className={cn("group/cell px-2 py-1.5", over === key && "bg-primary-subtle ring-2 ring-ring ring-inset")}
                   >
@@ -382,7 +377,7 @@ function WeekTable({
             {columns.map((t) => {
               const total = weekTotal(t.id);
               return (
-                <td key={t.id ?? "none"} className="px-3 py-2 text-xs text-muted-foreground tabular">
+                <td key={t.id} className="px-3 py-2 text-xs text-muted-foreground tabular">
                   {total ? <Estimate measure={total} unit="AU" /> : "—"}
                 </td>
               );
@@ -401,9 +396,9 @@ function MoveDialog({
   onChange,
   onMove,
 }: {
-  moving: { workout: CalendarWorkout; date: string; trackId: string | null } | null;
+  moving: { workout: CalendarWorkout; date: string; trackId: string } | null;
   tracks: TrackOption[];
-  onChange: (next: { workout: CalendarWorkout; date: string; trackId: string | null } | null) => void;
+  onChange: (next: { workout: CalendarWorkout; date: string; trackId: string } | null) => void;
   onMove: () => void;
 }) {
   const id = useId();
@@ -439,9 +434,9 @@ function MoveDialog({
             <label htmlFor={`${id}-track`} className="text-sm font-medium">
               Program
             </label>
-            <Select items={trackItems} value={moving?.trackId ?? null} onValueChange={(v) => moving && onChange({ ...moving, trackId: v ?? null })}>
+            <Select items={trackItems} value={moving?.trackId ?? null} onValueChange={(v) => moving && v && onChange({ ...moving, trackId: v })}>
               <SelectTrigger id={`${id}-track`} className="w-full">
-                <SelectValue placeholder="No program" />
+                <SelectValue placeholder="Choose a program" />
               </SelectTrigger>
               <SelectContent>
                 {trackItems.map((t) => (

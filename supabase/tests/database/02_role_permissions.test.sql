@@ -23,7 +23,7 @@ select isnt_empty($$ select 1 from public.block_items where org_id = tests.id('g
 select isnt_empty($$ select 1 from public.profiles where id = tests.id('owner_a') $$, 'Viewer can read colleagues'' profiles');
 
 select throws_ok($$
-  insert into public.workouts (org_id, kind, date) values (tests.id('gym_a'), 'scheduled', '2026-10-21')
+  insert into public.workouts (org_id, track_id, kind, date) values (tests.id('gym_a'), tests.id('track_a'), 'scheduled', '2026-10-21')
 $$, '42501', null, 'Viewer cannot create a workout');
 select is_empty($$ update public.workouts set title = 'x' where id = tests.id('workout_a') returning 1 $$,
   'Viewer cannot edit a workout');
@@ -71,7 +71,7 @@ select is_empty($$ update public.profiles set display_name = 'x' where id = test
 select tests.login_as('coach_a');
 
 select lives_ok($$
-  insert into public.workouts (org_id, kind, title) values (tests.id('gym_a'), 'template', 'Coach template')
+  insert into public.workouts (org_id, track_id, kind, title) values (tests.id('gym_a'), tests.id('track_a'), 'template', 'Coach template')
 $$, 'Coach can create a workout');
 select isnt_empty($$ update public.workouts set title = 'Edited' where id = tests.id('workout_a') returning 1 $$,
   'Coach can edit a workout');
@@ -145,7 +145,7 @@ select lives_ok($$
   values (tests.id('gym_a'), 'sb clean', tests.id('ex_a'))
 $$, 'Head coach can add an alias');
 select lives_ok($$
-  insert into public.workouts (org_id, kind, title) values (tests.id('gym_a'), 'template', 'Head coach template')
+  insert into public.workouts (org_id, track_id, kind, title) values (tests.id('gym_a'), tests.id('track_a'), 'template', 'Head coach template')
 $$, 'Head coach can create a workout');
 select lives_ok($$
   insert into public.exercise_equipment (exercise_id, equipment_key)
