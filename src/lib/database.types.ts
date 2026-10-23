@@ -59,14 +59,14 @@ isOneToOne: false
                   ]
                 },"block_items": {
                   Row: {
-                    "block_id": string,"exercise_id": string | null,"id": string,"implement_count": number | null,"load": Json | null,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"slot": number | null,"station_label": string | null
+                    "alternatives": string[],"block_id": string,"cap": Json | null,"exercise_id": string | null,"id": string,"implement_count": number | null,"load": Json | null,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"side": string | null,"slot": number | null,"station_label": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "block_id": string,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"slot"?: number | null,"station_label"?: string | null
+                    "alternatives"?: string[],"block_id": string,"cap"?: Json | null,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"position": number,"quantity": NonNullable<Json>,"raw_line": string,"side"?: string | null,"slot"?: number | null,"station_label"?: string | null
                   }
                   Update: {
-                    "block_id"?: string,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"position"?: number,"quantity"?: NonNullable<Json>,"raw_line"?: string,"slot"?: number | null,"station_label"?: string | null
+                    "alternatives"?: string[],"block_id"?: string,"cap"?: Json | null,"exercise_id"?: string | null,"id"?: string,"implement_count"?: number | null,"load"?: Json | null,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"position"?: number,"quantity"?: NonNullable<Json>,"raw_line"?: string,"side"?: string | null,"slot"?: number | null,"station_label"?: string | null
                   }
                   Relationships: [
                     {
@@ -135,14 +135,14 @@ isOneToOne: false
                   ]
                 },"blocks": {
                   Row: {
-                    "format": Database["public"]['Enums']["block_format"],"id": string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"params": NonNullable<Json>,"partner": boolean | null,"partner_mode": Database["public"]['Enums']["partner_mode"] | null,"position": number,"rest_after_s": number | null,"target_rounds": number | null,"title": string | null,"workout_id": string
+                    "counts_in_load": boolean,"format": Database["public"]['Enums']["block_format"],"id": string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort": string | null,"notes": string,"org_id": string,"pace_effort": string | null,"params": NonNullable<Json>,"partner": boolean | null,"partner_mode": Database["public"]['Enums']["partner_mode"] | null,"position": number,"rest_after_s": number | null,"target_rounds": number | null,"title": string | null,"workout_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "format": Database["public"]['Enums']["block_format"],"id"?: string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"params": NonNullable<Json>,"partner"?: never,"partner_mode"?: Database["public"]['Enums']["partner_mode"] | null,"position": number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id": string
+                    "counts_in_load"?: boolean,"format": Database["public"]['Enums']["block_format"],"id"?: string,"intent": Database["public"]['Enums']["block_intent"],"label": string,"load_effort"?: string | null,"notes"?: string,"org_id": string,"pace_effort"?: string | null,"params": NonNullable<Json>,"partner"?: never,"partner_mode"?: Database["public"]['Enums']["partner_mode"] | null,"position": number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id": string
                   }
                   Update: {
-                    "format"?: Database["public"]['Enums']["block_format"],"id"?: string,"intent"?: Database["public"]['Enums']["block_intent"],"label"?: string,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"params"?: NonNullable<Json>,"partner"?: never,"partner_mode"?: Database["public"]['Enums']["partner_mode"] | null,"position"?: number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id"?: string
+                    "counts_in_load"?: boolean,"format"?: Database["public"]['Enums']["block_format"],"id"?: string,"intent"?: Database["public"]['Enums']["block_intent"],"label"?: string,"load_effort"?: string | null,"notes"?: string,"org_id"?: string,"pace_effort"?: string | null,"params"?: NonNullable<Json>,"partner"?: never,"partner_mode"?: Database["public"]['Enums']["partner_mode"] | null,"position"?: number,"rest_after_s"?: number | null,"target_rounds"?: number | null,"title"?: string | null,"workout_id"?: string
                   }
                   Relationships: [
                     {

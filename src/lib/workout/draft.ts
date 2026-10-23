@@ -1,7 +1,7 @@
 import type { BlockIntent, Block as EngineBlock, Item as EngineItem, Load, PartnerMode, Quantity, Workout } from "@/lib/engine/types";
 import type { EffortKey } from "@/lib/taxonomy";
 
-import { parseLoad, parseQuantity, rawLine } from "./fields";
+import { type Cap, parseCap, parseLoad, parseQuantity, rawLine } from "./fields";
 import { type Library, type LibraryExercise, toEngineExercise } from "./library";
 import { type BlockFormat, blockParamsSchemas } from "./rules";
 
@@ -23,6 +23,12 @@ export interface DraftItem {
   notes: string;
   /** Alternating EMOM: the slot (minute) of the rotation, 1, 2, … */
   slot: number | null;
+  /** Other exercises the coach allows, as written ("Sprawls"); the line counts its own (calc spec §5). */
+  alternatives: string[];
+  /** One side only ("Right arm"); null = both sides, or not sided. */
+  side: "left" | "right" | null;
+  /** A cap on the line as typed ("40 s", "10 reps"); empty = none. */
+  cap: string;
   /**
    * The line as the coach pasted it (4c), stored as its raw_line until the
    * line is edited; then the builder writes the line from its fields.
@@ -46,6 +52,8 @@ export interface DraftBlock {
   notes: string;
   /** Rest before the next block (s); in session length, never in planned load. */
   restAfterSec: number | null;
+  /** False: in the session's length, not in planned load (stretching). */
+  countsInLoad: boolean;
   items: DraftItem[];
 }
 
@@ -98,7 +106,7 @@ export function blockLabel(index: number): string {
 const uuid = () => crypto.randomUUID();
 
 export function newItem(slot: number | null = null): DraftItem {
-  return { id: uuid(), exerciseId: null, quantity: "", load: "", implementCount: null, paceEffort: null, loadEffort: null, notes: "", slot };
+  return { id: uuid(), exerciseId: null, quantity: "", load: "", implementCount: null, paceEffort: null, loadEffort: null, notes: "", slot, alternatives: [], side: null, cap: "" };
 }
 
 export function newBlock(format: BlockFormat = "sets", intent: BlockIntent = "strength"): DraftBlock {
@@ -114,6 +122,7 @@ export function newBlock(format: BlockFormat = "sets", intent: BlockIntent = "st
     targetRounds: null,
     notes: "",
     restAfterSec: null,
+    countsInLoad: true,
     items: [newItem()],
   };
 }
@@ -128,6 +137,26 @@ export function newWorkout(date: string | null, trackId: string | null): DraftWo
     focus: "",
     status: "draft",
     blocks: [newBlock()],
+  };
+}
+
+/**
+ * A draft kept in a browser by an earlier version of the app, with the fields
+ * added since filled in: partner as a yes/no becomes split or none (calc spec
+ * §4.5); alternatives, side, cap and "counted in load" get their defaults.
+ */
+export function withDefaults(draft: DraftWorkout): DraftWorkout {
+  return {
+    ...draft,
+    blocks: draft.blocks.map((block) => {
+      const partner = block.partner as unknown;
+      return {
+        ...block,
+        partner: partner === true ? "split" : partner === false || partner === undefined ? null : block.partner,
+        countsInLoad: block.countsInLoad ?? true,
+        items: block.items.map((item) => ({ ...item, alternatives: item.alternatives ?? [], side: item.side ?? null, cap: item.cap ?? "" })),
+      };
+    }),
   };
 }
 
@@ -154,6 +183,7 @@ export interface LineParse {
   exercise: LibraryExercise | null;
   quantity: { ok: true; value: Quantity } | { ok: false; error: string };
   load: { ok: true; value: Load | null } | { ok: false; error: string };
+  cap: { ok: true; value: Cap | null } | { ok: false; error: string };
   /** The line's own implement count (typed "2x22.5" or set on the line), stored as an override; null = the exercise's. */
   implementOverride: number | null;
   /** The count in use: the override, else the exercise's default. */
@@ -170,6 +200,7 @@ export function parseLine(item: DraftItem, library: Library): LineParse {
     exercise,
     quantity: quantity.ok ? { ok: true, value: quantity.value } : quantity,
     load: load.ok ? { ok: true, value: load.value } : load,
+    cap: parseCap(item.cap),
     implementOverride,
     implementCount: implementOverride ?? exercise?.implementCount ?? 1,
   };
@@ -199,6 +230,8 @@ export function toEngineWorkout(draft: DraftWorkout, library: Library): { workou
         loadEffort: item.loadEffort,
         implementCount: line.implementOverride,
         slot: isAlternating(block) ? item.slot : null,
+        side: item.side,
+        cap: line.cap.ok ? line.cap.value : null,
       });
     });
     itemIndex[b] = indexes;
@@ -210,6 +243,7 @@ export function toEngineWorkout(draft: DraftWorkout, library: Library): { workou
       targetRounds: block.format === "amrap" ? block.targetRounds : null,
       restAfterSec: block.restAfterSec,
       partner: block.partner,
+      countsInLoad: block.countsInLoad,
       items,
       ...paramsFor(block),
     } as EngineBlock;
@@ -249,6 +283,7 @@ export function draftProblems(draft: DraftWorkout, library: Library): DraftProbl
       const line = parseLine(item, library);
       if (!line.quantity.ok) problems.push({ block: b, item: i, field: "quantity", message: line.quantity.error });
       if (!line.load.ok) problems.push({ block: b, item: i, field: "load", message: line.load.error });
+      if (!line.cap.ok) problems.push({ block: b, item: i, field: "cap", message: line.cap.error });
     });
   });
   return problems;
@@ -282,9 +317,10 @@ export function toSavePayload(draft: DraftWorkout, library: Library) {
         target_rounds: format === "amrap" ? block.targetRounds : null,
         notes: block.notes,
         rest_after_s: block.restAfterSec,
+        counts_in_load: block.countsInLoad,
         items: block.items.filter(isStarted).map((item) => {
           const line = parseLine(item, library);
-          if (!line.quantity.ok || !line.load.ok) throw new Error("toSavePayload called with problems in the draft");
+          if (!line.quantity.ok || !line.load.ok || !line.cap.ok) throw new Error("toSavePayload called with problems in the draft");
           return {
             id: item.id,
             exercise_id: line.exercise?.id ?? null,
@@ -298,6 +334,9 @@ export function toSavePayload(draft: DraftWorkout, library: Library) {
             notes: item.notes,
             station_label: null,
             slot: isAlternating(block) ? slotOrder.indexOf(item.slot ?? 1) + 1 : null,
+            alternatives: item.alternatives.map((a) => a.trim()).filter(Boolean).slice(0, 10),
+            side: item.side,
+            cap: line.cap.value,
           };
         }),
       };

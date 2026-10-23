@@ -32,6 +32,7 @@ export const draftSchema = z.strictObject({
         targetRounds: z.number().positive().nullable(),
         notes: z.string().max(2000),
         restAfterSec: z.number().int().min(0).nullable(),
+        countsInLoad: z.boolean(),
         items: z
           .array(
             z.strictObject({
@@ -44,6 +45,9 @@ export const draftSchema = z.strictObject({
               loadEffort,
               notes: z.string().max(500),
               slot: z.number().int().min(1).nullable(),
+              alternatives: z.array(z.string().max(80)).max(10),
+              side: z.enum(["left", "right"]).nullable(),
+              cap: z.string().max(40),
               rawLine: z.string().max(500).nullable().optional(),
             }),
           )

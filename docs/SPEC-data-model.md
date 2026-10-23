@@ -223,6 +223,7 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 | partner_mode | enum NULL | partner block, and how partners share the work ✅ (calc spec §4.5, 2026-10-23): `split` (split the reps at will) · `alternate` (I go, you go) · `each` (I go, you go, amounts for each athlete); NULL = not a partner block. Migration `003200`; the older `partner` yes/no is now worked out from it (read-only) until no app of the previous version is left |
 | target_rounds | numeric NULL | coach's AMRAP estimate, overrides pace estimate |
 | rest_after_s | int NULL | ✅ rest after this block, before the next (s, ≥ 0). Counts in session length on the calendar, never in planned load — approved 2026-10-21 |
+| counts_in_load | bool | default true; false for stretching: the block's time is in the session length, nothing in planned load or the lenses (calc spec §5, migration `003300`) |
 | notes | text | |
 
 `params` shape per format (validated by a CHECK + shared Zod schema in the app):
@@ -250,6 +251,9 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 | load_effort | FK NULL | overrides block |
 | implement_count | smallint NULL | ✅ overrides the exercise's default implement count for this line (e.g. a single-DB thruster) |
 | notes | text | "I go you go", "L/R" |
+| alternatives | text[] | ✅ other exercises the coach allows, as written ("Sprawls", "KB"), up to 10; the line counts its own exercise (calc spec §5, migration `003300`) |
+| side | text NULL | `left` · `right`: one side only ("Right arm"); counts half in exposure and hard sets (calc spec §5) |
+| cap | jsonb NULL | a cap on the line, `{ "type": "time_s" \| "reps" \| "distance_m" \| "calories", "value": 40 }` ("max 40 sec") (calc spec §5) |
 
 `quantity` (exactly one type, per calc spec §4.1):
 ```json
@@ -257,11 +261,15 @@ When a coach writes an ambiguous term, the parser (Step 4) asks once which exerc
 { "type": "reps_range", "min": 8, "max": 10 }
 { "type": "reps_scheme", "scheme": [21, 15, 9] }
 { "type": "reps_per_side", "value": 8 }
+{ "type": "reps_per_side_range", "min": 4, "max": 8 }
 { "type": "distance_m", "value": 800 }
+{ "type": "distance_m_range", "min": 800, "max": 1000 }
 { "type": "calories", "min": 8, "max": 12 }
 { "type": "time_s", "value": 30 }
+{ "type": "time_s_range", "min": 20, "max": 30 }
 { "type": "max_effort", "unit": "distance_m" }
 ```
+The three `_range` types are from migration `003300` (calc spec version 3). Block params gained, in the same migration: `sets.time_s` (sets within a time box; then `sets` is optional) and `intervals.by_station` / `intervals.rest_between_stations_s`.
 
 `load`:
 ```json

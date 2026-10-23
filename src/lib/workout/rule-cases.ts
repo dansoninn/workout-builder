@@ -9,7 +9,7 @@ import type { BlockFormat } from "./rules";
  */
 export type RuleCase =
   | { rule: "params"; format: BlockFormat; value: unknown; valid: boolean; why: string }
-  | { rule: "quantity" | "load" | "pace" | "guidelines"; value: unknown; valid: boolean; why: string }
+  | { rule: "quantity" | "load" | "pace" | "guidelines" | "cap"; value: unknown; valid: boolean; why: string }
   | { rule: "result"; format: BlockFormat; params: Record<string, unknown>; value: ResultMeasure; valid: boolean; why: string };
 
 const amrap8 = { format: "amrap", params: { time_s: 480 } } as const;
@@ -25,6 +25,10 @@ export const RULE_CASES: RuleCase[] = [
   { rule: "params", format: "sets", value: { sets: 0 }, valid: false, why: "at least one set" },
   { rule: "params", format: "sets", value: { sets: 2.5 }, valid: false, why: "whole sets" },
   { rule: "params", format: "sets", value: { sets: 5, rounds: 2 }, valid: false, why: "no unknown keys" },
+  { rule: "params", format: "sets", value: { time_s: 810 }, valid: true, why: "sets within a time box, as many as fit" },
+  { rule: "params", format: "sets", value: { sets: 5, time_s: 900 }, valid: true, why: "five sets within 15 minutes" },
+  { rule: "params", format: "sets", value: {}, valid: false, why: "the sets or a time box" },
+  { rule: "params", format: "sets", value: { time_s: 0 }, valid: false, why: "a positive time box" },
   { rule: "params", format: "every", value: { interval_s: 180, rounds: 5 }, valid: true, why: "E3M x 5" },
   { rule: "params", format: "every", value: { interval_s: 60, rounds: 6, alternating: true }, valid: true, why: "alternating EMOM" },
   { rule: "params", format: "every", value: { interval_s: 60, rounds: 6, alternating: "yes" }, valid: false, why: "alternating is true or false" },
@@ -37,6 +41,9 @@ export const RULE_CASES: RuleCase[] = [
   { rule: "params", format: "intervals", value: { rounds: 4, work_s: 90, rest_s: 30, stations: 3, rest_between_rounds_s: 90 }, valid: true, why: "WOD 3" },
   { rule: "params", format: "intervals", value: { rounds: 4, work_s: 90, rest_s: 0, stations: 1 }, valid: true, why: "no rest is allowed" },
   { rule: "params", format: "intervals", value: { rounds: 4, work_s: 90, stations: 3 }, valid: false, why: "rest is required" },
+  { rule: "params", format: "intervals", value: { rounds: 6, work_s: 30, rest_s: 12, stations: 7, by_station: true, rest_between_stations_s: 90 }, valid: true, why: "station by station, 90 s between stations" },
+  { rule: "params", format: "intervals", value: { rounds: 6, work_s: 30, rest_s: 12, stations: 7, by_station: "yes" }, valid: false, why: "station by station is true or false" },
+  { rule: "params", format: "intervals", value: { rounds: 6, work_s: 30, rest_s: 12, stations: 7, rest_between_stations_s: -1 }, valid: false, why: "no negative rest" },
   { rule: "params", format: "tabata", value: { rounds: 8, work_s: 20, rest_s: 10 }, valid: true, why: "classic tabata" },
   { rule: "params", format: "tabata", value: { rounds: 8, work_s: 30, rest_s: 10 }, valid: false, why: "tabata is 20/10" },
 
@@ -48,6 +55,12 @@ export const RULE_CASES: RuleCase[] = [
   { rule: "quantity", value: { type: "reps_scheme", scheme: [21, 15, 9] }, valid: true, why: "21-15-9" },
   { rule: "quantity", value: { type: "reps_scheme", scheme: [] }, valid: false, why: "a scheme has numbers" },
   { rule: "quantity", value: { type: "reps_per_side", value: 8 }, valid: true, why: "8/8" },
+  { rule: "quantity", value: { type: "reps_per_side_range", min: 4, max: 8 }, valid: true, why: "4-8/4-8" },
+  { rule: "quantity", value: { type: "reps_per_side_range", min: 8, max: 8 }, valid: false, why: "a range per side goes up" },
+  { rule: "quantity", value: { type: "distance_m_range", min: 800, max: 1000 }, valid: true, why: "800-1000 m" },
+  { rule: "quantity", value: { type: "distance_m_range", min: 1000, max: 800 }, valid: false, why: "a distance range goes up" },
+  { rule: "quantity", value: { type: "time_s_range", min: 20, max: 30 }, valid: true, why: "20-30 s" },
+  { rule: "quantity", value: { type: "time_s_range", min: 20.5, max: 30 }, valid: false, why: "whole seconds" },
   { rule: "quantity", value: { type: "distance_m", value: 400 }, valid: true, why: "400 m" },
   { rule: "quantity", value: { type: "distance_m", value: 0.5 }, valid: true, why: "decimal metres" },
   { rule: "quantity", value: { type: "calories", min: 8, max: 12 }, valid: true, why: "8-12 cal" },
@@ -65,6 +78,15 @@ export const RULE_CASES: RuleCase[] = [
   { rule: "quantity", value: { type: "max_effort", unit: "kg" }, valid: false, why: "a known unit" },
   { rule: "quantity", value: { type: "reps", value: 5, extra: 1 }, valid: false, why: "no unknown keys" },
   { rule: "quantity", value: { type: "jumps", value: 5 }, valid: false, why: "a known type" },
+
+  // Caps on a line ("max 40 sec", "max 10 reps").
+  { rule: "cap", value: { type: "time_s", value: 40 }, valid: true, why: "max 40 sec" },
+  { rule: "cap", value: { type: "reps", value: 10 }, valid: true, why: "max 10 reps" },
+  { rule: "cap", value: { type: "distance_m", value: 0.5 }, valid: true, why: "decimal metres" },
+  { rule: "cap", value: { type: "reps", value: 2.5 }, valid: false, why: "whole reps" },
+  { rule: "cap", value: { type: "time_s", value: 0 }, valid: false, why: "a positive cap" },
+  { rule: "cap", value: { type: "kg", value: 40 }, valid: false, why: "a known unit" },
+  { rule: "cap", value: { type: "time_s", value: 40, extra: 1 }, valid: false, why: "no unknown keys" },
 
   // Loads.
   { rule: "load", value: { type: "percent_1rm", min: 75, max: 80 }, valid: true, why: "@75-80%" },

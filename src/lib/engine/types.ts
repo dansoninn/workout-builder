@@ -62,11 +62,17 @@ export type Quantity =
   | { type: "reps_range"; min: number; max: number }
   | { type: "reps_scheme"; scheme: number[] }
   | { type: "reps_per_side"; value: number }
+  /** 8-10/8-10: a range each side (an estimate, like 8-10). */
+  | { type: "reps_per_side_range"; min: number; max: number }
   /** rx: men/women amounts ("400/300 m"); value is the first, which every calculation uses (calc spec decision 17). */
   | { type: "distance_m"; value: number; rx?: number[] }
   /** rx: men/women amounts ("15/12 cal"); min = max = the first, which every calculation uses. */
   | { type: "calories"; min: number; max: number; rx?: number[] }
+  /** 800-1000 m: a range of distance, an estimate. */
+  | { type: "distance_m_range"; min: number; max: number }
   | { type: "time_s"; value: number }
+  /** 20-30 s: a range of time, an estimate. */
+  | { type: "time_s_range"; min: number; max: number }
   | { type: "max_effort"; unit: MeasureUnit };
 
 /** block_items.load — optional (calc spec §4.2). */
@@ -90,6 +96,10 @@ export interface Item {
    * belongs to, 1, 2, …; several lines can share one (block_items.slot).
    */
   slot?: number | null;
+  /** One side only ("Right arm"): its reps count half in exposure and hard sets, like one side of 8/8 (calc spec §5). */
+  side?: "left" | "right" | null;
+  /** "(max 40 sec)", "(max 10 reps)": the line stops there (calc spec §5). */
+  cap?: { type: MeasureUnit; value: number } | null;
 }
 
 export type BlockIntent = "strength" | "conditioning" | "skill" | "mobility";
@@ -107,6 +117,8 @@ interface BlockBase {
   intent: BlockIntent;
   /** A partner block, and how the partners share the work; null or absent = alone. */
   partner?: PartnerMode | null;
+  /** False: in the session's length but not in planned load or the lenses (stretching; calc spec §5). */
+  countsInLoad?: boolean;
   paceEffort?: EffortKey | null;
   loadEffort?: EffortKey | null;
   /** Coach's AMRAP estimate; overrides the pace estimate. */
@@ -122,7 +134,8 @@ interface BlockBase {
 /** blocks.format + blocks.params (SPEC-data-model §6). */
 export type Block = BlockBase &
   (
-    | { format: "sets"; params: { sets: number; rest_s?: number } }
+    /** time_s: sets within a time box ("in 12-15 min find a heavy 3"); sets are then optional (estimated). */
+    | { format: "sets"; params: { sets?: number; rest_s?: number; time_s?: number } }
     | {
         format: "every";
         /**
@@ -136,7 +149,16 @@ export type Block = BlockBase &
     | { format: "for_time"; params: { rounds: number; time_cap_s?: number } }
     | {
         format: "intervals";
-        params: { rounds: number; work_s: number; rest_s: number; rest_between_rounds_s?: number; stations: number };
+        /** by_station: all rounds of a station, then the next, with rest_between_stations_s between them. */
+        params: {
+          rounds: number;
+          work_s: number;
+          rest_s: number;
+          rest_between_rounds_s?: number;
+          stations: number;
+          by_station?: boolean;
+          rest_between_stations_s?: number;
+        };
       }
     | { format: "tabata"; params: { rounds: number; work_s: number; rest_s: number } }
   );

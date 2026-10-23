@@ -5,13 +5,17 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(84);
+select plan(104);
 
 select is(private.block_params_valid('sets', '{"sets":5,"rest_s":120}'::jsonb), true, 'params sets: sets with rest (valid)');
 select is(private.block_params_valid('sets', '{"sets":5}'::jsonb), true, 'params sets: rest is optional (valid)');
 select is(private.block_params_valid('sets', '{"sets":0}'::jsonb), false, 'params sets: at least one set (invalid)');
 select is(private.block_params_valid('sets', '{"sets":2.5}'::jsonb), false, 'params sets: whole sets (invalid)');
 select is(private.block_params_valid('sets', '{"sets":5,"rounds":2}'::jsonb), false, 'params sets: no unknown keys (invalid)');
+select is(private.block_params_valid('sets', '{"time_s":810}'::jsonb), true, 'params sets: sets within a time box, as many as fit (valid)');
+select is(private.block_params_valid('sets', '{"sets":5,"time_s":900}'::jsonb), true, 'params sets: five sets within 15 minutes (valid)');
+select is(private.block_params_valid('sets', '{}'::jsonb), false, 'params sets: the sets or a time box (invalid)');
+select is(private.block_params_valid('sets', '{"time_s":0}'::jsonb), false, 'params sets: a positive time box (invalid)');
 select is(private.block_params_valid('every', '{"interval_s":180,"rounds":5}'::jsonb), true, 'params every: E3M x 5 (valid)');
 select is(private.block_params_valid('every', '{"interval_s":60,"rounds":6,"alternating":true}'::jsonb), true, 'params every: alternating EMOM (valid)');
 select is(private.block_params_valid('every', '{"interval_s":60,"rounds":6,"alternating":"yes"}'::jsonb), false, 'params every: alternating is true or false (invalid)');
@@ -24,6 +28,9 @@ select is(private.block_params_valid('for_time', '{"rounds":1,"time_cap_s":0}'::
 select is(private.block_params_valid('intervals', '{"rounds":4,"work_s":90,"rest_s":30,"stations":3,"rest_between_rounds_s":90}'::jsonb), true, 'params intervals: WOD 3 (valid)');
 select is(private.block_params_valid('intervals', '{"rounds":4,"work_s":90,"rest_s":0,"stations":1}'::jsonb), true, 'params intervals: no rest is allowed (valid)');
 select is(private.block_params_valid('intervals', '{"rounds":4,"work_s":90,"stations":3}'::jsonb), false, 'params intervals: rest is required (invalid)');
+select is(private.block_params_valid('intervals', '{"rounds":6,"work_s":30,"rest_s":12,"stations":7,"by_station":true,"rest_between_stations_s":90}'::jsonb), true, 'params intervals: station by station, 90 s between stations (valid)');
+select is(private.block_params_valid('intervals', '{"rounds":6,"work_s":30,"rest_s":12,"stations":7,"by_station":"yes"}'::jsonb), false, 'params intervals: station by station is true or false (invalid)');
+select is(private.block_params_valid('intervals', '{"rounds":6,"work_s":30,"rest_s":12,"stations":7,"rest_between_stations_s":-1}'::jsonb), false, 'params intervals: no negative rest (invalid)');
 select is(private.block_params_valid('tabata', '{"rounds":8,"work_s":20,"rest_s":10}'::jsonb), true, 'params tabata: classic tabata (valid)');
 select is(private.block_params_valid('tabata', '{"rounds":8,"work_s":30,"rest_s":10}'::jsonb), false, 'params tabata: tabata is 20/10 (invalid)');
 select is(private.item_quantity_valid('{"type":"reps","value":5}'::jsonb), true, 'quantity: 5 reps (valid)');
@@ -33,6 +40,12 @@ select is(private.item_quantity_valid('{"type":"reps_range","min":10,"max":10}':
 select is(private.item_quantity_valid('{"type":"reps_scheme","scheme":[21,15,9]}'::jsonb), true, 'quantity: 21-15-9 (valid)');
 select is(private.item_quantity_valid('{"type":"reps_scheme","scheme":[]}'::jsonb), false, 'quantity: a scheme has numbers (invalid)');
 select is(private.item_quantity_valid('{"type":"reps_per_side","value":8}'::jsonb), true, 'quantity: 8/8 (valid)');
+select is(private.item_quantity_valid('{"type":"reps_per_side_range","min":4,"max":8}'::jsonb), true, 'quantity: 4-8/4-8 (valid)');
+select is(private.item_quantity_valid('{"type":"reps_per_side_range","min":8,"max":8}'::jsonb), false, 'quantity: a range per side goes up (invalid)');
+select is(private.item_quantity_valid('{"type":"distance_m_range","min":800,"max":1000}'::jsonb), true, 'quantity: 800-1000 m (valid)');
+select is(private.item_quantity_valid('{"type":"distance_m_range","min":1000,"max":800}'::jsonb), false, 'quantity: a distance range goes up (invalid)');
+select is(private.item_quantity_valid('{"type":"time_s_range","min":20,"max":30}'::jsonb), true, 'quantity: 20-30 s (valid)');
+select is(private.item_quantity_valid('{"type":"time_s_range","min":20.5,"max":30}'::jsonb), false, 'quantity: whole seconds (invalid)');
 select is(private.item_quantity_valid('{"type":"distance_m","value":400}'::jsonb), true, 'quantity: 400 m (valid)');
 select is(private.item_quantity_valid('{"type":"distance_m","value":0.5}'::jsonb), true, 'quantity: decimal metres (valid)');
 select is(private.item_quantity_valid('{"type":"calories","min":8,"max":12}'::jsonb), true, 'quantity: 8-12 cal (valid)');
@@ -50,6 +63,13 @@ select is(private.item_quantity_valid('{"type":"max_effort","unit":"calories"}':
 select is(private.item_quantity_valid('{"type":"max_effort","unit":"kg"}'::jsonb), false, 'quantity: a known unit (invalid)');
 select is(private.item_quantity_valid('{"type":"reps","value":5,"extra":1}'::jsonb), false, 'quantity: no unknown keys (invalid)');
 select is(private.item_quantity_valid('{"type":"jumps","value":5}'::jsonb), false, 'quantity: a known type (invalid)');
+select is(private.item_cap_valid('{"type":"time_s","value":40}'::jsonb), true, 'cap: max 40 sec (valid)');
+select is(private.item_cap_valid('{"type":"reps","value":10}'::jsonb), true, 'cap: max 10 reps (valid)');
+select is(private.item_cap_valid('{"type":"distance_m","value":0.5}'::jsonb), true, 'cap: decimal metres (valid)');
+select is(private.item_cap_valid('{"type":"reps","value":2.5}'::jsonb), false, 'cap: whole reps (invalid)');
+select is(private.item_cap_valid('{"type":"time_s","value":0}'::jsonb), false, 'cap: a positive cap (invalid)');
+select is(private.item_cap_valid('{"type":"kg","value":40}'::jsonb), false, 'cap: a known unit (invalid)');
+select is(private.item_cap_valid('{"type":"time_s","value":40,"extra":1}'::jsonb), false, 'cap: no unknown keys (invalid)');
 select is(private.item_load_valid('{"type":"percent_1rm","min":75,"max":80}'::jsonb), true, 'load: @75-80% (valid)');
 select is(private.item_load_valid('{"type":"percent_1rm","min":80,"max":75}'::jsonb), false, 'load: min above max (invalid)');
 select is(private.item_load_valid('{"type":"percent_1rm","min":90,"max":105}'::jsonb), false, 'load: at most 100% (invalid)');

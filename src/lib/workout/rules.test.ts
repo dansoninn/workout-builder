@@ -7,7 +7,7 @@ import { ruleCasesSql } from "./rule-cases-sql";
 import { guidelinesSchema } from "@/lib/analytics/guidelines";
 
 import { resultProblem } from "./results";
-import { blockParamsValid, loadSchema, paceSchema, quantitySchema } from "./rules";
+import { blockParamsValid, capSchema, loadSchema, paceSchema, quantitySchema } from "./rules";
 
 describe("the builder's checks match the database's rules", () => {
   it.each(RULE_CASES.map((c) => [`${c.rule}${c.rule === "params" || c.rule === "result" ? ` ${c.format}` : ""}: ${c.why}`, c] as const))(
@@ -19,6 +19,7 @@ describe("the builder's checks match the database's rules", () => {
         : c.rule === "quantity" ? quantitySchema.safeParse(c.value).success
         : c.rule === "load" ? loadSchema.safeParse(c.value).success
         : c.rule === "guidelines" ? guidelinesSchema.safeParse(c.value).success
+        : c.rule === "cap" ? capSchema.safeParse(c.value).success
         : paceSchema.safeParse(c.value).success;
       expect(valid).toBe(c.valid);
     },

@@ -449,3 +449,85 @@ describe("partner blocks (calc spec §4.5, decided 2026-10-23): numbers per athl
     expect(emom("each").exposure.reps.squat).toEqual(emom(null).exposure.reps.squat);
   });
 });
+
+describe("details from real programming (calc spec §4.3, §5; version 3)", () => {
+  const squat = (quantity: Item["quantity"], extra: Partial<Item> = {}) => item("Air squat", quantity, extra);
+
+  it("one side only counts half in exposure and hard sets, like one side of 8/8; the time is the side's own", () => {
+    const sets = (items: Item[]) => computeBlock(block({ intent: "strength", format: "sets", params: { sets: 3, rest_s: 60 }, loadEffort: "hard", items }), config);
+    const both = sets([squat({ type: "reps_per_side", value: 8 })]);
+    const right = sets([squat({ type: "reps", value: 8 }, { side: "right" }), squat({ type: "reps", value: 8 }, { side: "left" })]);
+    expect(right.exposure.reps.squat?.mid).toBeCloseTo(both.exposure.reps.squat!.mid, 6);
+    expect(right.hardSets.byPattern.squat?.mid).toBeCloseTo(both.hardSets.byPattern.squat!.mid, 6);
+  });
+
+  it("a time cap on a line: it stops there, and does what fits", () => {
+    // 20 squats at 2 s = 40 s; capped at 30 s: 15 squats in 30 s.
+    const r = computeBlock(block({ intent: "conditioning", format: "every", params: { interval_s: 60, rounds: 1 }, paceEffort: "hard",
+      items: [squat({ type: "reps", value: 20 }, { cap: { type: "time_s", value: 30 } })] }), config);
+    expect(r.exposure.reps.squat?.mid).toBeCloseTo(15, 6);
+    expect(r.exposure.reps.squat?.confidence).toBe("estimated");
+  });
+
+  it("an amount cap on a max-effort line: no more than the cap", () => {
+    // Max air squats in a 60 s window at 2 s = 30; capped at 10.
+    const r = computeBlock(block({ intent: "conditioning", format: "every", params: { interval_s: 60, rounds: 2 }, paceEffort: "hard",
+      items: [squat({ type: "max_effort", unit: "reps" }, { cap: { type: "reps", value: 10 } })] }), config);
+    expect(r.exposure.reps.squat?.mid).toBeCloseTo(20, 6);
+  });
+
+  it("a block not counted in load: its time is in the session, nothing else", () => {
+    const stretch = block({ label: "F", intent: "mobility", format: "amrap", params: { time_s: 300 }, countsInLoad: false,
+      items: [squat({ type: "reps", value: 10 })] });
+    const r = computeBlock(stretch, config);
+    expect(r.durationMin).toEqual(exact(5));
+    expect(r.sRpe).toEqual(exact(0));
+    expect(r.exposure.reps).toEqual({});
+  });
+
+  it("a block without lines and without a time counts nothing, and does not make the workout's load unknown", () => {
+    const w = computeWorkout({ blocks: [
+      block({ label: "A", intent: "conditioning", format: "amrap", params: { time_s: 600 }, paceEffort: "hard", items: [squat({ type: "reps", value: 10 })] }),
+      block({ label: "B", intent: "mobility", format: "sets", params: { sets: 1 }, items: [] }),
+    ] }, config);
+    expect(w.sRpe).not.toBeNull();
+    expect(w.blocks[1]!.durationMin).toEqual(exact(0));
+    expect(w.blocks[1]!.warnings).toContain("no lines and no time: not counted");
+  });
+
+  it("sets within a time box: the box is the duration; without a count, as many sets as fit", () => {
+    // 3 squats at 2 s = 6 s a set + 120 s rest: 810 s fits 6 sets.
+    const r = computeBlock(block({ intent: "strength", format: "sets", params: { time_s: 810, rest_s: 120 }, loadEffort: "hard",
+      items: [squat({ type: "reps", value: 3 })] }), config);
+    expect(r.durationMin?.mid).toBeCloseTo(13.5, 6);
+    expect(r.rounds?.mid).toBe(6);
+    expect(r.hardSets.byPattern.squat?.mid).toBe(6);
+    // Minutes for technique, with no lines: the time counts, at the block's effort.
+    const technique = computeBlock(block({ intent: "skill", format: "sets", params: { time_s: 780 }, items: [] }), config);
+    expect(technique.durationMin).toEqual(exact(13));
+    expect(technique.sRpe?.mid).toBeGreaterThan(0);
+  });
+
+  it("sets with one number per set (building up): each set does its own", () => {
+    const r = computeBlock(block({ intent: "strength", format: "sets", params: { sets: 5, rest_s: 120 }, loadEffort: "hard",
+      items: [squat({ type: "reps_scheme", scheme: [5, 5, 4, 3, 2] })] }), config);
+    expect(r.exposure.reps.squat?.mid).toBeCloseTo(19, 6);
+    expect(r.hardSets.byPattern.squat?.mid).toBe(5);
+  });
+
+  it("intervals station by station: all rounds of one station, then the next, with the rest between stations", () => {
+    const r = computeBlock(block({ intent: "conditioning", format: "intervals", paceEffort: "hard",
+      params: { rounds: 6, work_s: 30, rest_s: 12, stations: 3, by_station: true, rest_between_stations_s: 90 },
+      items: [squat({ type: "max_effort", unit: "reps" }), squat({ type: "max_effort", unit: "reps" }), squat({ type: "max_effort", unit: "reps" })] }), config);
+    // 3 × 6 × 42 s + 2 × 90 s = 936 s.
+    expect(r.durationMin?.mid).toBeCloseTo(936 / 60, 6);
+  });
+
+  it("ranges of distance, time and reps each side are estimates from the range", () => {
+    const sets = (quantity: Item["quantity"], name = "Air squat") =>
+      computeBlock(block({ intent: "conditioning", format: "sets", params: { sets: 1 }, items: [item(name, quantity)] }), config);
+    expectRange(sets({ type: "reps_per_side_range", min: 4, max: 8 }).exposure.reps.squat, 4, 6, 8);
+    expectRange(sets({ type: "distance_m_range", min: 800, max: 1000 }, "Row").monostructural.row?.distanceM, 800, 900, 1000);
+    expectRange(sets({ type: "time_s_range", min: 20, max: 30 }, "Hollow hold").exposure.timeSec.core, 20, 25, 30);
+  });
+});

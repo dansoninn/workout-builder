@@ -97,18 +97,32 @@ function readQuantity(input: string, unit: MeasureUnit): Parsed<Quantity> {
     return { ok: true, value: { type: "distance_m", value: rx[0]!, rx } };
   }
 
-  // 8/8 (per side)
-  const perSide = text.match(/^(\d+)\s*\/\s*(\d+)$/);
+  // 8/8 (per side) · 8-10/8-10 (a range each side)
+  const perSide = text.match(/^(\d+)\s*\/\s*(\d+)(?:\s*reps?)?$/);
   if (perSide) {
     const [a, b] = [Number(perSide[1]), Number(perSide[2])];
     if (a !== b) return { ok: false, error: "Per side means the same number each side, e.g. 8/8" };
     return isWhole(a) ? { ok: true, value: { type: "reps_per_side", value: a } } : { ok: false, error: "Use whole reps" };
   }
+  const perSideRange = text.match(/^(\d+)\s*-\s*(\d+)\s*\/\s*(\d+)\s*-\s*(\d+)(?:\s*reps?)?$/);
+  if (perSideRange) {
+    const [a, b, c, d] = perSideRange.slice(1).map(Number) as [number, number, number, number];
+    if (a !== c || b !== d) return { ok: false, error: "Per side means the same range each side, e.g. 8-10/8-10" };
+    return b > a ? { ok: true, value: { type: "reps_per_side_range", min: a, max: b } } : { ok: false, error: "The second number must be larger, e.g. 8-10/8-10" };
+  }
 
-  // Time: 0:30, 30 s, 2 min
+  // Time: 0:30, 30 s, 2 min · a range: 20-30 s, 1-2 min, 0:30-0:45
   if (/^\d+:[0-5]\d$/.test(text) || /^\d+(?:[.,]\d+)?\s*(?:s|sec|secs|seconds?|min|mins|minutes?)$/.test(text)) {
     const s = seconds(text);
     return s && s >= 1 ? { ok: true, value: { type: "time_s", value: s } } : { ok: false, error: "Enter a time, e.g. 0:30" };
+  }
+  const timeRange =
+    text.match(/^(\d+:[0-5]\d)\s*-\s*(\d+:[0-5]\d)$/) ?? text.match(/^(\d+(?:[.,]\d+)?)\s*-\s*(\d+(?:[.,]\d+)?)\s*(s|sec|secs|seconds?|min|mins|minutes?)$/);
+  if (timeRange) {
+    const unitText = timeRange[3] ? ` ${timeRange[3]}` : "";
+    const [low, high] = [seconds(`${timeRange[1]}${unitText}`), seconds(`${timeRange[2]}${unitText}`)];
+    if (!low || !high) return { ok: false, error: "Enter a time, e.g. 0:30" };
+    return high > low ? { ok: true, value: { type: "time_s_range", min: low, max: high } } : { ok: false, error: "The second time must be longer, e.g. 20-30 s" };
   }
 
   // A number or range, with an optional unit: 5 · 8-10 · 800 m · 1.5 km · 8-12 cal
@@ -133,11 +147,15 @@ function readQuantity(input: string, unit: MeasureUnit): Parsed<Quantity> {
       if (high !== undefined && high < low) return { ok: false, error: "The second number must be larger" };
       return { ok: true, value: { type: "calories", min: low, max: high ?? low } };
     case "distance_m":
-      if (high !== undefined) return { ok: false, error: "Give one distance" };
-      return low > 0 ? { ok: true, value: { type: "distance_m", value: low } } : { ok: false, error: "Enter a distance" };
+      if (!(low > 0)) return { ok: false, error: "Enter a distance" };
+      if (high === undefined) return { ok: true, value: { type: "distance_m", value: low } };
+      return high > low
+        ? { ok: true, value: { type: "distance_m_range", min: low, max: high } }
+        : { ok: false, error: "The second distance must be longer, e.g. 800-1000 m" };
     case "time_s":
-      if (high !== undefined) return { ok: false, error: "Give one time" };
-      return isWhole(low) ? { ok: true, value: { type: "time_s", value: low } } : { ok: false, error: "Use whole seconds" };
+      if (!isWhole(low) || (high !== undefined && !isWhole(high))) return { ok: false, error: "Use whole seconds" };
+      if (high === undefined) return { ok: true, value: { type: "time_s", value: low } };
+      return high > low ? { ok: true, value: { type: "time_s_range", min: low, max: high } } : { ok: false, error: "The second time must be longer" };
   }
 }
 
@@ -192,7 +210,10 @@ export function quantityText(q: Quantity): string {
     case "reps_range": return `${q.min}-${q.max}`;
     case "reps_scheme": return q.scheme.join("-");
     case "reps_per_side": return `${q.value}/${q.value}`;
+    case "reps_per_side_range": return `${q.min}-${q.max}/${q.min}-${q.max}`;
     case "distance_m": return q.rx ? `${q.rx.join("/")} m` : `${q.value} m`;
+    case "distance_m_range": return `${q.min}-${q.max} m`;
+    case "time_s_range": return q.max < 60 ? `${q.min}-${q.max} s` : `${formatSeconds(q.min)}-${formatSeconds(q.max)}`;
     case "calories": return q.rx ? `${q.rx.join("/")} cal` : q.min === q.max ? `${q.min} cal` : `${q.min}-${q.max} cal`;
     case "time_s": return formatSeconds(q.value);
     case "max_effort": return q.unit === "reps" ? "max" : `max ${UNIT_NAMES[q.unit]}`;
@@ -206,7 +227,10 @@ export function quantityMeaning(q: Quantity): string {
     case "reps_range": return `${q.min}–${q.max} reps`;
     case "reps_scheme": return `${q.scheme.join("-")} (${q.scheme.reduce((a, b) => a + b, 0)} reps)`;
     case "reps_per_side": return `${q.value} each side`;
+    case "reps_per_side_range": return `${q.min}–${q.max} each side`;
     case "distance_m": return q.rx ? `${q.rx.join("/")} m (${q.value} m in the numbers)` : `${q.value} m`;
+    case "distance_m_range": return `${q.min}–${q.max} m`;
+    case "time_s_range": return `${formatSeconds(q.min)}–${formatSeconds(q.max)}`;
     case "calories": return q.rx ? `${q.rx.join("/")} cal (${q.min} cal in the numbers)` : q.min === q.max ? `${q.min} cal` : `${q.min}–${q.max} cal`;
     case "time_s": return formatSeconds(q.value);
     case "max_effort": return q.unit === "reps" ? "max reps" : q.unit === "distance_m" ? "max distance" : q.unit === "calories" ? "max calories" : "max time";
@@ -259,4 +283,26 @@ export function parseDuration(input: string, bareUnit: "min" | "s"): number | nu
 /** Seconds as m:ss ("3:00", "0:45"). */
 export function durationText(s: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** A cap on a line: "40 s", "1:30", "10 reps", "200 m", "15 cal" (calc spec §5). */
+export type Cap = { type: MeasureUnit; value: number };
+
+/** Reads a cap; empty is none. */
+export function parseCap(input: string): Parsed<Cap | null> {
+  const text = input.trim().toLowerCase().replace(/^max(?:imum)?\s*/, "");
+  if (!text) return { ok: true, value: null };
+  const read = readQuantity(text, "reps");
+  if (!read.ok) return { ok: false, error: "Write the cap as a time or an amount, e.g. 40 s or 10 reps" };
+  const q = read.value;
+  if (q.type === "time_s" || q.type === "reps" || q.type === "distance_m") return { ok: true, value: { type: q.type, value: q.value } };
+  if (q.type === "calories" && q.min === q.max && !q.rx) return { ok: true, value: { type: "calories", value: q.min } };
+  return { ok: false, error: "A cap is one number, e.g. 40 s or 10 reps" };
+}
+
+/** How a cap reads back in its field. */
+export function capText(cap: Cap | null): string {
+  if (!cap) return "";
+  if (cap.type === "time_s") return formatSeconds(cap.value);
+  return `${cap.value} ${cap.type === "reps" ? (cap.value === 1 ? "rep" : "reps") : cap.type === "calories" ? "cal" : "m"}`;
 }

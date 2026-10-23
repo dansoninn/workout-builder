@@ -4,6 +4,7 @@ import { EllipsisIcon, MessageSquareTextIcon, Trash2Icon } from "lucide-react";
 import { useId } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import type { EffortKey } from "@/lib/taxonomy";
@@ -90,7 +91,14 @@ export function LineRow({
     .filter(Boolean)
     .join(" · ");
   const errors = [quantityProblem?.message, loadProblem?.message, unmatched ? "Choose an exercise (needed to publish)" : null].filter(Boolean);
-  const overrides = [item.paceEffort && "own pace", item.loadEffort && "own load", item.notes && "note"].filter(Boolean);
+  const overrides = [
+    item.paceEffort && "own pace",
+    item.loadEffort && "own load",
+    item.side && `${item.side} side only`,
+    item.cap.trim() && `max ${item.cap.trim()}`,
+    item.alternatives.some((a) => a.trim()) && `or ${item.alternatives.filter((a) => a.trim()).join(", ")}`,
+    item.notes && "note",
+  ].filter(Boolean);
 
   return (
     <div
@@ -181,6 +189,8 @@ function LineMenu({
   onDelete: () => void;
 }) {
   const notesId = useId();
+  const capId = useId();
+  const alternativesId = useId();
   const showImplements = (line.exercise?.implementCount ?? 1) > 1 || item.implementCount !== null;
   return (
     <Popover>
@@ -253,6 +263,52 @@ function LineMenu({
             ))}
           </fieldset>
         )}
+        <fieldset className="flex items-center gap-1.5" disabled={readOnly}>
+          <legend className="sr-only">Side</legend>
+          <span aria-hidden className="w-9 text-xs font-medium text-muted-foreground">
+            Side
+          </span>
+          {([null, "left", "right"] as const).map((side) => (
+            <Button
+              key={side ?? "both"}
+              type="button"
+              size="xs"
+              variant={item.side === side ? "secondary" : "ghost"}
+              aria-pressed={item.side === side}
+              onClick={() => onChange({ side })}
+            >
+              {side === null ? "Both" : side === "left" ? "Left only" : "Right only"}
+            </Button>
+          ))}
+        </fieldset>
+        <div className="grid gap-1">
+          <label htmlFor={capId} className="text-xs font-medium text-muted-foreground">
+            Cap <span className="font-normal">(optional: a time or an amount the line stops at)</span>
+          </label>
+          <Input
+            id={capId}
+            value={item.cap}
+            disabled={readOnly}
+            placeholder="e.g. 40 s or 10 reps"
+            aria-invalid={!line.cap.ok || undefined}
+            onChange={(e) => onChange({ cap: e.target.value })}
+            className="h-8"
+          />
+          {!line.cap.ok && <p className="text-xs text-destructive">{line.cap.error}</p>}
+        </div>
+        <div className="grid gap-1">
+          <label htmlFor={alternativesId} className="text-xs font-medium text-muted-foreground">
+            Alternatives <span className="font-normal">(counted on the line&apos;s own exercise)</span>
+          </label>
+          <Input
+            id={alternativesId}
+            value={item.alternatives.join(", ")}
+            disabled={readOnly}
+            placeholder="e.g. Sprawls, Tuck ups"
+            onChange={(e) => onChange({ alternatives: e.target.value.split(",").map((a) => a.trimStart()).slice(0, 10) })}
+            className="h-8"
+          />
+        </div>
         <div className="grid gap-1">
           <label htmlFor={notesId} className="text-xs font-medium text-muted-foreground">
             Note

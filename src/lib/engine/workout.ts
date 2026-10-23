@@ -87,6 +87,14 @@ function amountOf(quantity: Quantity, pace: Pace | null, factor: number, windowS
     case "reps_per_side":
       // Unilateral rule (approved): 8/8 = 8 reps of exposure; 16 reps are performed.
       return { unit: "reps", value: exact(quantity.value), performed: exact(quantity.value * 2) };
+    case "reps_per_side_range": {
+      const reps = estimated((quantity.min + quantity.max) / 2, quantity.min, quantity.max);
+      return { unit: "reps", value: reps, performed: scale(reps, 2) };
+    }
+    case "distance_m_range":
+      return { unit: "distance_m", value: estimated((quantity.min + quantity.max) / 2, quantity.min, quantity.max) };
+    case "time_s_range":
+      return { unit: "time_s", value: estimated((quantity.min + quantity.max) / 2, quantity.min, quantity.max) };
     case "distance_m":
       return { unit: "distance_m", value: exact(quantity.value) };
     case "calories":
@@ -187,8 +195,26 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
         ? fatigueFactor(maxEffortFatigueSec / 60, config)
         : pieceFatigue;
       const factor = effortFactor * fatigue;
-      const amount = amountOf(item.quantity, item.exercise.pace, factor, windowSec, config);
-      const time = amount ? timeOf(item, amount, factor, windowSec, config) : null;
+      let amount = amountOf(item.quantity, item.exercise.pace, factor, windowSec, config);
+      // Sets with one number per set ("2 x 5, 2 x 4, 3 x 3 …" building up): each set does its own (calc spec §5).
+      if (amount && block.format === "sets" && item.quantity.type === "reps_scheme" && item.quantity.scheme.length === block.params.sets) {
+        const perSet = exact(item.quantity.scheme.reduce((a, b) => a + b, 0) / item.quantity.scheme.length);
+        amount = { unit: "reps", value: perSet, performed: perSet };
+      }
+      let time = amount ? timeOf(item, amount, factor, windowSec, config) : null;
+      // A cap on the line ("max 40 sec", "max 10 reps"): it stops there, and does what fits (calc spec §5).
+      if (amount && item.cap) {
+        const share = (fits: number | null) => (m: Measure): Measure => (fits === null || fits >= 1 ? m : estimated(m.mid * fits, m.low * fits, m.high * fits));
+        if (item.cap.type === "time_s" && time && time.mid > item.cap.value) {
+          const fits = share(item.cap.value / time.mid);
+          amount = { ...amount, value: fits(amount.value), performed: amount.performed && fits(amount.performed) };
+          time = capAt(time, item.cap.value);
+        } else if (item.cap.type === amount.unit && amount.value.mid > item.cap.value) {
+          const fits = share(item.cap.value / amount.value.mid);
+          time = time && fits(time);
+          amount = { ...amount, value: capAt(amount.value, item.cap.value), performed: amount.performed && fits(amount.performed) };
+        }
+      }
       return { item, amount, time, loadEffort: item.loadEffort ?? effort.load };
     });
   const roundWork = (rows: ReturnType<typeof buildRows>) =>
@@ -220,14 +246,27 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
 
   switch (block.format) {
     case "sets": {
-      const { sets, rest_s } = block.params;
-      rounds = exact(sets);
+      const { sets, rest_s, time_s } = block.params;
       const rest = rest_s !== undefined
         ? exact(rest_s)
         : estimated(block.intent === "strength" ? config.defaultRestSec.strength : config.defaultRestSec.other);
       const work = roundWork(rows);
-      if (work) durationSec = scale(add(add(work, transitions(n - 1)), rest), sets * both);
-      else needsPace();
+      if (time_s !== undefined) {
+        // Sets within a time box: the box is the duration; without a count, as many sets as fit (calc spec §4.3).
+        durationSec = exact(time_s * both);
+        if (sets !== undefined) rounds = exact(sets);
+        else if (work && n > 0) rounds = floor(divide(exact(time_s), add(add(work, transitions(n - 1)), rest)));
+        else if (n > 0) needsPace();
+      } else if (n === 0 && block.items.length === 0) {
+        // A block without lines and without a time ("Stretch and Relax"): nothing to count.
+        rounds = exact(sets ?? 1);
+        durationSec = exact(0);
+        warn("no lines and no time: not counted");
+      } else {
+        rounds = exact(sets ?? 1);
+        if (work) durationSec = scale(add(add(work, transitions(n - 1)), rest), (sets ?? 1) * both);
+        else needsPace();
+      }
       break;
     }
     case "every": {
@@ -284,9 +323,11 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
       break;
     }
     case "intervals": {
-      const { rounds: count, stations, work_s, rest_s, rest_between_rounds_s = 0 } = block.params;
+      const { rounds: count, stations, work_s, rest_s, rest_between_rounds_s = 0, by_station, rest_between_stations_s = 0 } = block.params;
       rounds = exact(count);
-      durationSec = exact((count * stations * (work_s + rest_s) + (count - 1) * rest_between_rounds_s) * both);
+      // Round by round (every station, then again), or station by station (all rounds of one, then the next).
+      const between = by_station ? (stations - 1) * rest_between_stations_s : (count - 1) * rest_between_rounds_s;
+      durationSec = exact((count * stations * (work_s + rest_s) + between) * both);
       break;
     }
     case "tabata": {
@@ -316,7 +357,9 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
     if (!row.amount || !performed) return;
     const { item, amount } = row;
     const exercise = item.exercise;
-    const total = multiply(amount.value, performed);
+    // One side only ("Right arm"): half of a both-sides line, like one side of 8/8 (calc spec §5).
+    const sideShare = item.side ? 0.5 : 1;
+    const total = scale(multiply(amount.value, performed), sideShare);
 
     // Lens 3: monostructural volume.
     if (exercise.kind === "monostructural") {
@@ -341,7 +384,8 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
     if (amount.unit === "reps" && exercise.plane) addTo(lenses.exposure.repsByPlane, exercise.plane, total);
 
     // Lens 1: hard sets, by load effort only (not block type).
-    const sets = completedSets(index);
+    const done = completedSets(index);
+    const sets = done && scale(done, sideShare);
     if (sets && countsAsHardSet(row.loadEffort, config)) {
       for (const [pattern, weight] of patterns) addTo(lenses.hardSets.byPattern, pattern, scale(sets, weight));
       for (const muscle of exercise.primaryMuscles) addTo(lenses.hardSets.byMuscle, muscle, sets);
@@ -365,6 +409,22 @@ export function computeBlock(block: Block, config: EngineConfig): BlockResult {
       });
     }
   });
+
+  // Not counted (stretching): its time is in the session's length, nothing else (calc spec §5).
+  if (block.countsInLoad === false) {
+    return {
+      ...emptyLenses(),
+      durationMin: durationSec ? scale(durationSec, 1 / 60) : exact(0),
+      sRpe: exact(0),
+      label: block.label,
+      plannedRpe: null,
+      effortSource: "none",
+      rounds,
+      capped,
+      issues,
+      warnings: issues.map((issue) => issue.message),
+    };
+  }
 
   // Lens 4: planned session load = planned RPE × duration (min).
   lenses.durationMin = durationSec ? scale(durationSec, 1 / 60) : null;

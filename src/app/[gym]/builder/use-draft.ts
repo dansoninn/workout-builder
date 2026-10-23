@@ -9,6 +9,7 @@ import {
   DEFAULT_PARAMS,
   newBlock,
   newItem,
+  withDefaults,
 } from "@/lib/workout/draft";
 import { type BlockFormat, blockParamsSchemas } from "@/lib/workout/rules";
 
@@ -140,7 +141,9 @@ export function useDraft(initial: DraftWorkout, backupId: string) {
   const backup = useMemo<Backup | null>(() => {
     if (answered || !rawBackup) return null;
     try {
-      const found = JSON.parse(rawBackup) as Backup;
+      const stored = JSON.parse(rawBackup) as Backup;
+      // Kept by an earlier version of the app: newer fields get their defaults.
+      const found = { ...stored, draft: withDefaults(stored.draft) };
       return JSON.stringify(found.draft) !== JSON.stringify(initial) ? found : null;
     } catch {
       return null;

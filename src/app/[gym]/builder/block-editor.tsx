@@ -265,6 +265,19 @@ function FormatFields({
       )}
     </SmallField>
   );
+  // Stretching and the like: in the session's length, not in planned load (calc spec §5).
+  const counted = (
+    <label className="flex h-8 items-center gap-1.5 text-xs font-medium text-muted-foreground" title="Off for stretching: its time stays in the session's length">
+      <input
+        type="checkbox"
+        checked={block.countsInLoad}
+        disabled={readOnly}
+        onChange={(e) => set({ countsInLoad: e.target.checked })}
+        className="accent-[var(--primary)]"
+      />
+      In planned load
+    </label>
+  );
   // How partners share the work (calc spec §4.5); the numbers are per athlete.
   const partner = (
     <SmallField label="Partner">
@@ -294,12 +307,23 @@ function FormatFields({
     case "sets":
       return (
         <>
-          <SmallField label="Sets">{(id) => <NumberInput id={id} value={p.sets} disabled={readOnly} onChange={(v) => setParam("sets", v)} />}</SmallField>
+          <SmallField label="Sets" hint={p.time_s !== undefined ? "(optional)" : undefined}>
+            {(id) => (
+              <NumberInput id={id} value={p.sets} optional={p.time_s !== undefined} placeholder="—" disabled={readOnly} onChange={(v) => setParam("sets", v)} />
+            )}
+          </SmallField>
           <SmallField label="Rest" hint="(optional)">
             {(id) => <DurationInput id={id} value={p.rest_s} bareUnit="s" optional disabled={readOnly} onChange={(v) => setParam("rest_s", v)} placeholder="—" />}
           </SmallField>
+          <SmallField label="Within" hint="(optional)">
+            {(id) => (
+              <DurationInput id={id} value={p.time_s} bareUnit="min" optional disabled={readOnly} placeholder="—"
+                onChange={(v) => set({ params: { ...block.params, time_s: v, sets: v === undefined ? (p.sets ?? 1) : p.sets } })} />
+            )}
+          </SmallField>
           {rest}
           {partner}
+          {counted}
         </>
       );
     case "every":
@@ -322,6 +346,7 @@ function FormatFields({
           {p.alternating && <RotationHint intervals={p.rounds} slots={new Set(block.items.flatMap((i) => (i.slot ? [i.slot] : []))).size} />}
           {rest}
           {partner}
+          {counted}
         </>
       );
     case "amrap":
@@ -336,6 +361,7 @@ function FormatFields({
           </SmallField>
           {rest}
           {partner}
+          {counted}
         </>
       );
     case "for_time":
@@ -347,6 +373,7 @@ function FormatFields({
           </SmallField>
           {rest}
           {partner}
+          {counted}
         </>
       );
     case "intervals":
@@ -356,10 +383,27 @@ function FormatFields({
           <SmallField label="Stations">{(id) => <NumberInput id={id} value={p.stations} disabled={readOnly} onChange={(v) => setParam("stations", v)} />}</SmallField>
           <SmallField label="Work">{(id) => <DurationInput id={id} value={p.work_s} bareUnit="s" disabled={readOnly} onChange={(v) => setParam("work_s", v)} />}</SmallField>
           <SmallField label="Rest">{(id) => <DurationInput id={id} value={p.rest_s} bareUnit="s" optional disabled={readOnly} onChange={(v) => setParam("rest_s", v ?? 0)} />}</SmallField>
-          <SmallField label="Between rounds" hint="(optional)">
-            {(id) => <DurationInput id={id} value={p.rest_between_rounds_s} bareUnit="s" optional disabled={readOnly} onChange={(v) => setParam("rest_between_rounds_s", v)} placeholder="—" />}
-          </SmallField>
+          <label className="flex h-8 items-center gap-1.5 text-xs font-medium text-muted-foreground" title="All rounds of a station, then the next">
+            <input
+              type="checkbox"
+              checked={block.params.by_station === true}
+              disabled={readOnly}
+              onChange={(e) => set({ params: { ...block.params, by_station: e.target.checked || undefined, rest_between_rounds_s: undefined, rest_between_stations_s: undefined } })}
+              className="accent-[var(--primary)]"
+            />
+            Station by station
+          </label>
+          {block.params.by_station ? (
+            <SmallField label="Between stations" hint="(optional)">
+              {(id) => <DurationInput id={id} value={p.rest_between_stations_s} bareUnit="s" optional disabled={readOnly} onChange={(v) => setParam("rest_between_stations_s", v)} placeholder="—" />}
+            </SmallField>
+          ) : (
+            <SmallField label="Between rounds" hint="(optional)">
+              {(id) => <DurationInput id={id} value={p.rest_between_rounds_s} bareUnit="s" optional disabled={readOnly} onChange={(v) => setParam("rest_between_rounds_s", v)} placeholder="—" />}
+            </SmallField>
+          )}
           {rest}
+          {counted}
         </>
       );
     case "tabata":
@@ -368,6 +412,7 @@ function FormatFields({
           <SmallField label="Rounds">{(id) => <NumberInput id={id} value={p.rounds} disabled={readOnly} onChange={(v) => setParam("rounds", v)} />}</SmallField>
           <p className="flex h-8 items-center text-xs text-muted-foreground">20 s work · 10 s rest</p>
           {rest}
+          {counted}
         </>
       );
   }

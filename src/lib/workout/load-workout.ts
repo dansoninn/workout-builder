@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { EffortKey } from "@/lib/taxonomy";
 
 import type { DraftWorkout } from "./draft";
-import { loadText, quantityText } from "./fields";
+import { type Cap, capText, loadText, quantityText } from "./fields";
 import type { BlockFormat } from "./rules";
 
 export interface StoredWorkout {
@@ -35,8 +35,8 @@ export async function loadWorkouts(orgId: string, workoutIds: string[]): Promise
   const { data: blocks, error } = await supabase
     .from("blocks")
     .select(
-      "id, workout_id, position, title, intent, format, params, pace_effort, load_effort, partner_mode, target_rounds, notes, rest_after_s, " +
-        "block_items (id, position, exercise_id, raw_line, quantity, load, pace_effort, load_effort, implement_count, notes, slot)",
+      "id, workout_id, position, title, intent, format, params, pace_effort, load_effort, partner_mode, target_rounds, notes, rest_after_s, counts_in_load, " +
+        "block_items (id, position, exercise_id, raw_line, quantity, load, pace_effort, load_effort, implement_count, notes, slot, alternatives, side, cap)",
     )
     .in("workout_id", workouts.map((w) => w.id))
     .order("position");
@@ -45,9 +45,10 @@ export async function loadWorkouts(orgId: string, workoutIds: string[]): Promise
   type Row = {
     id: string; workout_id: string; title: string | null; intent: DraftWorkout["blocks"][number]["intent"]; format: BlockFormat;
     params: Record<string, number | boolean>; pace_effort: string | null; load_effort: string | null; partner_mode: PartnerMode | null;
-    target_rounds: number | null; notes: string; rest_after_s: number | null;
+    target_rounds: number | null; notes: string; rest_after_s: number | null; counts_in_load: boolean;
     block_items: { id: string; position: number; exercise_id: string | null; raw_line: string; quantity: Quantity; load: Load | null;
-      pace_effort: string | null; load_effort: string | null; implement_count: number | null; notes: string; slot: number | null }[];
+      pace_effort: string | null; load_effort: string | null; implement_count: number | null; notes: string; slot: number | null;
+      alternatives: string[]; side: "left" | "right" | null; cap: Cap | null }[];
   };
   const rows = (blocks ?? []) as unknown as Row[];
   const byId = new Map(workouts.map((w) => [w.id, w]));
@@ -77,6 +78,7 @@ export async function loadWorkouts(orgId: string, workoutIds: string[]): Promise
           targetRounds: b.target_rounds === null ? null : Number(b.target_rounds),
           notes: b.notes,
           restAfterSec: b.rest_after_s,
+          countsInLoad: b.counts_in_load,
           items: [...b.block_items]
             .sort((x, y) => x.position - y.position)
             .map((i) => ({
@@ -90,6 +92,9 @@ export async function loadWorkouts(orgId: string, workoutIds: string[]): Promise
               loadEffort: i.load_effort as Exclude<EffortKey, "max"> | null,
               notes: i.notes,
               slot: i.slot,
+              alternatives: i.alternatives,
+              side: i.side,
+              cap: capText(i.cap),
               rawLine: i.raw_line,
             })),
         })),

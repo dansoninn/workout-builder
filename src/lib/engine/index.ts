@@ -8,6 +8,7 @@ export { weekOnWeekChange, weekSummary } from "@/lib/engine/weekly";
 
 /**
  * Increment whenever a formula or ENGINE_CONFIG changes; stored with every
- * metrics snapshot (calc spec §8). 2: partner blocks (§4.5, 2026-10-23).
+ * metrics snapshot (calc spec §8). 2: partner blocks (§4.5, 2026-10-23). 3: one-sided lines, caps, blocks not
+ * counted, time boxes, per-set schemes, station by station, ranges (§4.1, §4.3, §5).
  */
-export const CALC_VERSION = 2;
+export const CALC_VERSION = 3;
