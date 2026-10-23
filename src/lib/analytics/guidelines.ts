@@ -138,3 +138,17 @@ export function checkGuidelines(summary: PeriodSummary, g: Guidelines): Warning[
   }
   return warnings;
 }
+
+/** A warning about one program's own numbers. */
+export type ProgramWarning = Warning & { programId: string };
+
+/**
+ * Each program checked on its own numbers against its own guidelines
+ * (decisions 4 and 5, 2026-10-23): programs shown together are never mixed
+ * for warnings.
+ */
+export function checkPrograms(byProgram: { programId: string; summary: PeriodSummary }[], guidelinesOf: (programId: string) => Guidelines): ProgramWarning[] {
+  return byProgram.flatMap(({ programId, summary }) =>
+    checkGuidelines(summary, guidelinesOf(programId)).map((w) => ({ ...w, key: `${programId}:${w.key}`, programId })),
+  );
+}

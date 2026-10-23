@@ -4,19 +4,19 @@ import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PERIOD_PRESETS } from "@/lib/analytics/period";
 import { cn } from "@/lib/utils";
 
 import type { TrackOption } from "../builder/builder";
+import { ProgramPicker } from "./program-picker";
 
-/** The period (7, 14 or 30 days ending today, or any range) and the track, kept in the address. */
+/** The period (7, 14 or 30 days ending today, or any range) and the programs, kept in the address. */
 export function PeriodControls({
   slug,
   days,
   from,
   to,
-  trackId,
+  programIds,
   tracks,
 }: {
   slug: string;
@@ -24,7 +24,8 @@ export function PeriodControls({
   days: number | null;
   from: string;
   to: string;
-  trackId: string | null;
+  /** The programs shown: one, or several the coach chose. */
+  programIds: string[];
   tracks: TrackOption[];
 }) {
   const router = useRouter();
@@ -32,10 +33,9 @@ export function PeriodControls({
   const [custom, setCustom] = useState({ from, to });
   const go = (params: Record<string, string | null>) => {
     const query = new URLSearchParams();
-    for (const [key, value] of Object.entries({ program: trackId, ...params })) if (value) query.set(key, value);
+    for (const [key, value] of Object.entries({ programs: programIds.join(","), ...params })) if (value) query.set(key, value);
     router.push(`/${slug}/analytics?${query}`);
   };
-  const trackItems = [{ value: "all", label: "All programs" }, ...tracks.filter((t) => !t.archived || t.id === trackId).map((t) => ({ value: t.id, label: t.name }))];
 
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -80,23 +80,11 @@ export function PeriodControls({
           Show
         </Button>
       </form>
-      <div className="grid gap-1">
-        <label htmlFor={`${id}-track`} className="text-xs font-medium text-muted-foreground">
-          Program
-        </label>
-        <Select items={trackItems} value={trackId ?? "all"} onValueChange={(v) => go({ program: v === "all" ? null : v, ...(days ? { days: String(days) } : { from, to }) })}>
-          <SelectTrigger id={`${id}-track`} className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {trackItems.map((t) => (
-              <SelectItem key={t.value} value={t.value}>
-                {t.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <ProgramPicker
+        programs={tracks.filter((t) => !t.archived || programIds.includes(t.id))}
+        selected={programIds}
+        onChange={(ids) => go({ programs: ids.join(","), ...(days ? { days: String(days) } : { from, to }) })}
+      />
     </div>
   );
 }

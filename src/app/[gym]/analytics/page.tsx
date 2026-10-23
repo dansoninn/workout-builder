@@ -8,17 +8,20 @@ import { PageBody, PageHeader } from "@/components/app/page";
 import { Bars } from "@/components/design/bars";
 import { Estimate } from "@/components/design/estimate";
 import { PatternTag } from "@/components/design/tags";
-import { checkGuidelines, hasGuidelines, RATIO_LABELS } from "@/lib/analytics/guidelines";
-import { loadPeriod } from "@/lib/analytics/load";
+import { checkPrograms, hasGuidelines, type ProgramWarning, RATIO_LABELS } from "@/lib/analytics/guidelines";
+import { loadPeriod, type ProgramPeriod } from "@/lib/analytics/load";
 import { PERIOD_PRESETS, type PeriodSummary } from "@/lib/analytics/period";
 import type { Measure } from "@/lib/engine/types";
 import { MODALITY_LABELS, MUSCLE_LABELS } from "@/lib/labels";
 import { can } from "@/lib/permissions";
 import type { GymMembership } from "@/lib/session";
+import { createClient } from "@/lib/supabase/server";
 import { MODALITIES, MUSCLES, PATTERNS, PLANES } from "@/lib/taxonomy";
+import { analyticsPrograms, programsParam } from "@/lib/tracks";
 import { addDays, dayLabel, isoDate } from "@/lib/week";
 
-import { loadTracks, programParam } from "../builder/load";
+import type { TrackOption } from "../builder/builder";
+import { loadTracks } from "../builder/load";
 import { type ChartDay, DailyChart } from "./daily-chart";
 import { PeriodControls } from "./period-controls";
 
@@ -42,11 +45,19 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
   // At most a year at a time.
   if (addDays(from, 366) < to) from = addDays(to, -365);
 
-  const tracks = await loadTracks(gym.id);
-  const asked = programParam(query);
-  const trackId = asked && tracks.some((t) => t.id === asked) ? asked : null;
-  const { summary, guidelines } = await loadPeriod(gym.id, from, to, trackId);
-  const warnings = checkGuidelines(summary, guidelines);
+  // One program by default (the person's calendar program); several only when chosen, always named (decision 4).
+  const supabase = await createClient();
+  const [tracks, remembered] = await Promise.all([
+    loadTracks(gym.id),
+    supabase.from("member_preferences").select("calendar_program_id").eq("org_id", gym.id).maybeSingle(),
+  ]);
+  const programIds = analyticsPrograms(programsParam(query), remembered.data?.calendar_program_id ?? null, tracks);
+  const shown = tracks.filter((t) => programIds.includes(t.id));
+  const names = shown.map((t) => t.name).join(" + ");
+  const combined = shown.length > 1;
+  const { summary, byProgram, guidelines } = await loadPeriod(gym.id, from, to, programIds);
+  const warnings = checkPrograms(byProgram, () => guidelines);
+  const programOf = (id: string) => tracks.find((t) => t.id === id);
   const href = (path: string) => `/${gym.slug}/${path}`;
   const { lenses } = summary;
 
@@ -54,10 +65,18 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
     <PageBody className="max-w-6xl">
       <PageHeader
         title="Analytics"
-        description={`${dayLabel(from)} – ${dayLabel(to)} · ${summary.days} days · ${trackId ? tracks.find((t) => t.id === trackId)?.name : "all programs"}`}
+        description={`${dayLabel(from)} – ${dayLabel(to)} · ${summary.days} days · ${names || "no program"}`}
       />
-      <div className="mb-6">
-        <PeriodControls slug={gym.slug} days={days} from={from} to={to} trackId={trackId} tracks={tracks} />
+      <div className="mb-6 grid gap-4">
+        <PeriodControls slug={gym.slug} days={days} from={from} to={to} programIds={programIds} tracks={tracks} />
+        {combined && (
+          <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm">
+            <span className="font-medium">{names}, together.</span>{" "}
+            <span className="text-muted-foreground">
+              The numbers below are these programs added up. Warnings, monotony and week-on-week change stay each program&apos;s own.
+            </span>
+          </p>
+        )}
       </div>
 
       {summary.workouts.length === 0 ? (
@@ -84,15 +103,28 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
             </p>
           )}
 
-          <Warnings summary={summary} warnings={warnings} configured={hasGuidelines(guidelines)} canSet={can.editGym(gym.role)} href={href} />
+          <Warnings
+            summary={summary}
+            warnings={warnings}
+            programName={combined ? (id) => programOf(id)?.name ?? "" : null}
+            configured={hasGuidelines(guidelines)}
+            canSet={can.editGym(gym.role)}
+            href={href}
+          />
 
           <section aria-labelledby="lens-load" className="grid gap-4">
             <LensHeading id="lens-load" title="Session load" note="Planned RPE × minutes, block by block. Monotony and strain are per calendar week, Monday to Sunday." />
             <DailyChart
               today={today}
-              days={summary.daily.map((d): ChartDay => ({ date: d.date, sRpe: d.sRpe, titles: d.workouts.map((w) => w.title || "Untitled workout") }))}
+              days={summary.daily.map(
+                (d): ChartDay => ({
+                  date: d.date,
+                  sRpe: d.sRpe,
+                  titles: d.workouts.map((w) => `${w.title || "Untitled workout"}${combined ? ` (${programOf(w.trackId)?.name})` : ""}`),
+                }),
+              )}
             />
-            <WeekTable summary={summary} />
+            {combined ? <ProgramsWeekTable summary={summary} byProgram={byProgram} programOf={programOf} /> : <WeekTable summary={summary} />}
           </section>
 
           <div className="grid gap-8 lg:grid-cols-2">
@@ -156,6 +188,7 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
                   <Link href={href(`builder/${w.id}`)} className="flex items-baseline gap-2 rounded-md border border-border bg-surface px-3 py-2 hover:bg-hover">
                     <span className="w-24 shrink-0 text-xs text-muted-foreground">{dayLabel(w.date)}</span>
                     <span className="min-w-0 flex-1 truncate font-medium">{w.title || "Untitled workout"}</span>
+                    {combined && <ProgramName program={programOf(w.trackId)} />}
                     {w.result.sRpe && <Estimate measure={w.result.sRpe} unit="AU" className="text-xs text-muted-foreground" />}
                   </Link>
                 </li>
@@ -204,12 +237,15 @@ function Tile({ label, measure, unit, value }: { label: string; measure?: Measur
 function Warnings({
   summary,
   warnings,
+  programName,
   configured,
   canSet,
   href,
 }: {
   summary: PeriodSummary;
-  warnings: ReturnType<typeof checkGuidelines>;
+  warnings: ProgramWarning[];
+  /** Programs shown together: each warning names its program. */
+  programName: ((id: string) => string) | null;
   configured: boolean;
   canSet: boolean;
   href: (path: string) => string;
@@ -249,6 +285,7 @@ function Warnings({
                 <CircleAlertIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
                 <span>
                   <span className="sr-only">Warning: </span>
+                  {programName && <span className="font-normal text-muted-foreground">{programName(w.programId)}: </span>}
                   {w.text}
                 </span>
               </p>
@@ -308,6 +345,68 @@ function WeekTable({ summary }: { summary: PeriodSummary }) {
         Monotony is the week&apos;s average daily load divided by how much it varies (Foster); strain is the week&apos;s load times monotony. The change is a trend, never an injury prediction.
       </p>
     </div>
+  );
+}
+
+/** Programs shown together: each program's planned load per week, and their total. Monotony and change are per program only. */
+function ProgramsWeekTable({
+  summary,
+  byProgram,
+  programOf,
+}: {
+  summary: PeriodSummary;
+  byProgram: ProgramPeriod[];
+  programOf: (id: string) => TrackOption | undefined;
+}) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-border bg-surface">
+      <table className="w-full min-w-[32rem] text-sm">
+        <caption className="sr-only">Planned load per calendar week, per program</caption>
+        <thead>
+          <tr className="border-b border-border text-left text-xs text-muted-foreground">
+            <th scope="col" className="h-8 px-3 font-medium">Week</th>
+            {byProgram.map((p) => (
+              <th key={p.programId} scope="col" className="h-8 px-3 text-right font-medium">
+                <ProgramName program={programOf(p.programId)} />
+              </th>
+            ))}
+            <th scope="col" className="h-8 px-3 text-right font-medium">Together</th>
+          </tr>
+        </thead>
+        <tbody>
+          {summary.weeks.map((w) => (
+            <tr key={w.weekStart} className="border-b border-border last:border-0">
+              <th scope="row" className="px-3 py-2 text-left font-medium whitespace-nowrap">
+                {dayLabel(w.weekStart)} – {dayLabel(addDays(w.weekStart, 6))}
+              </th>
+              {byProgram.map((p) => {
+                const own = p.summary.weeks.find((x) => x.weekStart === w.weekStart);
+                return (
+                  <td key={p.programId} className="px-3 py-2 text-right tabular">
+                    {own && own.total.mid > 0 ? <Estimate measure={own.total} unit="AU" /> : "—"}
+                  </td>
+                );
+              })}
+              <td className="px-3 py-2 text-right font-medium tabular">
+                <Estimate measure={w.total} unit="AU" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
+        Monotony, strain and the change from the week before are each program&apos;s own: choose one program to see them.
+      </p>
+    </div>
+  );
+}
+
+function ProgramName({ program }: { program: TrackOption | undefined }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+      <span aria-hidden className="size-2 rounded-full" style={{ backgroundColor: program?.color ?? "var(--border-strong)" }} />
+      {program?.name}
+    </span>
   );
 }
 

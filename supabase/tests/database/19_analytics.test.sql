@@ -1,11 +1,12 @@
 -- Analytics (Step 5c): a period's stored metrics, for the gym's own members
--- only; the gym's guidelines, set by the owner only and always well-formed.
+-- only, for the programs asked for (decision 4); the gym's guidelines, set by
+-- the owner only and always well-formed.
 
 begin;
 create extension if not exists pgtap with schema extensions;
 \ir _fixtures.psql
 
-select plan(15);
+select plan(16);
 
 insert into tests.ids (name) select unnest(array['later', 'deleted', 'tpl', 'other_track']);
 insert into public.tracks (id, org_id, name, color) values (tests.id('other_track'), tests.id('gym_a'), 'Barbell club', '#DC2626');
@@ -22,20 +23,22 @@ insert into public.workout_metrics (workout_id, org_id, calc_version, taxonomy_v
 -- The period's metrics.
 select tests.login_as('viewer_a');
 select results_eq(
-  $$ select title from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 1) $$,
+  $$ select title from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 1, array[tests.id('track_a'), tests.id('other_track')]) $$,
   $$ values ('A day'::text), ('Saturday') $$,
-  'Everyone in the gym reads the period''s workouts, in date order; deleted workouts and templates are not in it');
+  'Everyone in the gym reads the period''s workouts of the programs asked for, in date order; deleted workouts and templates are not in it');
 select results_eq(
-  $$ select title from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 1, tests.id('other_track')) $$,
+  $$ select title from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 1, array[tests.id('other_track')]) $$,
   $$ values ('Saturday'::text) $$,
-  'One track');
+  'One program: only its workouts (decision 4: never mixed silently)');
+select is_empty($$ select 1 from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 1, '{}'::uuid[]) $$,
+  'No program asked for, nothing (there is no "everything" default)');
 select is(
-  (select metrics -> 'sRpe' ->> 'mid' from public.period_metrics(tests.id('gym_a'), '2026-10-24', '2026-10-24', 1)),
+  (select metrics -> 'sRpe' ->> 'mid' from public.period_metrics(tests.id('gym_a'), '2026-10-24', '2026-10-24', 1, array[tests.id('other_track')])),
   '10', 'with their stored metrics');
-select is_empty($$ select 1 from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 2) $$,
+select is_empty($$ select 1 from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 2, array[tests.id('track_a'), tests.id('other_track')]) $$,
   'Only the asked calc version');
 select tests.login_as('owner_b');
-select is_empty($$ select 1 from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 1) $$,
+select is_empty($$ select 1 from public.period_metrics(tests.id('gym_a'), '2026-10-19', '2026-10-25', 1, array[tests.id('track_a'), tests.id('other_track')]) $$,
   'Another gym sees nothing of it');
 
 -- Guidelines: a new gym starts with the defaults (decision 18).
