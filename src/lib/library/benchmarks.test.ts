@@ -24,4 +24,10 @@ describe("named benchmark workouts", () => {
     expect(benchmarkOf("Fran\n21-15-9\nThrusters\nPull-ups")).toBeNull();
     expect(benchmarkOf("Frank's favourite")).toBeNull();
   });
+
+  it("Paste reads a benchmark's name as the benchmark", () => {
+    const parsed = parseWorkoutText("Fran", library);
+    expect(parsed.title).toBe("Fran");
+    expect(parsed.blocks[0]!.items.map((i) => i.quantity)).toEqual(["21-15-9", "21-15-9"]);
+  });
 });

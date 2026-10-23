@@ -11,7 +11,7 @@ import { useShell } from "./shell-context";
 export function MobileBar() {
   const { setNavOpen, setPaletteOpen } = useShell();
   return (
-    <div className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/95 px-2 backdrop-blur lg:hidden">
+    <div className="sticky top-0 z-30 flex h-12 shrink-0 items-center gap-2 border-b border-border bg-background/95 px-2 backdrop-blur lg:hidden print:hidden">
       <Button variant="ghost" size="icon" onClick={() => setNavOpen(true)} aria-label="Open navigation">
         <MenuIcon />
       </Button>

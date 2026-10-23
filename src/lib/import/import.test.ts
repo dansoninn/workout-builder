@@ -7,6 +7,9 @@
 import { strToU8 } from "fflate";
 import { describe, expect, it } from "vitest";
 
+import { ENGINE_CONFIG } from "@/lib/engine/config";
+import { computeWorkout } from "@/lib/engine/workout";
+import { toEngineWorkout } from "@/lib/workout/draft";
 import { coreLibrary, idOf } from "@/lib/workout/test-library";
 
 import { dayOfMonth, monthOf, readDate, weekdayOf } from "./dates";
@@ -15,6 +18,7 @@ import { fromCsv, fromDocx, fromText, fromXlsx } from "./document";
 import { type GridLayout, proposeLayout, type TextLayout } from "./layout";
 import { DEFAULT_CHOICES, type PlanContext, planImport } from "./plan";
 import { findPersonalData, removePersonalData } from "./privacy";
+import { analyseProgramming } from "./report";
 import { NO_ANSWERS, readImport } from "./review";
 import { docxFile, xlsxFile } from "./test-files";
 
@@ -230,6 +234,11 @@ describe("reading an import: the queue, answers, labels, benchmarks, repeats", (
     expect(strength.days.find((d) => d.day.date === "2026-01-05")?.status).toBe("not-planned");
   });
 
+  it("a gym without a country: a label on any known country's public holiday is proposed as closed", () => {
+    const reading = readImport(klass, library, NO_ANSWERS, { country: null, firstProgram: true });
+    expect(reading.labels.find((l) => l.text === "Nýársdagur")?.meaning).toEqual({ focus: null, closed: "Nýársdagur" });
+  });
+
   it("a day that names a benchmark is the benchmark; the same workout twice is offered as a template", () => {
     const reading = readImport(klass, library, NO_ANSWERS, { country: "IS", firstProgram: true });
     const murph = reading.days.find((d) => d.day.date === "2026-01-04")!;
@@ -315,5 +324,29 @@ describe("what an import makes", () => {
     expect(plan.templates[0]).toMatchObject({ kind: "template", date: null, title: "AMRAP 12" });
     const day = plan.workouts.find((w) => w.dayKey === "Janúar:4")!;
     expect(plan.templates[0]!.blocks[0]!.id).not.toBe(day.blocks[0]!.id);
+  });
+});
+
+describe("your programming, analysed", () => {
+  it("the period in plain words: how much, balance, gaps, what comes back, conditioning", () => {
+    const doc = studio();
+    const layout = proposeLayout(doc, TODAY) as GridLayout;
+    const reading = readImport(extractDays(doc, layout, 0), library, { ...NO_ANSWERS, words: { squat: idOf("Air squat"), bike: idOf("Air bike") } }, { country: "IS", firstProgram: true });
+    let n = 0;
+    const plan = planImport(reading, { trackId: "t", library, focusNames: [], canManage: true, existing: [], choices: DEFAULT_CHOICES, newId: () => `w${++n}` });
+    const workouts = plan.workouts.map((w) => ({
+      id: w.id,
+      date: w.date!,
+      title: w.title,
+      trackId: "t",
+      result: computeWorkout(toEngineWorkout(w, library).workout, ENGINE_CONFIG),
+      exercises: w.blocks.flatMap((b) => b.items.flatMap((i) => (i.exerciseId ? [i.exerciseId] : []))),
+    }));
+    const report = analyseProgramming(workouts, (id) => library.exercises.find((e) => e.id === id)?.name ?? null)!;
+    expect(report.findings[0]).toMatch(/^\d+ weeks, 7 workouts: \d\.\d a week, about \d+ minutes each\.$/);
+    expect(report.findings.some((f) => f.startsWith("Most programmed: burpee in "))).toBe(true);
+    expect(report.findings.some((f) => /^Conditioning: run 3 km/.test(f))).toBe(true);
+    expect(report.topExercises[0]).toMatchObject({ name: "Burpee" });
+    expect(analyseProgramming([], () => null)).toBeNull();
   });
 });

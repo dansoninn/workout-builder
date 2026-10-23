@@ -49,6 +49,8 @@ export interface PlannedWorkout extends DraftWorkout {
 
 export interface ImportPlan {
   workouts: PlannedWorkout[];
+  /** Days that cannot be saved as written (an AMRAP without its time): fixed or left out before the import. */
+  cannotSave: { dayKey: string; date: string; message: string }[];
   templates: DraftWorkout[];
   /** Workouts of the program the import replaces. */
   replace: string[];
@@ -61,6 +63,7 @@ export interface ImportPlan {
   aliases: { term: string; exerciseId: string }[];
   summary: {
     workouts: number;
+    cannotSave: number;
     ready: number;
     drafts: number;
     published: number;
@@ -85,6 +88,7 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
   for (const w of ctx.existing) byDate.set(w.date, [...(byDate.get(w.date) ?? []), w.id]);
 
   const workouts: PlannedWorkout[] = [];
+  const cannotSave: ImportPlan["cannotSave"] = [];
   const replace = new Set<string>();
   let keptExisting = 0;
   const importable = reading.days.filter((r): r is ReadDay & { parsed: NonNullable<ReadDay["parsed"]> } => r.parsed !== null && r.day.date !== null && r.status !== "skipped" && r.status !== "no-date");
@@ -109,7 +113,14 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
       rawText: r.text,
       parserVersion: PARSER_VERSION,
     };
-    const ready = r.status === "ok" && draftProblems(draft, library).length === 0;
+    // What the builder would not save is not imported either; the coach fixes the day or leaves it out.
+    const [problem] = draftProblems(draft, library);
+    if (problem) {
+      const where = problem.block >= 0 ? `Block ${String.fromCharCode(65 + problem.block)}: ` : "";
+      cannotSave.push({ dayKey: r.day.key, date, message: `${where}${problem.message}` });
+      continue;
+    }
+    const ready = r.status === "ok";
     workouts.push({ ...draft, dayKey: r.day.key, ready, publish: ready && choices.publish });
   }
 
@@ -172,6 +183,7 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
   const dates = workouts.map((w) => w.date!).sort();
   return {
     workouts,
+    cannotSave,
     templates,
     replace: [...replace],
     days,
@@ -180,6 +192,7 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
     aliases: [...aliases].map(([term, exerciseId]) => ({ term, exerciseId })),
     summary: {
       workouts: workouts.length,
+      cannotSave: cannotSave.length,
       ready: workouts.filter((w) => w.ready).length,
       drafts: workouts.filter((w) => !w.publish).length,
       published: workouts.filter((w) => w.publish).length,

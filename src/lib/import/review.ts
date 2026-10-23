@@ -97,7 +97,7 @@ export interface ImportReading {
 }
 
 export interface ReadOptions {
-  /** The gym's country, for its public holidays (a label on a holiday is a closed day). */
+  /** The gym's country, for its public holidays (a label on a holiday is a closed day); null tries every country the app knows. */
   country: string | null;
   /**
    * Whether the program is the document's first: a label column all programs
@@ -111,10 +111,11 @@ const normal = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 
 /** Proposes what each label means: a program's own column is its focus; a shared one is the first program's focus, and a closed day on a public holiday. */
 function proposeLabels(days: ImportDay[], opts: ReadOptions): Map<string, { column: "own" | "shared"; text: string; dates: string[]; proposed: LabelMeaning }> {
+  // The gym's country's holidays; a gym without a country, every country the app knows (the coach confirms each label).
   const holidays = new Map<string, string>();
-  const preset = opts.country ? HOLIDAY_COUNTRIES[opts.country] : undefined;
+  const presets = opts.country ? [HOLIDAY_COUNTRIES[opts.country]].filter((p) => p !== undefined) : Object.values(HOLIDAY_COUNTRIES);
   const years = new Set(days.flatMap((d) => (d.date ? [Number(d.date.slice(0, 4))] : [])));
-  if (preset) for (const y of years) for (const h of preset.holidays(y)) holidays.set(h.date, h.name);
+  for (const preset of presets) for (const y of years) for (const h of preset.holidays(y)) holidays.set(h.date, h.name);
 
   const all = new Map<string, { column: "own" | "shared"; text: string; dates: string[] }>();
   for (const day of days) {
@@ -169,7 +170,7 @@ export function readImport(days: ImportDay[], library: Library, answers: ImportA
     if (day.notPlanned && !answers.edits[day.key]) return { ...base, status: "not-planned" };
     if (!text) return { ...base, status: "empty" };
     const benchmark = benchmarkOf(text);
-    const parsed = parseWorkoutText(benchmark ? `${benchmark.name}\n${benchmark.text}` : text, library, answers.words);
+    const parsed = parseWorkoutText(text, library, answers.words);
     withHeadingRules(parsed.blocks, answers.headings);
     // A day needs the coach for a word or a missing number; a note on how a line was read ("4–5 sets: counted as 4") does not hold it up.
     const needs = parsed.lines.some((l) => !understood(l));
