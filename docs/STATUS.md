@@ -31,7 +31,7 @@ Nothing is blocked; each item says what I did meanwhile. **1 and 2 matter most.*
 8. **Part 1 of Step 6** (name, domain, legal entity, Vercel/Supabase Pro, email, lawyer): postponed by you; the list is unchanged in `docs/PLAN-step-6.md`.
 
 ## What changed since your Afrek message (2026-10-23)
-Each part is its own pull request, merged when CI was fully green, database changes applied to the hosted project just before.
+Each part is its own pull request, merged when CI was fully green, database changes applied to the hosted project just before. **All are on production.**
 
 ### 1. Partner workouts (your rule)
 - A block says how partners share the work: **Split the work**, **I go, you go**, **I go, you go, each**. The numbers are per athlete: half the reps or rounds, or the full amount taking about twice as long.
@@ -91,7 +91,8 @@ Every rule is tested on other gyms' styles too (`parse-notations.test.ts`). On A
 | #28 | Library coverage report and proposals; the row rule | — | merged |
 | #29 | Day focus, holidays and closed days, program dates | 003400 | merged, applied |
 | #30 | Program import: the engine and the database | 003500 | merged, applied |
-| #31 | Program import: the workspace and the report | — | this one |
+| #31 | Program import: the workspace and the report | — | merged |
+| #32 | This STATUS | — | this one |
 
 ## Next
 Your decisions above (the library additions first: they take Afrek's year from 47% to 76% of exercises matched before an import). Then Part 1 of Step 6 when you are ready, and the follow-ups in BACKLOG.
