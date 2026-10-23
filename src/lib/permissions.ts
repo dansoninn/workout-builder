@@ -4,7 +4,7 @@ export type Role = Database["public"]["Enums"]["org_role"];
 
 export const ROLES: readonly { value: Role; label: string; description: string }[] = [
   { value: "owner", label: "Owner", description: "Everything, including members and gym settings" },
-  { value: "head_coach", label: "Head coach", description: "Programs, manages tracks and the gym's exercises" },
+  { value: "head_coach", label: "Head coach", description: "Programs workouts, manages the gym's programs and exercises" },
   { value: "coach", label: "Coach", description: "Programs workouts" },
   { value: "viewer", label: "Viewer", description: "Sees everything, changes nothing" },
 ];

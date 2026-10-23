@@ -18,3 +18,9 @@ export async function loadTracks(orgId: string): Promise<TrackOption[]> {
     .map((t) => ({ id: t.id, name: t.name, color: t.color, archived: t.archived_at !== null }))
     .sort((a, b) => Number(a.archived) - Number(b.archived));
 }
+
+/** The program asked for in the address: ?program=<id>, or ?track=<id> from links made before the rename. */
+export function programParam(query: Record<string, string | string[] | undefined>): string | null {
+  const value = query.program ?? query.track;
+  return typeof value === "string" && /^[0-9a-f-]{36}$/.test(value) ? value : null;
+}

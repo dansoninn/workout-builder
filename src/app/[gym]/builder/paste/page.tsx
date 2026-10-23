@@ -7,7 +7,7 @@ import { can } from "@/lib/permissions";
 import type { GymMembership } from "@/lib/session";
 import { loadLibrary } from "@/lib/workout/load-library";
 
-import { loadTracks } from "../load";
+import { loadTracks, programParam } from "../load";
 import { PasteWorkout } from "./paste-workout";
 
 export const metadata: Metadata = { title: "Paste a workout" };
@@ -29,7 +29,8 @@ async function Paste({ gym, searchParams }: { gym: GymMembership; searchParams: 
   }
   const [library, tracks] = await Promise.all([loadLibrary(gym.id), loadTracks(gym.id)]);
   const date = typeof query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : new Date().toISOString().slice(0, 10);
-  const track = tracks.find((t) => t.id === query.track && !t.archived) ?? tracks.find((t) => !t.archived) ?? null;
+  const asked = programParam(query);
+  const track = tracks.find((t) => t.id === asked && !t.archived) ?? tracks.find((t) => !t.archived) ?? null;
   return (
     <PasteWorkout
       slug={gym.slug}

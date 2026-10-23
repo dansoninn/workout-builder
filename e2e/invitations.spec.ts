@@ -22,9 +22,9 @@ test("an owner invites a coach, who joins with exactly coach rights", async ({ p
   await expect(coach.getByText(coachEmail)).toHaveCount(0);
   await expect(coach.getByText("Only the gym's owners can invite people or change roles.")).toBeVisible();
 
-  // Nor manage tracks.
-  await coach.goto(`/${slug}/settings/tracks`);
-  await expect(coach.getByRole("button", { name: "New track" })).toHaveCount(0);
+  // Nor manage programs.
+  await coach.goto(`/${slug}/settings/programs`);
+  await expect(coach.getByRole("button", { name: "New program" })).toHaveCount(0);
 
   // The invitation is used up.
   await page.reload();
@@ -66,9 +66,9 @@ test("a viewer sees the gym but cannot change it", async ({ page, browser }) => 
   await expect(viewer.getByText("Only the gym's owners can change these.")).toBeVisible();
   await expect(viewer.getByRole("button", { name: "Save changes" })).toHaveCount(0);
 
-  await viewer.goto(`/${slug}/settings/tracks`);
-  await expect(viewer.getByText("Owners and head coaches manage tracks.")).toBeVisible();
-  await expect(viewer.getByRole("button", { name: "New track" })).toHaveCount(0);
+  await viewer.goto(`/${slug}/settings/programs`);
+  await expect(viewer.getByText("Owners and head coaches manage programs.")).toBeVisible();
+  await expect(viewer.getByRole("button", { name: "New program" })).toHaveCount(0);
   await context.close();
 });
 
@@ -84,9 +84,9 @@ test("an owner changes a role, then removes the member", async ({ page, browser 
   await page.reload();
   await expect(page.getByRole("combobox", { name: "Role of Cara Coach" })).toHaveText(/Head coach/);
 
-  // The head coach can now manage tracks.
-  await coach.goto(`/${slug}/settings/tracks`);
-  await expect(coach.getByRole("button", { name: "New track" })).toBeVisible();
+  // The head coach can now manage programs.
+  await coach.goto(`/${slug}/settings/programs`);
+  await expect(coach.getByRole("button", { name: "New program" })).toBeVisible();
 
   await page.getByRole("button", { name: "Remove Cara Coach" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Remove member" }).click();

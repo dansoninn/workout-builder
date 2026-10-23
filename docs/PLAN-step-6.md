@@ -65,10 +65,29 @@ The gym is the **controller** of its coaches' and members' data; we are the **pr
 
 ### 6f — Before Afrek's first day
 - A security pass: Content-Security-Policy header (BACKLOG), dependency audit, check that no key is in the code or the browser bundle, and that RLS tests cover every table (they do today).
-- Afrek's setup with you: create the gym, invite their coaches, their tracks; the guidelines start at the defaults (decision 18).
+- Afrek's setup with you: create the gym, invite their coaches, their programs; the guidelines start at the defaults (decision 18).
 - A way for Afrek's coaches to reach us (an email address on your domain), and a simple feedback log in BACKLOG.
 
 ---
+
+## Programs — required before Afrek go-live
+
+Afrek runs 3–4 programs in parallel, so programs ("tracks" until Daniel's decision 1 of 2026-10-23) must work end to end before the first real day. Audit 2026-10-23 (read-only, evidence in BACKLOG "Programs — Afrek launch requirement"). Daniel's decisions 2–5 (2026-10-23) settle the open points.
+
+**What already works:** create, rename, recolour, archive and restore programs (owner and head coach); a new gym starts with "Class"; the calendar shows all programs with colours (month: dot + name; week: one column per program) and a workout can be moved between programs; analytics can show one program or all; gym isolation is enforced by the database (a workout can never point to another gym's program) and tested.
+
+| Gap | Size | Decision |
+|---|---|---|
+| Every workout must have a program (today it can be empty) | medium | Decision 2: required; existing empty ones go to the gym's first active program |
+| Reorder programs | small | — |
+| Calendar: each program its own space, one program by default, remembered per user; "All programs" with colours | small | Decision 3 |
+| Analytics: one program by default; several only when selected, always labelled; never mix silently | medium | Decision 4 |
+| Guidelines and warnings per program: gym defaults, each program can override | medium–large | Decision 5 |
+| Database blocks workouts on archived programs | small | — |
+| Program names unique in the database, also on restore | small | — |
+| Missing tests (cross-gym via functions, empty/archived, reorder, filters) | small | — |
+
+Not required for go-live: program filter on Results; the builder's load panel showing the week for the same program.
 
 ## Order and what waits on what
 1. **You decide 1–10.** Domain and Vercel Pro first: they unblock everything else.

@@ -70,7 +70,7 @@ Role rights (enforced in RLS):
 |---|---|---|---|---|
 | Manage members & settings | ✓ | | | |
 | Edit gym exercise bank | ✓ | ✓ | | |
-| Manage tracks ✅ | ✓ | ✓ | | |
+| Manage programs (`tracks`) ✅ | ✓ | ✓ | | |
 | Create / edit workouts | ✓ | ✓ | ✓ | |
 | Save a gym alias by answering an ambiguous term ✅ (Step 4) | ✓ | ✓ | ✓ | |
 | Edit / delete gym aliases | ✓ | ✓ | | |
@@ -100,8 +100,10 @@ Rules (enforced in the database, tested in pgTAP):
 - Not in the audit log: the audit log is readable by every member, and the invitee's email is for owners only. Joining is audited (it creates a membership).
 - The member list (`list_gym_members`) is visible to every member, read-only; emails only to owners ✅ (approved 2026-10-21).
 
-### `tracks`
-Gyms program several streams in parallel (e.g. *Class*, *Strength club*, *Endurance*). `id`, `org_id`, `name`, `color`, `position`, `archived_at`. Created and edited by owners and head coaches, not coaches — approved 2026-10-21. Archived, never deleted. **A new gym starts with one track, "Class"**, which can be renamed or archived like any other ✅ (approved 2026-10-21).
+### `tracks` — shown as **Programs**
+**Naming ✅ (Daniel, 2026-10-23):** in the app, docs and specs these are **programs**; the table keeps its name `tracks` and the column `track_id` (no rename migration). Coaches name each program themselves ("Class", "Þrek", "Styrktartímar": gym data may be in any language; the app's own text stays English).
+
+Gyms program several programs in parallel (e.g. *Class*, *Strength club*, *Endurance*). `id`, `org_id`, `name`, `color`, `position`, `archived_at`. Created and edited by owners and head coaches, not coaches — approved 2026-10-21. Archived, never deleted. **A new gym starts with one program, "Class"**, which can be renamed or archived like any other ✅ (approved 2026-10-21).
 
 ---
 
@@ -293,7 +295,7 @@ As built in 4d (migration `001900`, approved rules above plus these guards):
 ## 7. Computed data, audit, safety
 
 ### `workout_metrics` (cache)
-`workout_id`, `calc_version`, `taxonomy_version`, `computed_at`, `metrics jsonb`, `confidence jsonb`. PK `(workout_id, calc_version)`. Recomputed on save; rebuilt in bulk on version bump. Weekly/period analytics are SQL functions over this table: `period_metrics(org, from, to, calc_version, track?)` (5c, migration `002200`) returns the period's scheduled workouts with their stored metrics (run as the user, so RLS applies); the app sums the lenses with the engine's own TypeScript, so the builder, the calendar and analytics never disagree.
+`workout_id`, `calc_version`, `taxonomy_version`, `computed_at`, `metrics jsonb`, `confidence jsonb`. PK `(workout_id, calc_version)`. Recomputed on save; rebuilt in bulk on version bump. Weekly/period analytics are SQL functions over this table: `period_metrics(org, from, to, calc_version, track?)` (track = program) (5c, migration `002200`) returns the period's scheduled workouts with their stored metrics (run as the user, so RLS applies); the app sums the lenses with the engine's own TypeScript, so the builder, the calendar and analytics never disagree.
 
 ### Gym guidelines (5c)
 `organizations.settings.guidelines` (owner-managed, like all gym settings): optional minimum hard sets per pattern per week, ranges for push:pull, knee:hip and upper:lower exposure, a maximum weekly monotony and a maximum week-on-week increase (%). Checked by `private.guidelines_problem` on every settings change (trigger) and mirrored in `src/lib/analytics/guidelines.ts`, tested on the shared rule cases. Set through `set_gym_guidelines(org, guidelines)`. They are the gym's guidelines, not scientific thresholds (calc spec §6); none is set by default.
@@ -319,6 +321,6 @@ As built in 4d (migration `001900`, approved rules above plus these guards):
 
 1. ✅ **Customer = gym (organization)** with coaches as members; a solo coach is a gym with one member — approved 2026-10-21.
 2. ✅ **Four roles** (owner, head coach, coach, viewer) — approved 2026-10-21.
-3. ✅ **Tracks** (parallel programs in the same gym) — included from day one, approved 2026-10-21.
+3. ✅ **Programs** (`tracks`: parallel programs in the same gym) — included from day one, approved 2026-10-21; called programs since 2026-10-23.
 4. ✅ **Templates** stored as workouts with `kind = template` (same structure, no date) — approved 2026-10-21.
 5. ✅ **Publish rule:** a workout cannot be published while any line is unmatched to an exercise — approved 2026-10-21.

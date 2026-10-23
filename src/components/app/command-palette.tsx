@@ -121,9 +121,9 @@ export function CommandPalette({ gyms, current }: { gyms: GymMembership[]; curre
                 </CommandItem>
               )}
               {can.manageTracks(current.role) && (
-                <CommandItem value="New track" onSelect={() => go(`${gymHref(current.slug, "settings/tracks")}?new=1`)}>
+                <CommandItem value="New program" onSelect={() => go(`${gymHref(current.slug, "settings/programs")}?new=1`)}>
                   <PlusIcon />
-                  New track
+                  New program
                 </CommandItem>
               )}
             </CommandGroup>

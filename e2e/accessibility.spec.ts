@@ -45,7 +45,7 @@ for (const colorScheme of ["light", "dark"] as const) {
         ["exercises", "Exercises"],
         ["settings/gym", "Settings"],
         ["settings/members", "Settings"],
-        ["settings/tracks", "Settings"],
+        ["settings/programs", "Settings"],
         ["settings/profile", "Settings"],
         ["settings/paces", "Settings"],
         ["settings/guidelines", "Settings"],

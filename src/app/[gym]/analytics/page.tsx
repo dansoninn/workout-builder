@@ -18,7 +18,7 @@ import type { GymMembership } from "@/lib/session";
 import { MODALITIES, MUSCLES, PATTERNS, PLANES } from "@/lib/taxonomy";
 import { addDays, dayLabel, isoDate } from "@/lib/week";
 
-import { loadTracks } from "../builder/load";
+import { loadTracks, programParam } from "../builder/load";
 import { type ChartDay, DailyChart } from "./daily-chart";
 import { PeriodControls } from "./period-controls";
 
@@ -43,7 +43,8 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
   if (addDays(from, 366) < to) from = addDays(to, -365);
 
   const tracks = await loadTracks(gym.id);
-  const trackId = typeof query.track === "string" && tracks.some((t) => t.id === query.track) ? query.track : null;
+  const asked = programParam(query);
+  const trackId = asked && tracks.some((t) => t.id === asked) ? asked : null;
   const { summary, guidelines } = await loadPeriod(gym.id, from, to, trackId);
   const warnings = checkGuidelines(summary, guidelines);
   const href = (path: string) => `/${gym.slug}/${path}`;
@@ -53,7 +54,7 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
     <PageBody className="max-w-6xl">
       <PageHeader
         title="Analytics"
-        description={`${dayLabel(from)} – ${dayLabel(to)} · ${summary.days} days · ${trackId ? tracks.find((t) => t.id === trackId)?.name : "all tracks"}`}
+        description={`${dayLabel(from)} – ${dayLabel(to)} · ${summary.days} days · ${trackId ? tracks.find((t) => t.id === trackId)?.name : "all programs"}`}
       />
       <div className="mb-6">
         <PeriodControls slug={gym.slug} days={days} from={from} to={to} trackId={trackId} tracks={tracks} />

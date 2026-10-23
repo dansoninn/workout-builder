@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  async redirects() {
+    // "Tracks" became "Programs" (Daniel, 2026-10-23); old links keep working.
+    return [{ source: "/:gym/settings/tracks", destination: "/:gym/settings/programs", permanent: true }];
+  },
 };
 
 export default nextConfig;

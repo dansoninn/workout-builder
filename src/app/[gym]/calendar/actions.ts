@@ -26,7 +26,7 @@ export async function moveWorkout(slug: string, input: unknown): Promise<ActionR
     .eq("kind", "scheduled")
     .is("deleted_at", null)
     .select("id");
-  if (error) return { ok: false, error: error.code === "23503" ? "That track no longer exists." : "Could not move the workout. Try again." };
+  if (error) return { ok: false, error: error.code === "23503" ? "That program no longer exists." : "Could not move the workout. Try again." };
   if (data.length === 0) return { ok: false, error: "That workout was deleted or moved. Reload the page." };
   refresh();
   return { ok: true };
