@@ -6,7 +6,9 @@ import { z } from "zod";
 
 import { gymForAction, NOT_ALLOWED } from "@/lib/actions";
 import { fieldErrorsOf, type FormState, keepValues } from "@/lib/forms";
+import { homePath } from "@/lib/home";
 import { can } from "@/lib/permissions";
+import { getCurrentUser } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 const schema = z.object({
@@ -52,5 +54,7 @@ export async function deleteGym(slug: string, _prev: FormState, formData: FormDa
   const supabase = await createClient();
   const { error } = await supabase.rpc("delete_gym", { p_org: gym.id, p_name: typed });
   if (error) return { error: error.code === "42501" ? NOT_ALLOWED : "Could not delete the gym. Try again.", values };
-  redirect("/");
+  // On to another of their gyms, or "create your gym" (where the deleted one is listed).
+  const user = await getCurrentUser();
+  redirect(user ? await homePath(supabase, user.id, undefined) : "/");
 }
