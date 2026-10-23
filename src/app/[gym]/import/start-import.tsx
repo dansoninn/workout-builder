@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { fromCsv, fromDocx, fromText, fromXlsx, type ImportDocument, type SourceKind, sourceKindOf } from "@/lib/import/document";
-import { type Layout, proposeLayout } from "@/lib/import/layout";
+import { type Layout, proposeLayout, reuseLayout } from "@/lib/import/layout";
 import { findPersonalData, type PersonalData, removePersonalData } from "@/lib/import/privacy";
 
 import type { TrackOption } from "../builder/builder";
@@ -54,7 +54,18 @@ function describe(doc: ImportDocument, layout: Layout): string {
   return `${sheets}, a row per day, ${programs}${doc.kind === "grid" && layout.dates.from === "day-of-month" ? `, ${layout.dates.year}` : ""}.`;
 }
 
-export function StartImport({ slug, tracks, today }: { slug: string; tracks: TrackOption[]; today: string }) {
+export function StartImport({
+  slug,
+  tracks,
+  today,
+  earlier,
+}: {
+  slug: string;
+  tracks: TrackOption[];
+  today: string;
+  /** Layouts of the gym's latest imports, as corrected there. */
+  earlier: { sourceName: string; layout: Layout }[];
+}) {
   const id = useId();
   const router = useRouter();
   const [trackId, setTrackId] = useState(tracks[0]?.id ?? null);
@@ -62,12 +73,19 @@ export function StartImport({ slug, tracks, today }: { slug: string; tracks: Tra
   const [pasted, setPasted] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [keepPersonal, setKeepPersonal] = useState(false);
+  const [useEarlier, setUseEarlier] = useState(true);
   const [programIndex, setProgramIndex] = useState(0);
   const [pending, startTransition] = useTransition();
 
   const typed = useDeferredValue(pasted);
   const doc = useMemo(() => source?.doc ?? (typed.trim() ? fromText("Pasted text", typed) : null), [source, typed]);
-  const layout = useMemo(() => (doc ? proposeLayout(doc, today) : null), [doc, today]);
+  const proposed = useMemo(() => (doc ? proposeLayout(doc, today) : null), [doc, today]);
+  // The gym's own corrections from an import laid out the same way, offered (and on unless the coach says no).
+  const reused = useMemo(() => {
+    const first = proposed ? earlier.map((e) => ({ from: e.sourceName, layout: reuseLayout(proposed, e.layout) })).find((r) => r.layout !== null) : undefined;
+    return first?.layout ? { from: first.from, layout: first.layout } : null;
+  }, [proposed, earlier]);
+  const layout = reused && useEarlier ? reused.layout : proposed;
   const found = useMemo(() => (doc ? findPersonalData(textOf(doc)) : []), [doc]);
   const track = tracks.find((t) => t.id === trackId);
 
@@ -213,6 +231,12 @@ export function StartImport({ slug, tracks, today }: { slug: string; tracks: Tra
                 </Select>
                 <p className="text-xs text-muted-foreground">The others can be imported into their own programs after.</p>
               </div>
+            )}
+            {reused && (
+              <label className="flex items-center gap-1.5 text-sm">
+                <input type="checkbox" checked={useEarlier} onChange={(e) => setUseEarlier(e.target.checked)} className="accent-[var(--primary)]" />
+                Laid out like “{reused.from}”: use the corrections made there (columns, months)
+              </label>
             )}
             {found.length > 0 && (
               <div className="grid gap-1.5 rounded-md bg-warning-subtle px-3 py-2 text-sm">

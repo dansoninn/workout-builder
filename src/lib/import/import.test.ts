@@ -15,7 +15,7 @@ import { coreLibrary, idOf } from "@/lib/workout/test-library";
 import { dayOfMonth, monthOf, readDate, weekdayOf } from "./dates";
 import { extractDays } from "./days";
 import { fromCsv, fromDocx, fromText, fromXlsx } from "./document";
-import { type GridLayout, proposeLayout, type TextLayout } from "./layout";
+import { type GridLayout, proposeLayout, reuseLayout, type TextLayout } from "./layout";
 import { DEFAULT_CHOICES, type PlanContext, planImport } from "./plan";
 import { findPersonalData, removePersonalData } from "./privacy";
 import { analyseProgramming } from "./report";
@@ -361,5 +361,22 @@ describe("your programming, analysed", () => {
     expect(report.findings.some((f) => /^Conditioning: run 3 km/.test(f))).toBe(true);
     expect(report.topExercises[0]).toMatchObject({ name: "Burpee" });
     expect(analyseProgramming([], () => null)).toBeNull();
+  });
+});
+
+describe("a gym's layout, kept for its next import", () => {
+  it("the coach's corrections carry over to a document laid out the same way; columns move with their heading", () => {
+    const first = proposeLayout(studio(), TODAY) as GridLayout;
+    // The coach said the labels are in column B (not A) and Strength club's workouts in its own focus column's neighbour.
+    const corrected: GridLayout = { ...first, sharedFocusColumn: 1, programs: first.programs.map((p) => (p.name === "STRENGTH CLUB" ? { ...p, focusColumn: 7, workoutColumns: [6] } : p)) };
+    const next = fromXlsx(
+      "studio-2027.xlsx",
+      xlsxFile([{ name: "Janúar", rows: [["", "", "", "", "STRENGTH CLUB", "", "", "CLASS"], ["Squat", 1, "Fös", "", "Squat", "A. 5 x 3 Back squat", "", "AMRAP 10\n10 burpees"], ["Mix", 2, "Lau", "", "", "", "", "AMRAP 12\n9 burpees"], ["PP", 3, "Sun", "", "", "", "", "Murph"]] }]),
+    );
+    const reused = reuseLayout(proposeLayout(next, TODAY)!, corrected) as GridLayout;
+    expect(reused.dates.year).toBe(2027);
+    expect(reused.sharedFocusColumn).toBe(1);
+    expect(reused.programs.find((p) => p.name === "STRENGTH CLUB")).toMatchObject({ headingColumn: 4, focusColumn: 5, workoutColumns: [4] });
+    expect(reuseLayout(proposeLayout(fromText("x", "Monday 5.1.2026\nAMRAP 12\n10 burpees"), TODAY)!, corrected)).toBeNull();
   });
 });

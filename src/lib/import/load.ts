@@ -72,6 +72,23 @@ export async function loadImports(orgId: string) {
   return data;
 }
 
+/** The layouts of the gym's latest imports, as corrected there, to offer for a document laid out the same way. */
+export async function loadEarlierLayouts(orgId: string): Promise<{ sourceName: string; layout: Layout }[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("import_batches")
+    .select("source_name, layout")
+    .eq("org_id", orgId)
+    .not("layout", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(10);
+  if (error) throw error;
+  return data.flatMap((b) => {
+    const layout = layoutSchema.safeParse(b.layout);
+    return layout.success ? [{ sourceName: b.source_name, layout: layout.data }] : [];
+  });
+}
+
 export interface ImportContext {
   library: Library;
   /** The gym's active day focuses, by name. */

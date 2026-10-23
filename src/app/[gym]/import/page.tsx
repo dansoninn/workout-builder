@@ -7,7 +7,7 @@ import { PageBody, PageHeader } from "@/components/app/page";
 import { ReadOnlyNote } from "@/components/app/settings";
 import { Badge } from "@/components/ui/badge";
 import { formatShortDate } from "@/lib/dates";
-import { loadImports } from "@/lib/import/load";
+import { loadEarlierLayouts, loadImports } from "@/lib/import/load";
 import { can } from "@/lib/permissions";
 import type { GymMembership } from "@/lib/session";
 
@@ -31,7 +31,7 @@ async function Imports({ gym }: { gym: GymMembership }) {
       </PageBody>
     );
   }
-  const [tracks, imports] = await Promise.all([loadTracks(gym.id), loadImports(gym.id)]);
+  const [tracks, imports, earlier] = await Promise.all([loadTracks(gym.id), loadImports(gym.id), loadEarlierLayouts(gym.id)]);
   const programName = (id: string) => tracks.find((t) => t.id === id)?.name ?? "a program";
   const drafts = imports.filter((i) => i.status === "draft");
   const done = imports.filter((i) => i.status !== "draft");
@@ -44,7 +44,7 @@ async function Imports({ gym }: { gym: GymMembership }) {
         description="Bring weeks, months or a year of programming into a program's calendar and analytics: from Excel, Google Sheets, CSV, Word or pasted text. Nothing reaches the calendar until you say so."
       />
       <div className="grid gap-10">
-        <StartImport slug={gym.slug} tracks={tracks.filter((t) => !t.archived)} today={new Date().toISOString().slice(0, 10)} />
+        <StartImport slug={gym.slug} tracks={tracks.filter((t) => !t.archived)} today={new Date().toISOString().slice(0, 10)} earlier={earlier} />
 
         {drafts.length > 0 && (
           <section aria-labelledby="unfinished" className="grid gap-3">

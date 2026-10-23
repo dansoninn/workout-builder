@@ -26,7 +26,8 @@ Nothing is blocked; each item says what I did meanwhile. **1 and 2 matter most.*
    - **A coach's import** does not add day focuses or closed days (those lists are kept by owners and head coaches); they are left out and the coach is told. An owner's or head coach's import adds them.
    - **A gym without a country:** a rare day label on a public holiday of any country the app knows (Iceland so far) is proposed as a closed day; the coach confirms each.
    - **Personal data:** emails, phone numbers, kennitölur and full Icelandic names are found and taken out before anything is stored, unless the coach keeps them. A first name alone or a foreign name is not found.
-   - **PDF:** read by pasting its text for now (a PDF reader in the browser is a follow-up). **Keeping a gym's layout for its next import** is a follow-up too: today each import proposes it again.
+   - **PDF:** read by pasting its text for now (a PDF reader in the browser is a follow-up).
+   - **Sessions written as words only** (LIÐLEIKI's "Deep, slow stretches for the whole body"): imported as workouts with the text as their title, counting no load, rather than left out.
 8. **Part 1 of Step 6** (name, domain, legal entity, Vercel/Supabase Pro, email, lawyer): postponed by you; the list is unchanged in `docs/PLAN-step-6.md`.
 
 ## What changed since your Afrek message (2026-10-23)
@@ -68,6 +69,7 @@ Every rule is tested on other gyms' styles too (`parse-notations.test.ts`). On A
 - **3. Preview:** a calendar of the period with each day marked (ready, needs you, cannot be saved, not imported; closed; the program already has a workout), and the four lenses for what will be imported. Any day opens **next to the document**: its row of the sheet with the cell marked, or its lines of the text; fix the text or leave the day out.
 - **4. Import:** days that already have a workout — keep, replace or add alongside; publish the ready ones or import all as drafts; the same workout on several days kept as a template; then one step, in one transaction. Workouts that still need you are drafts to finish in the builder; days that would not save as written (an AMRAP without its time) are named and left out until fixed.
 - **Save and resume:** every answer is kept as it is given ("All changes kept"); a year can be finished another day. **Undo** the whole import in one step: its workouts go, what it replaced comes back.
+- **The gym's layout, kept:** a new document laid out like an earlier import ("Laid out like afrek-2024.xlsx") gets the corrections made there — columns (moved with their headings), each sheet's month, day or month first.
 - **Your programming, analysed:** after an import, the period in the four lenses and in plain words (for example "No hinge hard sets in 5 of 12 weeks", "Most programmed: burpee in 40% of workouts", the heaviest and lightest week), ready to print or save as a PDF.
 - On Afrek's year (locally): all 504 workouts of the 4 programs found and dated; all 16 Icelandic holidays proposed as closed days.
 

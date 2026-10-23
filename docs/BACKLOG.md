@@ -120,7 +120,6 @@ Exercise library:
     - **"Your programming, analysed" report after import:** the period in the four lenses with the main findings in plain words (e.g. "12 weeks: knee:hip 3.8, no heavy hinge in 5 of 12 weeks, wall balls in 40% of sessions"), exportable as PDF. **This is the strongest onboarding and sales moment: a new gym uploads its last 3 months and sees its programming analysed in 10 minutes.**
 - [ ] Program import follow-ups (2026-10-23, Claude Code):
   - [ ] Read PDF files directly (a PDF reader in the browser); today the coach pastes a PDF's text.
-  - [ ] Keep a gym's layout for its next import (today each import proposes it again; the coach's corrections are kept with that import).
   - [ ] The gym's own named workouts: a template's name recognised in Paste and Import like a benchmark ("Afrek Hero"); "Add a benchmark" in the builder.
   - [ ] Several programs of one document in one go (one import = one program today, as decided).
   - [ ] Personal data: names other than Icelandic full names (a first name alone, foreign names) are not found; the coach is told to look.
