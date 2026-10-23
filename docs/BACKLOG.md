@@ -15,18 +15,18 @@ File: docs/reference/programming/afrek-2024.xlsx. **One gym's style, not an indu
 Layout: one sheet per month, one row per day; col A = day focus (PP, Squat, DL, Oly / Core, Mix, Partner) and Icelandic holidays; B = day of month; C = weekday; then **one column per program**: KRAFTUR & ÚTHALD (main class), STYRKUR, ÞREK, LIÐLEIKI. Þrek and Liðleiki ran Jan–May only. Each cell = a whole workout. "???" = not yet planned.
 
 Parser / Paste (4c) — frequent notations to support (count in the year):
-- [ ] "+" pairing of consecutive lines = done back to back (351×); "Superset 1. – 4 sets of:" (222×); "N Sets of:" / "N Rounds of:" with nested lines (600×).
-- [ ] "Dbl." / "Dbl. KB" / "Dbl. DB" = implement count 2 (285×); "Single DB" = 1.
-- [ ] Heavy / Medium / Light inside a line = Load effort for that line, not part of the exercise name (351×).
-- [ ] Alternatives with "or" / "/" ("Dbl. KB or DB", "Burpees/Sprawls", "(T2B/K2E/High Knee Raises)", "(Strict-Kipp-Bfly-C2B-MU)") — 216×: calculate on the first option, store all as alternatives on the line.
-- [ ] Interval forms: E2.5M, E5M, E30S, E40S; "Alt. EMOM x 20 (4 Rounds)" with B1…B5 slots; "Alt. E2M x 15 (5 Rounds)" with numbered slots of several lines; "6x 30 sec on, 12 sec off, 90 sec rest between stations" (station by station — needs rest between stations); "(max 40 sec)" cap on a line.
-- [ ] "Building" sets and "In 12–15 min find heaviest 3–4 rep" (76×) = ramp / max-out: reps known, load unknown, Load effort Hard→Max.
-- [ ] Sequential parts without letters: "First: … Then straight to: … finish with:".
-- [ ] Section words: Finisher (70×), Stretch / Stretch and Relax (107×), Technique, Mobility → intents; stretch blocks not counted in load.
-- [ ] "@ easy-ish pace", "@ 95%+ Effort" (effort framework); "Right Arm / Left Arm" unilateral split; "Burpee's"; "Time Cap 18 min" on its own line; "???" = empty day.
+- [x] "+" pairing of consecutive lines = done back to back (351×); "Superset 1. – 4 sets of:" (222×); "N Sets of:" / "N Rounds of:" with nested lines (600×). — built 2026-10-23 (PRs #26, #27).
+- [x] "Dbl." / "Dbl. KB" / "Dbl. DB" = implement count 2 (285×); "Single DB" = 1. — built 2026-10-23 (PRs #26, #27).
+- [x] Heavy / Medium / Light inside a line = Load effort for that line, not part of the exercise name (351×). — built 2026-10-23 (PRs #26, #27).
+- [x] Alternatives with "or" / "/" ("Dbl. KB or DB", "Burpees/Sprawls", "(T2B/K2E/High Knee Raises)", "(Strict-Kipp-Bfly-C2B-MU)") — 216×: calculate on the first option, store all as alternatives on the line. — built 2026-10-23 (PRs #26, #27).
+- [x] Interval forms: E2.5M, E5M, E30S, E40S; "Alt. EMOM x 20 (4 Rounds)" with B1…B5 slots; "Alt. E2M x 15 (5 Rounds)" with numbered slots of several lines; "6x 30 sec on, 12 sec off, 90 sec rest between stations" (station by station — needs rest between stations); "(max 40 sec)" cap on a line. — built 2026-10-23 (PRs #26, #27).
+- [x] "Building" sets and "In 12–15 min find heaviest 3–4 rep" (76×) = ramp / max-out: reps known, load unknown, Load effort Hard→Max. — built 2026-10-23 (PRs #26, #27).
+- [x] Sequential parts without letters: "First: … Then straight to: … finish with:". — built 2026-10-23 (PRs #26, #27).
+- [x] Section words: Finisher (70×), Stretch / Stretch and Relax (107×), Technique, Mobility → intents; stretch blocks not counted in load. — built 2026-10-23 (PRs #26, #27).
+- [x] "@ easy-ish pace", "@ 95%+ Effort" (effort framework); "Right Arm / Left Arm" unilateral split; "Burpee's"; "Time Cap 18 min" on its own line; "???" = empty day. — built 2026-10-23 (PRs #26, #27).
 
 Calculation (needs Daniel):
-- [ ] **Partner workouts — DECIDED (Daniel, 2026-10-23):** per-athlete volume, always as a class buffer:
+- [x] **Partner workouts — DECIDED (Daniel, 2026-10-23), built 2026-10-23 (PR #25, calc spec §4.5, decision 21):** per-athlete volume, always as a class buffer:
   - "Split reps at will" → each athlete does **50%** of the reps.
   - "I go, you go" → partners alternate; each athlete works ~half the time (1:1 work:rest). Time-bound pieces (AMRAP, time cap): estimate the team's rounds and each athlete gets **50%** of them. Fixed amounts written "each" (e.g. "five rounds each"): each athlete does the full amount and the block takes ~2× as long.
   - sRPE per athlete uses the block duration with the effort of the work; hard sets and exposure use the per-athlete volume. Update calc spec and tests.
@@ -37,8 +37,8 @@ Programs & calendar:
 - [ ] Programs can be seasonal (Þrek, Liðleiki Jan–May): program start/end dates, history kept.
 
 Exercise library:
-- [ ] 794 distinct exercise names in one year. Before Afrek go-live: run this file through the parser, produce a coverage report (matched / ambiguous / unknown, ranked by frequency) and propose library additions for Daniel's approval (e.g. heavy ball floor press, ball over shoulder, beat swing, windmill, russian leg lifts, straight leg toe touches, dynamic side plank, side/forward raises, bent over shoulder fly, rubber band lat pull down / hamstring curl, half-kneeling KB chop, halo, Hindu push-up, flutter kicks, KB SLRDL, dips in rack).
-- [ ] "row" means both rowing machine ("10-15 cal row") and strength rows ("KB row", "bent over row"): "row" → machine only when the amount is cal/m; otherwise ask.
+- [x] 794 distinct exercise names in one year. Before Afrek go-live: run this file through the parser, produce a coverage report (matched / ambiguous / unknown, ranked by frequency) and propose library additions for Daniel's approval (e.g. heavy ball floor press, ball over shoulder, beat swing, windmill, russian leg lifts, straight leg toe touches, dynamic side plank, side/forward raises, bent over shoulder fly, rubber band lat pull down / hamstring curl, half-kneeling KB chop, halo, Hindu push-up, flutter kicks, KB SLRDL, dips in rack). — Report and proposals built 2026-10-23: docs/library-coverage.md, src/lib/library/proposed-additions.ts (46 new, 34 changes; 47% → 76% of mentions matched). **Waiting for Daniel's approval** before seeding.
+- [x] "row" means both rowing machine ("10-15 cal row") and strength rows ("KB row", "bent over row"): "row" → machine only when the amount is cal/m; otherwise ask. — built 2026-10-23 (PR #28); a "Row" station of a timed block with no amount is read as the machine (STATUS, for review).
 
 ## Programs — Afrek launch requirement (audit 2026-10-23, Claude chat; Afrek runs 3–4 programs in parallel)
 "Tracks" are called **programs** since Daniel's decision 1 of 2026-10-23 (the table is still `tracks`). Decisions 2–5 of the same day settle the open points below.
@@ -123,6 +123,16 @@ Exercise library:
 - [ ] Athlete / client-facing delivery of workouts. (later phase)
 - [ ] Subscriptions & billing per gym. (before selling)
 - [ ] Icelandic UI translation — bonus, only if ever needed. (2026-10-21, Daniel)
+
+## Parser follow-ups (from the Afrek coverage run, 2026-10-23, Claude Code)
+- [ ] "X vs Y" / "X vs. Y": two stations sharing a slot ("Ski vs. Assault", "Wall sit vs handstand hold"). (2026-10-23, Claude Code)
+- [ ] Instruction lines inside a block read as stations: "each", "for", "a", "stations", "rest" alone; "Repeat 4 times through"; "After each round run …". (2026-10-23, Claude Code)
+- [ ] "laps" as an amount ("2 laps KB farmers carry"): needs a gym's lap length (a gym setting). (2026-10-23, Claude Code)
+- [ ] Time each side ("20/20 sec Pallof hold"). (2026-10-23, Claude Code)
+- [ ] Amount after the exercise in reverse order ("Row 500 m" works; "Farmers carry 2 laps" does not). (2026-10-23, Claude Code)
+- [ ] Ladders and chippers written as a list of rounds ("1-2-3-…-10"). (2026-10-23, Claude Code)
+- [ ] Benchmarks by name (Fran, Murph, …): part of program import. (2026-10-23, Claude Code)
+- [ ] Drop the generated `blocks.partner` column once no code reads it (kept for zero-downtime deploys since 003200). (2026-10-23, Claude Code)
 
 ## Housekeeping
 - [ ] Old Lovable demo account (coach@wodbuilder.app) — password is written in a handover doc; change it or disable the account. (2026-10-20)

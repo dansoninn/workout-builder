@@ -17,7 +17,7 @@ import type { BlockFormat } from "./rules";
  * and a line the parser cannot place is kept as a note. Efforts are only set
  * from the app's own words ("Pace Hard", "Load Moderate").
  */
-export const PARSER_VERSION = 2;
+export const PARSER_VERSION = 3;
 
 // ---------------------------------------------------------------------------
 // Exercise lookup: gym alias → core alias → generic word (ask) → unmatched.
@@ -56,8 +56,12 @@ function indexOf(library: Library): LibraryIndex {
   return index;
 }
 
-const FILLER = new Set(["the", "a", "an", "of"]);
-const MODIFIERS = new Set(["alt", "alternating"]);
+const FILLER = new Set(["the", "a", "an", "of", "and"]);
+/**
+ * Words on how a movement is done, not which: "alt", "explosive box jumps", "tempo back squat", "slow and controlled".
+ * "Strict" too, as the library already has it ("strict pull up" is a pull-up) — except where it is the name ("strict press").
+ */
+const MODIFIERS = new Set(["alt", "alternating", "explosive", "tempo", "slow", "controlled", "strict"]);
 
 const singular = (word: string) =>
   word.length <= 2 ? word
@@ -74,10 +78,46 @@ function variants(term: string): string[] {
   return [...new Set([...all, ...plain].map((w) => w.join(" ")).filter(Boolean))];
 }
 
-export function resolveExercise(library: Library, words: string, answers: Answers = {}): Resolution {
-  const term = normalizeAlias(words);
+/** Words for an implement, before an exercise's name; "bw" for none. */
+const IMPLEMENT_WORDS: Record<string, string | null> = {
+  kb: "kettlebell", kettlebell: "kettlebell", db: "dumbbell", dumbbell: "dumbbell", bb: "barbell", barbell: "barbell",
+  plate: "weight_plate", sandbag: "sandbag", band: "resistance_band", banded: "resistance_band", bw: null, bodyweight: null,
+};
+const FREE_WEIGHTS = new Set(["barbell", "trap_bar", "dumbbell", "kettlebell", "medicine_ball", "slam_ball", "sandbag", "weight_plate"]);
+/** "G2OH w plate", "Squat with a KB": the implement written after the exercise. */
+const WITH_IMPLEMENT = /^(.+?) (?:w|with) (?:an? )?(kb|db|bb|kettlebell|dumbbell|barbell|plate|sandbag|band)s?$/;
+
+/** What a bare "row" is with a count instead of calories, meters or a time: a strength row, most likely first. */
+const STRENGTH_ROWS = ["Bent-over row", "Single-arm dumbbell row", "Ring row", "Row"];
+
+/**
+ * How the line's amount reads, for words whose meaning depends on it: "row" is
+ * the rowing machine only with calories, meters or a time (or as a station of
+ * a timed block); with a count it is a strength row and the coach is asked
+ * (BACKLOG, 2026-10-23). "machine" also where the amount does not matter.
+ */
+export type AmountKind = "machine" | "count";
+
+/** The words as the library looks them up: normalised, "rubber band" as "band". An unknown exercise's term. */
+export const termOf = (words: string) => normalizeAlias(words).replace(/\brubber ?bands?\b/g, "band");
+
+export function resolveExercise(library: Library, words: string, answers: Answers = {}, amount: AmountKind = "machine"): Resolution {
+  const term = termOf(words);
   const index = indexOf(library);
   const forms = variants(term);
+  if (forms.includes("row")) {
+    const machine = index.core.get("row");
+    if (amount === "machine" && machine) return { kind: "matched", term: "row", exercise: machine, via: "core" };
+    // A gym's own "row", or the coach's answer, is what "row" means with a count.
+    if (amount === "count") {
+      const answered = answers.row ? index.byId.get(answers.row) : undefined;
+      if (answered) return { kind: "matched", term: "row", exercise: answered, via: "answer" };
+      const gym = index.gym.get("row");
+      if (gym) return { kind: "matched", term: "row", exercise: gym, via: "gym" };
+      const candidates = STRENGTH_ROWS.flatMap((name) => library.exercises.filter((e) => !e.orgId && e.name === name));
+      if (candidates.length) return { kind: "ambiguous", term: "row", candidates };
+    }
+  }
   for (const form of forms) {
     const answered = answers[form] ? index.byId.get(answers[form]) : undefined;
     if (answered) return { kind: "matched", term: form, exercise: answered, via: "answer" };
@@ -89,6 +129,16 @@ export function resolveExercise(library: Library, words: string, answers: Answer
   for (const form of forms) {
     const hit = index.core.get(form);
     if (hit) return { kind: "matched", term: form, exercise: hit, via: "core" };
+  }
+  // "KB farmers carry", "Barbell good morning": the implement, then an exercise done with it — or one done
+  // without free weights, the implement then its load ("KB split squat", "DB box step-ups", "BW lateral lunges").
+  const withImplement = term.match(WITH_IMPLEMENT);
+  const [first, ...rest] = (withImplement ? `${withImplement[2]} ${withImplement[1]}` : term).split(" ").filter((w) => !MODIFIERS.has(w));
+  const implement = IMPLEMENT_WORDS[first!];
+  if (implement !== undefined && rest.length) {
+    const inner = resolveExercise(library, rest.join(" "), answers, amount);
+    const e = inner.kind === "matched" && inner.via !== "answer" ? inner.exercise : null;
+    if (e && e.kind === "movement" && ((implement && e.equipment.includes(implement)) || !e.equipment.some((x) => FREE_WEIGHTS.has(x)))) return inner;
   }
   for (const form of forms) {
     const ids = library.ambiguous[form];
@@ -186,6 +236,19 @@ interface ItemParts {
   efforts: EffortFound[];
 }
 
+/** "machine" when the amount is calories, meters or a time, or the line is a station of a timed block; otherwise a count. */
+function amountKind(parts: ItemParts, station: boolean): AmountKind {
+  // No amount, or "max" alone, as a station of a timed block: as much as fits in the window.
+  if (!parts.quantity || /^max(?:imum)?$/i.test(parts.quantity.trim())) return station && parts.sets === null ? "machine" : "count";
+  const read = parseQuantity(parts.quantity, "reps");
+  if (!read.ok) return "count";
+  const q = read.value;
+  return q.type === "reps" || q.type === "reps_range" || q.type === "reps_per_side" || q.type === "reps_per_side_range" || q.type === "reps_scheme"
+    || (q.type === "max_effort" && q.unit === "reps")
+    ? "count"
+    : "machine";
+}
+
 const looksLikeLoad = (text: string) => parseLoad(text).ok && /\d|bw|body/i.test(text);
 
 function splitItem(original: string): ItemParts {
@@ -261,6 +324,12 @@ function splitItem(original: string): ItemParts {
     }
   }
   if (quantity) quantity = quantity.replace(/\s+/g, " ").trim().replace(/^:(\d\d)$/, "0:$1");
+  // "Side Plank L", "Copenhagen plank right": one side, written last.
+  const sideLast = !side && !sidesBoth ? s.match(/^(.*[a-z].*?)\s+(l|r|left|right)\.?$/i) : null;
+  if (sideLast) {
+    side = sideOf(sideLast[2]!);
+    s = sideLast[1]!;
+  }
   if (perSide && quantity && /^\d+$/.test(quantity)) quantity = `${quantity}/${quantity}`;
 
   let words = s
@@ -281,7 +350,7 @@ function splitItem(original: string): ItemParts {
   // Dbl. KB, Double DB: two implements; Single DB: one. Not "single-arm" or "single-leg", which are exercises.
   let implementCount: number | null = null;
   words = words
-    .replace(/\b(?:dbl\.?|double|pair of)\s*(?=(?:kb|db|kettlebells?|dumbbells?|bells?)\b)/gi, () => {
+    .replace(/\b(?:dbl\.?|double|pair of)\s*(?=(?:kb|db|kettlebells?|dumbbells?|bells?|plates?)\b)/gi, () => {
       implementCount = 2;
       return "";
     })
@@ -322,7 +391,16 @@ function splitAlternatives(words: string, isExercise: (words: string) => boolean
     if (name === last || !name) return null;
     return { first: `${first} ${name}`, others: [...others.slice(0, -1), last.slice(0, last.length - name.length).trim()] };
   }
-  return isExercise(first!) ? { first: first!, others } : null;
+  if (isExercise(first!)) return { first: first!, others };
+  // "Power or Squat Clean", "Push or Split Jerk": the options share their last words, written once at the end.
+  const lastWords = others.at(-1)!.split(/\s+/);
+  for (let k = 1; k < lastWords.length; k++) {
+    const tail = lastWords.slice(k).join(" ");
+    if (isExercise(`${first} ${tail}`)) {
+      return { first: `${first} ${tail}`, others: others.map((o, i) => (i < others.length - 1 && !o.includes(" ") ? `${o} ${tail}` : o)) };
+    }
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -421,8 +499,8 @@ function readFormat(input: string): FormatRead | null {
   } else if ((m = take(/^(\d+)\s*(?:s|secs?)?\s*(?:on|work)?\s*\/\s*(\d+)\s*(?:s|secs?)?\s*(?:off|rest)?\s*x\s*(\d+)\b/))) {
     make("intervals", { rounds: Number(m[3]), work_s: Number(m[1]), rest_s: Number(m[2]), stations: 1 }, { scheme: "units" });
   } else if (
-    // "25 sec on - 15 sec off", "30sec ON, 12sec OFF x 6", "6x 30 sec on, 12 sec off", "90 sec on - 30 sec off x 3 rounds".
-    (m = take(/^(?:(\d+)\s*x\s*)?(\d+)\s*(?:s|secs?|seconds?)\s*(?:on|work)\b[\s,/-]*(\d+)\s*(?:s|secs?|seconds?)\s*(?:off|rest)\b(?:\s*x\s*(\d+)(\s*(?:rounds?|sets?)\b)?)?/))
+    // "25 sec on - 15 sec off", "30sec ON, 12sec OFF x 6", "6x 30 sec on, 12 sec off", "4 rounds, 40 sec on 20 sec off", "90 sec on - 30 sec off x 3 rounds".
+    (m = take(/^(?:(\d+)\s*(?:x|rounds?|rds?|sets?)\s*(?:of\s*)?[,:]?\s*)?(\d+)\s*(?:s|secs?|seconds?)\s*(?:on|work)\b[\s,/-]*(\d+)\s*(?:s|secs?|seconds?)\s*(?:off|rest)\b(?:\s*x\s*(\d+)(\s*(?:rounds?|sets?)\b)?)?/))
   ) {
     const rounds = m[1] ?? m[4];
     make("intervals", { rounds: rounds ? Number(rounds) : 1, work_s: Number(m[2]), rest_s: Number(m[3]), stations: 1 }, { scheme: "units", roundsPending: !rounds, roundsSaid: !!m[5] });
@@ -752,7 +830,15 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       line.items.push({ itemId: built.item.id, words: "", resolution: null, meaning: `+ ${parts.sets} × ${repsHere[1]}` });
       return true;
     }
+    // Where lines have no amount (work windows, alternating minutes), a line without one is a station.
+    const stations = building.block.format === "intervals" || building.block.format === "tabata" || (building.block.format === "every" && Boolean(building.block.params.alternating));
     if (!parts.words && waiting && (parts.quantity || parts.sets !== null)) {
+      // "Row", then "500 m" on the next line: the amount decides which row.
+      if (waiting.parsed.resolution?.term === "row") {
+        const again = resolveExercise(library, waiting.parsed.words, answers, amountKind(parts, false));
+        waiting.parsed.resolution = again;
+        waiting.item.exerciseId = again.kind === "matched" ? again.exercise.id : null;
+      }
       fill(building, waiting.item, parts, waiting.parsed.resolution, line);
       line.items.push(waiting.parsed);
       waiting = null;
@@ -765,10 +851,8 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       ? splitAlternatives(parts.words, (words) => resolveExercise(library, words, answers).kind !== "unmatched")
       : null;
     if (alternatives) parts.words = alternatives.first;
-    const resolution = parts.words ? resolveExercise(library, parts.words, answers) : null;
-    // Words without an amount that are no exercise ("Leave nothing behind!"): a note, not a line —
-    // except where lines have no amount (work windows, alternating minutes): there it is a station.
-    const stations = building.block.format === "intervals" || building.block.format === "tabata" || (building.block.format === "every" && building.block.params.alternating);
+    const resolution = parts.words ? resolveExercise(library, parts.words, answers, amountKind(parts, stations)) : null;
+    // Words without an amount that are no exercise ("Leave nothing behind!"): a note, not a line — except as a station.
     if (resolution?.kind === "unmatched" && !parts.quantity && parts.sets === null && !parts.load && !stations) return false;
     const item = { ...newItem(slot), rawLine: partText.trim() };
     if (resolution?.kind === "matched") item.exerciseId = resolution.exercise.id;

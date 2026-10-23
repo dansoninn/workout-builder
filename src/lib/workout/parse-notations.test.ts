@@ -342,3 +342,109 @@ describe("instructions and rest stations", () => {
     expect(parse("For time\n20 x Med Ball Cleans").blocks[0]!.items[0]!.paceEffort).toBeNull();
   });
 });
+
+describe('"row": the rowing machine or a strength row, by its amount', () => {
+  const rowOf = (text: string, answers: Answers = {}) => parse(text, answers).lines.flatMap((l) => l.items).map((i) => i.resolution)[0];
+
+  it("calories, meters or a time: the rowing machine", () => {
+    for (const text of ["For time\n15 cal row", "500m Row", "For time\n1 km row", "AMRAP 12\n2:00 row", "For time\n12/10 cal Row", "30 sec row"]) {
+      expect(rowOf(text)).toMatchObject({ kind: "matched", exercise: { name: "Row" } });
+    }
+  });
+
+  it("a station of a timed block, with no amount or max: the rowing machine", () => {
+    for (const text of ["4 rounds, 40 sec on 20 sec off\n1. Row\n2. Burpees", "40/20 x 8\nRow\nBurpees", "Alt. EMOM x 10\nB1. Row\nB2. Bike", "Tabata\nMax row"]) {
+      expect(rowOf(text)).toMatchObject({ kind: "matched", exercise: { name: "Row" } });
+    }
+  });
+
+  it("a count: which row is asked, strength rows first", () => {
+    for (const text of ["4 x 10 Row", "3 sets\n12-15 Row", "5/5 x Row", "10 x Row (5/5)", "For time\n20 rows"]) {
+      const r = rowOf(text);
+      expect(r).toMatchObject({ kind: "ambiguous", term: "row" });
+      expect(r?.kind === "ambiguous" && r.candidates.map((e) => e.name)).toEqual(["Bent-over row", "Single-arm dumbbell row", "Ring row", "Row"]);
+    }
+  });
+
+  it("the coach's answer, or the gym's own name, says which: never for calories or meters", () => {
+    const answers = { row: idOf("Bent-over row") };
+    expect(rowOf("4 x 10 Row", answers)).toMatchObject({ kind: "matched", exercise: { name: "Bent-over row" }, via: "answer" });
+    expect(rowOf("500 m row", answers)).toMatchObject({ kind: "matched", exercise: { name: "Row" } });
+    const gym = coreLibrary({ aliases: { row: "Ring row" } });
+    const r = parseWorkoutText("3 x 12 row\n250 m row", gym).lines.flatMap((l) => l.items).map((i) => i.resolution);
+    expect(r.map((x) => x?.kind === "matched" && x.exercise.name)).toEqual(["Ring row", "Row"]);
+  });
+
+  it('"Row" and its amount on the next line: the amount decides', () => {
+    expect(parse("For time\nRow\n500 m").blocks[0]!.items.map((i) => exercise(i.exerciseId))).toEqual(["Row"]);
+  });
+
+  it("qualified rows and rowing words are not asked", () => {
+    expect(lines("3 x 10 Bent over row\n3 x 10 Ring rows\n2000 m rowing")).toEqual([["Bent-over row", "Ring row", "Row"]]);
+  });
+});
+
+describe("an implement word before an exercise done with it", () => {
+  it("is the exercise: KB, DB, barbell, plate, band", () => {
+    expect(lines("For time\n100 m KB farmers carry\n10 Barbell good morning\n10 Plate ground to overhead\n15 Band face pulls\n20 DB goblet squats")).toEqual([
+      ["Farmer carry", "Good morning", "Ground-to-overhead", "Face pull", "Goblet squat"],
+    ]);
+  });
+
+  it('after "alt": "Alt. DB devils press", "Alt KB farmers carry"', () => {
+    expect(lines("For time\n10 Alt. DB devils press\n100 m Alt KB farmers carry")).toEqual([["Devil press", "Farmer carry"]]);
+  });
+
+  it('"rubber band" is a band', () => {
+    expect(lines("3 x 15 Rubber band face pulls\n3 x 15 Rubberband pull aparts")).toEqual([["Face pull", "Band pull-apart"]]);
+  });
+
+  it("before an exercise done without free weights, it is the load: KB split squats, DB step-ups, BW lateral lunges", () => {
+    expect(lines("For time\n10 KB walking lunges\n10 DB box step ups\n10 BW lateral lunges\n5 KB pull ups")).toEqual([
+      ["Walking lunge", "Step-up", "Lateral lunge", "Pull-up"],
+    ]);
+  });
+
+  it('written after the exercise: "G2OH w plate", "with a KB"', () => {
+    expect(lines("For time\n10 G2OH w plate\n10 Farmers carry with a KB")).toEqual([["Ground-to-overhead", "Farmer carry"]]);
+  });
+
+  it("not when the exercise is not done with that implement", () => {
+    const r = parse("For time\n10 KB bench press").lines[1]!.items[0]!.resolution;
+    expect(r?.kind).toBe("unmatched");
+  });
+});
+
+describe("alternatives that share their last words", () => {
+  it('"Power or Squat Clean": the first is a power clean, the other kept as written', () => {
+    const { blocks } = parse("EMOM 10\n2 x Power or Squat Clean");
+    expect(exercise(blocks[0]!.items[0]!.exerciseId)).toBe("Power clean");
+    expect(blocks[0]!.items[0]!.alternatives).toEqual(["Squat Clean"]);
+    expect(exercise(parse("5 x 2 Push or split jerk").blocks[0]!.items[0]!.exerciseId)).toBe("Push jerk");
+  });
+});
+
+describe("words on how, not which", () => {
+  it('"strict": the same exercise, except where it is the name', () => {
+    expect(lines("For time\n10 Strict chest to bar\n10 Strict toes to bar\n10 Strict press\n30 sec Strict hollow hold")).toEqual([
+      ["Chest-to-bar pull-up", "Toes-to-bar", "Strict press", "Hollow hold"],
+    ]);
+  });
+
+  it("explosive, tempo, slow and controlled: the same exercise", () => {
+    expect(lines("For time\n10 Explosive box jumps\n5 Tempo back squat\n20 Slow and controlled mountain climbers")).toEqual([
+      ["Box jump", "Back squat", "Mountain climber"],
+    ]);
+  });
+});
+
+describe("one side, written last", () => {
+  it('"Side Plank L", "Side plank right"', () => {
+    const { blocks } = parse("3 sets\n30 sec Side Plank L\n30 sec Side Plank R\n20 sec Copenhagen plank right");
+    expect(blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.side])).toEqual([
+      ["Side plank", "left"],
+      ["Side plank", "right"],
+      ["Copenhagen plank", "right"],
+    ]);
+  });
+});

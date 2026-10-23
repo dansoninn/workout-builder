@@ -355,7 +355,11 @@ function Question({
   if (r.kind === "ambiguous") {
     return (
       <fieldset className="grid gap-1.5">
-        <legend className="mb-1 text-xs font-medium">Which “{r.term}” does your gym mean? Answered once, for every workout.</legend>
+        <legend className="mb-1 text-xs font-medium">
+          {generic
+            ? <>Which “{r.term}” does your gym mean? Answered once, for every workout.</>
+            : <>Which “{r.term}” is it here? With calories, meters or a time it is the rowing machine.</>}
+        </legend>
         <div className="flex flex-wrap gap-1.5">
           {r.candidates.map((exercise) => (
             <Button key={exercise.id} variant="outline" size="sm" onClick={() => onAnswer(r.term, exercise.id)}>
