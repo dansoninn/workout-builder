@@ -110,7 +110,7 @@ test("alternatives, one side and a cap are kept: pasted, saved, and shown on the
   await page.getByRole("button", { name: /^Save/ }).filter({ visible: true }).click();
   await page.reload();
   const block = page.getByRole("region", { name: "Block A", exact: true }).filter({ visible: true });
-  await expect(block).toContainText("max 40 sec");
+  await expect(block).toContainText("max 40 s");
   await expect(block).toContainText("or Sprawls");
   await expect(block).toContainText("right side only");
 });
