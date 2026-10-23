@@ -156,7 +156,7 @@ export function PasteWorkout({
               </label>
               <Select items={trackItems} value={trackId} onValueChange={(v) => setTrackId(v ?? null)}>
                 <SelectTrigger id={`${textId}-track`} size="default" className="w-44">
-                  <SelectValue placeholder="No program" />
+                  <SelectValue placeholder="Choose a program" />
                 </SelectTrigger>
                 <SelectContent>
                   {trackItems.map((t) => (

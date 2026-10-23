@@ -421,7 +421,7 @@ export function Builder({
               </label>
               <Select items={trackItems} value={draft.trackId} onValueChange={(v) => dispatch({ type: "workout", patch: { trackId: v ?? null } })} disabled={readOnly}>
                 <SelectTrigger id={trackId} size="default" className="w-44">
-                  <SelectValue placeholder="No program" />
+                  <SelectValue placeholder="Choose a program" />
                 </SelectTrigger>
                 <SelectContent>
                   {trackItems.map((t) => (
@@ -499,7 +499,7 @@ export function Builder({
       {draft.kind === "template" && savedOnce && (
         <ApplyTemplateDialog
           slug={slug}
-          templates={[{ id: draft.id, title: draft.title || "Template" }]}
+          templates={[{ id: draft.id, title: draft.title || "Template", trackId: draft.trackId }]}
           fixedTemplateId={draft.id}
           tracks={tracks}
           initialTrackId={draft.trackId}

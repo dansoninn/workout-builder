@@ -17,7 +17,7 @@ function parse(text: string, answers: Answers = {}, lib = library) {
 /** The parsed blocks as a workout, the way "Confirm" makes it. */
 function asWorkout(text: string, answers: Answers = {}): DraftWorkout {
   const { title, blocks } = parse(text, answers);
-  return { id: crypto.randomUUID(), kind: "scheduled", date: "2026-10-22", trackId: null, title, focus: "", status: "draft", blocks, rawText: text, parserVersion: 1 };
+  return { id: crypto.randomUUID(), kind: "scheduled", date: "2026-10-22", trackId: "5b3c4e2a-8f1d-4c6e-9a7b-2d1e0f3c4b5a", title, focus: "", status: "draft", blocks, rawText: text, parserVersion: 1 };
 }
 
 function numbers(text: string, answers: Answers = {}) {

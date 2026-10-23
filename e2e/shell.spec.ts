@@ -55,7 +55,7 @@ test("on a phone, the navigation opens from the menu button", async ({ page }) =
   await expect(page.getByRole("dialog", { name: "Navigation" })).toHaveCount(0);
 });
 
-test("a new gym starts with a Class program; owners create, rename and archive programs", async ({ page }) => {
+test("a new gym starts with a Class program; owners create, order, rename and archive programs", async ({ page }) => {
   const { slug } = await ownerWithGym(page);
   await page.goto(`/${slug}/settings/programs`);
   // Links from before "Tracks" became "Programs" still arrive.
@@ -80,6 +80,16 @@ test("a new gym starts with a Class program; owners create, rename and archive p
   await expect(page.getByText("There is already a program with this name")).toBeVisible();
   await page.keyboard.press("Escape");
 
+  // Their order here is their order everywhere; it is kept.
+  await expect(tracks.getByRole("listitem")).toHaveText([/^Class/, /^Strength club/]);
+  await expect(page.getByRole("button", { name: "Move Class up" })).toBeDisabled();
+  await page.getByRole("button", { name: "Move Strength club up" }).click();
+  await expect(tracks.getByRole("listitem")).toHaveText([/^Strength club/, /^Class/]);
+  // Now first, it can only go down: the keyboard stays on it.
+  await expect(page.getByRole("button", { name: "Move Strength club down" })).toBeFocused();
+  await page.reload();
+  await expect(tracks.getByRole("listitem")).toHaveText([/^Strength club/, /^Class/]);
+
   await page.getByRole("button", { name: "Edit Class" }).click();
   await page.getByRole("dialog").getByLabel("Name").fill("Group class");
   await page.getByRole("dialog").getByRole("button", { name: "Save program" }).click();
@@ -90,6 +100,19 @@ test("a new gym starts with a Class program; owners create, rename and archive p
   await expect(page.getByText("Group class archived")).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: "Restore Group class" })).toBeVisible();
+
+  // Every workout needs a program, so the last active one stays.
+  await expect(page.getByRole("button", { name: "Archive Strength club" })).toBeDisabled();
+  await expect(page.getByText("a gym always keeps at least one active")).toBeVisible();
+
+  // An archived program may share a name; it cannot be restored while an active one has it.
+  await page.getByRole("button", { name: "New program" }).click();
+  await page.getByRole("dialog").getByLabel("Name").fill("Group class");
+  await page.getByRole("dialog").getByRole("button", { name: "Create program" }).click();
+  await expect(page.getByText("Group class created")).toBeVisible();
+  await page.getByRole("button", { name: "Restore Group class" }).click();
+  await expect(page.getByText("An active program has the same name. Rename one of them first.")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Archived" }).getByText("Group class")).toBeVisible();
 });
 
 test("an owner renames the gym and everyone sees the new name", async ({ page }) => {

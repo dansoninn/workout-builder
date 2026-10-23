@@ -14,7 +14,7 @@ select plan(67);
 
 -- Scratch workout and block in gym A for the shape tests.
 insert into tests.ids (name) values ('workout_c'), ('block_c');
-insert into public.workouts (id, org_id, kind, title) values (tests.id('workout_c'), tests.id('gym_a'), 'template', 'Scratch');
+insert into public.workouts (id, org_id, track_id, kind, title) values (tests.id('workout_c'), tests.id('gym_a'), tests.id('track_a'), 'template', 'Scratch');
 insert into public.blocks (id, workout_id, org_id, position, label, intent, format, params)
 values (tests.id('block_c'), tests.id('workout_c'), tests.id('gym_a'), 0, 'A', 'conditioning', 'amrap', '{"time_s": 600}');
 
@@ -76,9 +76,9 @@ select throws_ok($$ update public.workouts set status = 'published' where id = t
 -- ---------------------------------------------------------------------------
 -- Scheduled vs template, track in the same gym, rows stay with their parent
 -- ---------------------------------------------------------------------------
-select throws_ok($$ insert into public.workouts (org_id, kind) values (tests.id('gym_a'), 'scheduled') $$,
+select throws_ok($$ insert into public.workouts (org_id, track_id, kind) values (tests.id('gym_a'), tests.id('track_a'), 'scheduled') $$,
   '23514', null, 'A scheduled workout needs a date');
-select throws_ok($$ insert into public.workouts (org_id, kind, date) values (tests.id('gym_a'), 'template', '2026-10-21') $$,
+select throws_ok($$ insert into public.workouts (org_id, track_id, kind, date) values (tests.id('gym_a'), tests.id('track_a'), 'template', '2026-10-21') $$,
   '23514', null, 'A template has no date');
 select throws_ok($$
   insert into public.workouts (org_id, track_id, kind, date) values (tests.id('gym_a'), tests.id('track_b'), 'scheduled', '2026-10-21')

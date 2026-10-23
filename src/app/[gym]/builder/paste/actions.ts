@@ -74,6 +74,7 @@ export async function createFromText(slug: string, input: unknown): Promise<Acti
   });
   if (error) {
     if (error.code === "42501") return { ok: false, error: NOT_ALLOWED };
+    if (error.code === "23514" && /archived/.test(error.message)) return { ok: false, error: error.message };
     return { ok: false, error: "Could not make the workout. Your text is kept here; try again." };
   }
   await storeMetrics(gym.id, draft.id);

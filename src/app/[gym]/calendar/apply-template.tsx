@@ -17,10 +17,12 @@ import { applyTemplate } from "./actions";
 export interface TemplateOption {
   id: string;
   title: string;
+  /** The template's own program: the copies go there unless the coach picks another. */
+  trackId: string | null;
 }
 
 /**
- * A template on several dates (PLAN-step-5 5b): pick the template, the track
+ * A template on several dates (PLAN-step-5 5b): pick the template, the program
  * and any number of days. Each day gets its own copy, made together.
  */
 export function ApplyTemplateDialog({
@@ -47,7 +49,10 @@ export function ApplyTemplateDialog({
   const id = useId();
   const active = tracks.filter((t) => !t.archived);
   const [templateId, setTemplateId] = useState<string | null>(fixedTemplateId ?? templates[0]?.id ?? null);
-  const [trackId, setTrackId] = useState<string | null>(initialTrackId ?? active[0]?.id ?? null);
+  const programOf = (id: string | null) => active.find((t) => t.id === templates.find((x) => x.id === id)?.trackId)?.id;
+  const [trackId, setTrackId] = useState<string | null>(initialTrackId ?? programOf(templateId) ?? active[0]?.id ?? null);
+  // Until the coach picks a program, it follows the template's own.
+  const [trackChosen, setTrackChosen] = useState(initialTrackId !== null);
   const [dates, setDates] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -58,6 +63,7 @@ export function ApplyTemplateDialog({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!templateId) return setError("Pick a template.");
+    if (!trackId) return setError("Pick a program.");
     if (dates.length === 0) return setError("Pick at least one day.");
     setError(null);
     startTransition(async () => {
@@ -83,7 +89,12 @@ export function ApplyTemplateDialog({
               <label htmlFor={`${id}-template`} className="text-sm font-medium">
                 Template
               </label>
-              <Select items={templates.map((t) => ({ value: t.id, label: t.title }))} value={templateId} onValueChange={(v) => setTemplateId(v)}>
+              <Select items={templates.map((t) => ({ value: t.id, label: t.title }))} value={templateId}
+                onValueChange={(v) => {
+                  setTemplateId(v);
+                  if (!trackChosen) setTrackId(programOf(v) ?? trackId);
+                }}
+              >
                 <SelectTrigger id={`${id}-template`} className="w-full">
                   <SelectValue placeholder="Pick a template" />
                 </SelectTrigger>
@@ -101,9 +112,14 @@ export function ApplyTemplateDialog({
             <label htmlFor={`${id}-track`} className="text-sm font-medium">
               Program
             </label>
-            <Select items={active.map((t) => ({ value: t.id, label: t.name }))} value={trackId} onValueChange={(v) => setTrackId(v ?? null)}>
+            <Select items={active.map((t) => ({ value: t.id, label: t.name }))} value={trackId}
+              onValueChange={(v) => {
+                setTrackId(v ?? null);
+                setTrackChosen(true);
+              }}
+            >
               <SelectTrigger id={`${id}-track`} className="w-full">
-                <SelectValue placeholder="No program" />
+                <SelectValue placeholder="Pick a program" />
               </SelectTrigger>
               <SelectContent>
                 {active.map((t) => (

@@ -12,7 +12,7 @@ import { PasteWorkout } from "./paste-workout";
 
 export const metadata: Metadata = { title: "Paste a workout" };
 
-/** Paste a workout as text, for ?date and ?track when given (else today and the first track). */
+/** Paste a workout as text, for ?date and ?program when given (else today and the first program). */
 export default function PastePage({ params, searchParams }: PageProps<"/[gym]/builder/paste">) {
   return <GymPage params={params} render={(gym) => <Paste gym={gym} searchParams={searchParams} />} />;
 }

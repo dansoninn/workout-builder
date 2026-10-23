@@ -11,7 +11,7 @@ select plan(14);
 insert into tests.ids (name) select unnest(array['tpl', 'c1', 'c2', 'c3', 'c4', 'c5']);
 
 -- A template made from workout_a's content.
-insert into public.workouts (id, org_id, kind, title) values (tests.id('tpl'), tests.id('gym_a'), 'template', 'Squat day (template)');
+insert into public.workouts (id, org_id, track_id, kind, title) values (tests.id('tpl'), tests.id('gym_a'), tests.id('track_a'), 'template', 'Squat day (template)');
 insert into public.blocks (workout_id, org_id, position, label, intent, format, params, load_effort, rest_after_s)
 select tests.id('tpl'), org_id, position, label, intent, format, params, load_effort, 90 from public.blocks where id = tests.id('block_a');
 insert into public.block_items (block_id, org_id, position, exercise_id, raw_line, quantity, load, implement_count)
