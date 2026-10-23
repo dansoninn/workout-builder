@@ -107,6 +107,7 @@ export function ImportStep({
             <span className="font-medium tabular">{s.workouts}</span> workouts{s.from && s.to ? `, ${dayLabel(s.from)} ${s.from.slice(0, 4)} – ${dayLabel(s.to)} ${s.to.slice(0, 4)}` : ""}:{" "}
             {s.published ? `${s.published} published, ${s.drafts} drafts` : "all drafts"}
           </li>
+          {s.described > 0 && <li><span className="font-medium tabular">{s.described}</span> of them described in words only: kept with their text, counting no load</li>}
           {s.templates > 0 && <li><span className="font-medium tabular">{s.templates}</span> templates</li>}
           {s.days > 0 && <li><span className="font-medium tabular">{s.days}</span> days with a day focus</li>}
           {s.closed > 0 && <li><span className="font-medium tabular">{s.closed}</span> closed days</li>}

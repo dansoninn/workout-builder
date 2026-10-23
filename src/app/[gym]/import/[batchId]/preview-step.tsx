@@ -57,7 +57,7 @@ export function PreviewStep({
     if (!r) return "none";
     if (cannot.has(r.day.key)) return "cannot";
     const w = planned.get(r.day.key);
-    if (w) return w.ready ? "ready" : "draft";
+    if (w) return w.blocks.length === 0 ? "out" : w.ready ? "ready" : "draft";
     return r.text ? "out" : "none";
   };
   const months = [...new Set([...byDate.keys()].map((d) => d.slice(0, 7)))].sort();

@@ -63,6 +63,8 @@ export interface ImportPlan {
   aliases: { term: string; exerciseId: string }[];
   summary: {
     workouts: number;
+    /** Sessions described in words only: imported with their text, counting nothing. */
+    described: number;
     cannotSave: number;
     ready: number;
     drafts: number;
@@ -93,7 +95,7 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
   let keptExisting = 0;
   const importable = reading.days.filter((r): r is ReadDay & { parsed: NonNullable<ReadDay["parsed"]> } => r.parsed !== null && r.day.date !== null && r.status !== "skipped" && r.status !== "no-date");
   for (const r of importable) {
-    if (r.parsed.blocks.length === 0) continue;
+    // A session described in words ("Deep, slow stretches for the whole body") is imported too: its text is its title, and it counts nothing.
     const date = r.day.date!;
     const there = byDate.get(date) ?? [];
     if (there.length > 0 && choices.conflicts === "skip") {
@@ -144,8 +146,10 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
         blocks: fresh(first.parsed.blocks),
         rawText: first.text,
         parserVersion: PARSER_VERSION,
-      }];
-    });
+      } satisfies DraftWorkout];
+    })
+    // Only what the builder would save, and something to start from: a day that cannot be saved, or only words, makes no template.
+    .filter((t) => t.blocks.length > 0 && draftProblems(t, library).length === 0);
 
   // Day focuses and closed days from the labels: new focuses and closed days are the gym's lists (owners and head coaches).
   const known = new Map(ctx.focusNames.map((n) => [lower(n), n]));
@@ -192,6 +196,7 @@ export function planImport(reading: ImportReading, ctx: PlanContext): ImportPlan
     aliases: [...aliases].map(([term, exerciseId]) => ({ term, exerciseId })),
     summary: {
       workouts: workouts.length,
+      described: workouts.filter((w) => w.blocks.length === 0).length,
       cannotSave: cannotSave.length,
       ready: workouts.filter((w) => w.ready).length,
       drafts: workouts.filter((w) => !w.publish).length,

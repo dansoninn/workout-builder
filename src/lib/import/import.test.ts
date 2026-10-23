@@ -317,6 +317,19 @@ describe("what an import makes", () => {
     expect(coach.summary.leftOut).toBeGreaterThan(0);
   });
 
+  it("a session described in words is imported with its text as its title, counting nothing; it makes no template", () => {
+    const doc = fromText("Mobility", "Monday 5.1.2026\nDeep, slow stretches for the whole body\n\nTuesday 6.1.2026\nAMRAP 12\n10 burpees\n\nWednesday 7.1.2026\nDeep, slow stretches for the whole body");
+    const read = readImport(extractDays(doc, proposeLayout(doc, TODAY)!), library, NO_ANSWERS, { country: null, firstProgram: true });
+    const plan = planImport(read, ctx({ choices: { ...DEFAULT_CHOICES, templates: read.repeated.map((r) => r.days[0]!) } }));
+    expect(plan.workouts.map((w) => [w.date, w.title, w.blocks.length])).toEqual([
+      ["2026-01-05", "Deep, slow stretches for the whole body", 0],
+      ["2026-01-06", "", 1],
+      ["2026-01-07", "Deep, slow stretches for the whole body", 0],
+    ]);
+    expect(plan.summary.described).toBe(2);
+    expect(plan.templates).toEqual([]);
+  });
+
   it("generic words answered become the gym's answers; repeated workouts become templates with their own ids", () => {
     const plan = planImport(reading, ctx({ choices: { ...DEFAULT_CHOICES, templates: ["Janúar:4"] } }));
     expect(plan.aliases.map((a) => a.term).sort()).toEqual(["bike", "squat"]);
