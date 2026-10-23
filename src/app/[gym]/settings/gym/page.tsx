@@ -1,7 +1,9 @@
+import { DownloadIcon } from "lucide-react";
 import type { Metadata } from "next";
 
 import { GymPage } from "@/components/app/gym-page";
 import { ReadOnlyNote, SectionSkeleton, SettingsSection } from "@/components/app/settings";
+import { buttonVariants } from "@/components/ui/button";
 import { countryName } from "@/lib/countries";
 import { can } from "@/lib/permissions";
 
@@ -35,6 +37,17 @@ export default function GymSettingsPage({ params }: PageProps<"/[gym]/settings/g
             <p className="font-mono text-sm">/{gym.slug}</p>
             <ReadOnlyNote>The address can&apos;t be changed yet.</ReadOnlyNote>
           </SettingsSection>
+          {can.editGym(gym.role) && (
+            <SettingsSection
+              title="Your gym's data"
+              description="Everything your gym has stored here: programs, workouts with the text they were written as, results, your own exercises and names, members and invitations, guidelines, and the history of changes. One zip file, as JSON and as spreadsheets (CSV)."
+            >
+              {/* A plain link: a download is never prefetched. */}
+              <a href={`/${gym.slug}/settings/gym/export`} download className={buttonVariants({ variant: "outline", className: "w-fit" })}>
+                <DownloadIcon /> Export the gym&apos;s data
+              </a>
+            </SettingsSection>
+          )}
         </div>
       )}
     />
