@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { DEFAULT_GUIDELINES, type Guidelines, guidelinesSchema, RATIO_LABELS } from "@/lib/analytics/guidelines";
 import { PATTERNS, type PatternKey } from "@/lib/taxonomy";
 
-import { setGuidelines } from "./actions";
+import { setGuidelines, setProgramGuidelines } from "./actions";
 
 type RatioKey = keyof typeof RATIO_LABELS;
 type Form = {
@@ -49,26 +49,45 @@ function fromForm(f: Form): unknown {
 }
 
 /**
- * The gym's guidelines (calc spec §6): its own, not scientific limits.
- * Analytics warns when a period is outside them; an empty field never warns.
- * The owner sets them; everyone else reads them.
+ * Guidelines (calc spec §6): the gym's own, not scientific limits. Analytics
+ * warns when a period is outside them; an empty field never warns. The gym's
+ * are every program's default, set by the owner; a program can have its own
+ * (decision 5, 2026-10-23), set by owners and head coaches.
  */
-export function GuidelinesForm({ slug, initial, canEdit }: { slug: string; initial: Guidelines; canEdit: boolean }) {
+export function GuidelinesForm({
+  slug,
+  program,
+  initial,
+  gymGuidelines,
+  canEdit,
+}: {
+  slug: string;
+  /** null: the gym's guidelines. */
+  program: { id: string; name: string; own: boolean } | null;
+  /** The guidelines in force: the gym's, or the program's (its own, else the gym's). */
+  initial: Guidelines;
+  gymGuidelines: Guidelines;
+  canEdit: boolean;
+}) {
   const id = useId();
   const [form, setForm] = useState(() => toForm(initial));
+  const [own, setOwn] = useState(program?.own ?? true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const editable = canEdit && own;
 
   const save = (e: React.FormEvent) => {
     e.preventDefault();
-    const value = fromForm(form);
-    const parsed = guidelinesSchema.safeParse(value);
-    if (!parsed.success) return void setError(parsed.error.issues[0]?.message ?? "Check the numbers.");
+    const value = own ? fromForm(form) : null;
+    if (value !== null) {
+      const parsed = guidelinesSchema.safeParse(value);
+      if (!parsed.success) return void setError(parsed.error.issues[0]?.message ?? "Check the numbers.");
+    }
     setError(null);
     startTransition(async () => {
-      const result = await setGuidelines(slug, value);
+      const result = program ? await setProgramGuidelines(slug, program.id, value) : await setGuidelines(slug, value);
       if (!result.ok) return void setError(result.error);
-      toast.success("Guidelines saved");
+      toast.success(program && !own ? `${program.name} uses the gym's guidelines` : "Guidelines saved");
     });
   };
 
@@ -78,7 +97,7 @@ export function GuidelinesForm({ slug, initial, canEdit }: { slug: string; initi
         {label}
       </label>
       <span className="flex items-center gap-1.5">
-        <Input id={`${id}-${key}`} inputMode="decimal" value={value} placeholder="—" disabled={!canEdit} onChange={(e) => onChange(e.target.value)} className="w-20 tabular" />
+        <Input id={`${id}-${key}`} inputMode="decimal" value={value} placeholder="—" disabled={!editable} onChange={(e) => onChange(e.target.value)} className="w-20 tabular" />
         {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
       </span>
     </div>
@@ -87,20 +106,50 @@ export function GuidelinesForm({ slug, initial, canEdit }: { slug: string; initi
   return (
     <form onSubmit={save} className="grid gap-10" noValidate>
       <SettingsSection
-        title="Guidelines"
-        description="Your gym's own guidelines for its programming, not scientific limits. Analytics warns when a period is outside them. A new gym starts with the defaults; change them to fit your members, or leave a field empty for no warning."
+        title={program ? program.name : "Gym guidelines"}
+        description={
+          program
+            ? "A program uses the gym's guidelines unless it has its own. Analytics checks each program against its own guidelines, also when programs are shown together."
+            : "Your gym's own guidelines for its programming, not scientific limits. Analytics warns when a period is outside them. Every program uses these unless it has its own. A new gym starts with the defaults; change them to fit your members, or leave a field empty for no warning."
+        }
         action={
           canEdit && (
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => setForm(toForm(DEFAULT_GUIDELINES))} disabled={pending}>
-                Back to the defaults
-              </Button>
+              {own && (
+                <Button type="button" variant="outline" onClick={() => setForm(toForm(DEFAULT_GUIDELINES))} disabled={pending}>
+                  Back to the defaults
+                </Button>
+              )}
               <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save guidelines"}</Button>
             </div>
           )
         }
       >
-        {!canEdit && <ReadOnlyNote>The owner sets the gym&apos;s guidelines.</ReadOnlyNote>}
+        {program && (
+          <fieldset className="grid gap-1.5" disabled={!canEdit}>
+            <legend className="mb-1 text-sm font-medium">{program.name} uses</legend>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name={`${id}-source`}
+                checked={!own}
+                onChange={() => {
+                  setOwn(false);
+                  setForm(toForm(gymGuidelines));
+                }}
+                className="size-4 accent-primary"
+              />
+              The gym&apos;s guidelines
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="radio" name={`${id}-source`} checked={own} onChange={() => setOwn(true)} className="size-4 accent-primary" />
+              Its own guidelines
+            </label>
+          </fieldset>
+        )}
+        {!canEdit && (
+          <ReadOnlyNote>{program ? "Owners and head coaches set a program's guidelines." : "The owner sets the gym's guidelines."}</ReadOnlyNote>
+        )}
         {error && (
           <p role="alert" className="text-sm text-destructive">
             {error}

@@ -47,11 +47,17 @@ export const DEFAULT_GUIDELINES: Guidelines = {
 export const RATIO_LABELS = { pushPull: "Push : pull", kneeHip: "Knee : hip", upperLower: "Upper : lower" } as const;
 type RatioKey = keyof typeof RATIO_LABELS;
 
-/** The settings' guidelines, or none if what is stored does not read. */
+/** The gym's guidelines from its settings, or none if what is stored does not read. */
 export function readGuidelines(settings: unknown): Guidelines {
   const raw = settings && typeof settings === "object" ? (settings as Record<string, unknown>).guidelines : undefined;
-  const parsed = guidelinesSchema.safeParse(raw ?? {});
-  return parsed.success ? parsed.data : {};
+  return parseGuidelines(raw ?? {}) ?? {};
+}
+
+/** Stored guidelines (a gym's or a program's own), or null if there are none or they do not read. */
+export function parseGuidelines(raw: unknown): Guidelines | null {
+  if (raw === null || raw === undefined) return null;
+  const parsed = guidelinesSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
 }
 
 export const hasGuidelines = (g: Guidelines) =>
@@ -147,8 +153,8 @@ export type ProgramWarning = Warning & { programId: string };
  * (decisions 4 and 5, 2026-10-23): programs shown together are never mixed
  * for warnings.
  */
-export function checkPrograms(byProgram: { programId: string; summary: PeriodSummary }[], guidelinesOf: (programId: string) => Guidelines): ProgramWarning[] {
-  return byProgram.flatMap(({ programId, summary }) =>
-    checkGuidelines(summary, guidelinesOf(programId)).map((w) => ({ ...w, key: `${programId}:${w.key}`, programId })),
+export function checkPrograms(byProgram: { programId: string; summary: PeriodSummary; guidelines: Guidelines }[]): ProgramWarning[] {
+  return byProgram.flatMap(({ programId, summary, guidelines }) =>
+    checkGuidelines(summary, guidelines).map((w) => ({ ...w, key: `${programId}:${w.key}`, programId })),
   );
 }

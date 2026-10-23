@@ -77,20 +77,25 @@ describe("the gym's guidelines", () => {
   it("programs shown together are checked each on its own numbers, never mixed (decision 4)", () => {
     // WOD 1 and 2 in Class, WOD 3 in Strength club.
     const split = WEEK.map((w, i) => ({ ...w, trackId: i < 2 ? "class" : "strength" }));
+    const guidelines = { hardSetsPerWeek: { squat: 4 }, monotonyMax: 0.8 };
     const byProgram = ["class", "strength"].map((programId) => ({
       programId,
       summary: summarisePeriod(split.filter((w) => w.trackId === programId), "2026-10-19", "2026-10-25"),
+      guidelines,
     }));
-    const warnings = checkPrograms(byProgram, () => ({ hardSetsPerWeek: { squat: 4 }, monotonyMax: 0.8 }));
+    const warnings = checkPrograms(byProgram);
     // Together the week has 5 squat sets and monotony 0.85; each program alone tells another story.
-    expect(checkGuidelines(summary, { hardSetsPerWeek: { squat: 4 }, monotonyMax: 0.8 }).map((w) => w.key)).toEqual(["monotony:2026-10-19"]);
+    expect(checkGuidelines(summary, guidelines).map((w) => w.key)).toEqual(["monotony:2026-10-19"]);
     expect(warnings.map((w) => w.key)).toEqual(["strength:hard-sets:squat"]);
     expect(warnings.every((w) => w.workouts.every((x) => x.trackId === w.programId))).toBe(true);
   });
 
-  it("each program against its own guidelines", () => {
-    const byProgram = [{ programId: "class", summary }];
-    expect(checkPrograms(byProgram, (id) => (id === "class" ? { hardSetsPerWeek: { hinge: 2 } } : {})).map((w) => w.key)).toEqual(["class:hard-sets:hinge"]);
+  it("each program against its own guidelines (decision 5)", () => {
+    const programs = [
+      { programId: "class", summary, guidelines: { hardSetsPerWeek: { hinge: 2 } } },
+      { programId: "strength", summary, guidelines: {} },
+    ];
+    expect(checkPrograms(programs).map((w) => w.key)).toEqual(["class:hard-sets:hinge"]);
   });
 
   it("nothing warns that the gym has not set", () => {
