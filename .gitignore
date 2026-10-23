@@ -40,3 +40,8 @@ yarn-error.log*
 .next-e2e/
 playwright-report/
 test-results/
+
+# Gyms' real programming documents are private (docs/reference/programming/README.md).
+# This repository is public, so they stay on this machine; only the README is shared.
+docs/reference/programming/*
+!docs/reference/programming/README.md
