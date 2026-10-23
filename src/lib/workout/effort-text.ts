@@ -40,12 +40,15 @@ const WORDS: Record<string, { level: EffortKey; axis: EffortAxis }> = {
   "all-out": { level: "max", axis: "pace" },
   sprint: { level: "max", axis: "pace" },
 };
-const WORD = String.raw`(light|easy|moderate|medium|steady|heavy|hard|fast|max|all[ -]out|sprint)`;
+const WORD = String.raw`(light|easy|moderate|medium|steady|heavy|hard|fast|max|all[ -]out|sprint)(?:[ -]?ish)?`;
+/** "easy to medium", "medium-hard": a span of two words, read as the higher (the class buffer). */
+const SPAN = String.raw`(light|easy|moderate|medium|steady|heavy|hard|fast)(?:[ -]?ish)?\s*(?:to|-|\/)\s*${WORD}`;
 /** "hard pace", "heavy load": a word that says the axis. */
 const AXIS_WORD = String.raw`(?:\s+(pace|effort|intensity|load|weight))?`;
 const NUMBER = String.raw`(\d+(?:[.,]\d+)?)`;
 const RANGE = String.raw`${NUMBER}(?:\s*[-–]\s*${NUMBER})?`;
 
+const RANK: EffortKey[] = ["easy", "moderate", "hard", "max"];
 const num = (text: string | undefined) => (text === undefined ? undefined : Number(text.replace(",", ".")));
 const midpoint = (a: string, b: string | undefined) => (b === undefined ? num(a)! : (num(a)! + num(b)!) / 2);
 
@@ -71,8 +74,8 @@ export function takeEffortText(input: string): { text: string; found: EffortFoun
   // The app's own words.
   take(/\bpace\s*:?\s*(easy|moderate|hard|max)\b/gi, (m) => ({ source: m[0].trim(), level: m[1]!.toLowerCase() as EffortKey, axis: "pace" }));
   take(/\bload\s*:?\s*(easy|moderate|hard)\b/gi, (m) => ({ source: m[0].trim(), level: m[1]!.toLowerCase() as EffortKey, axis: "load" }));
-  // 75-80% effort · @ 80 % intensity
-  take(new RegExp(String.raw`@?\s*${RANGE}\s*%\s*(?:effort|eff\.?|intensity)\b`, "gi"), (m) => ({
+  // 75-80% effort · @ 80 % intensity · 95%+ effort
+  take(new RegExp(String.raw`@?\s*${RANGE}\s*%\s*\+?\s*(?:effort|eff\.?|intensity)\b`, "gi"), (m) => ({
     source: m[0].replace(/^@\s*/, "").trim(),
     level: effortFromPercent(midpoint(m[1]!, m[2])),
     axis: "lift",
@@ -94,7 +97,14 @@ export function takeEffortText(input: string): { text: string; found: EffortFoun
     const axis: EffortAxis = said === "load" || said === "weight" ? "load" : said ? "pace" : known.axis;
     return { source: m[0].replace(/^[\s(@,;:–-]+|[\s),.;:–-]+$/g, ""), level: known.level, axis };
   };
-  take(new RegExp(String.raw`\(\s*${WORD}${AXIS_WORD}\s*\)`, "gi"), (m) => word(m, 1, 2));
+  // "@ easy to medium-ish pace": the higher of the two.
+  take(new RegExp(String.raw`@\s*${SPAN}${AXIS_WORD}\b`, "gi"), (m) => {
+    const [first, second] = [WORDS[m[1]!.toLowerCase()]!, WORDS[m[2]!.toLowerCase()]!];
+    const known = RANK.indexOf(second.level) >= RANK.indexOf(first.level) ? second : first;
+    const said = m[3]?.toLowerCase();
+    return { source: m[0].replace(/^@\s*/, "").trim(), level: known.level, axis: said === "load" || said === "weight" ? "load" : said ? "pace" : known.axis };
+  });
+  take(new RegExp(String.raw`\(\s*${WORD}${AXIS_WORD}\s*!*\s*\)`, "gi"), (m) => word(m, 1, 2));
   take(new RegExp(String.raw`@\s*${WORD}${AXIS_WORD}\b`, "gi"), (m) => word(m, 1, 2));
   const whole = new RegExp(String.raw`^\s*${WORD}${AXIS_WORD}\s*\.?\s*$`, "i").exec(text);
   if (whole) {
