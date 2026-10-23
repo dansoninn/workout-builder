@@ -1120,8 +1120,12 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       const liftFirst =
         read !== null && waiting !== null && open !== null && !open.hasFormat && !open.setsFromLine && heading.letter === null && !heading.intent &&
         open.block.items.length === 1 && open.block.items[0] === (waiting as { item: DraftItem }).item;
+      // "For time:" then "21-15-9" on the next line: the scheme of the block just started.
+      const schemeOnto =
+        read !== null && read.format === "for_time" && read.scheme !== null && read.scheme !== "units" && !/[a-z]/i.test(read.rest) &&
+        open !== null && open.block.items.length === 0 && open.hasFormat && open.block.format === "for_time" && open.scheme === null && heading.letter === null;
       // A heading continues an empty block ("A. Strength" then "E3M x 5"), otherwise starts one.
-      const reuse = liftFirst || (open && open.block.items.length === 0 && !(open.hasFormat && read) && (heading.letter === null || open.letter === null || open.letter === heading.letter));
+      const reuse = liftFirst || schemeOnto || (open && open.block.items.length === 0 && !(open.hasFormat && read) && (heading.letter === null || open.letter === null || open.letter === heading.letter));
       const building = reuse ? open : startBlock(heading.letter);
       if (heading.letter) building.letter = heading.letter;
       // A section word is tidied ("STRENGTH" → "Strength"); a block's own name keeps the coach's spelling.
@@ -1141,7 +1145,9 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       for (const found of efforts.found) building.efforts.push({ found, line });
       building.block.partner = strongerPartner(building.block.partner, readPartner(tidied));
       if (/\bteams? of (?:3|three)\b/i.test(tidied)) line.problems.push("Teams of 3: counted as partners (half each) for now");
-      if (read) {
+      if (read && schemeOnto) {
+        building.scheme = read.scheme;
+      } else if (read) {
         building.block.format = read.format;
         building.block.params = { ...read.params, ...(read.alternating ? { alternating: true } : {}) };
         building.hasFormat = true;
