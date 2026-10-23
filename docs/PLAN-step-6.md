@@ -30,6 +30,8 @@ Afrek's coaches program real classes in the app, with their members' data safe, 
 ## Part 2 — What I build, once Part 1 is decided
 Each sub-step on its own branch and pull request, merged when CI is green (continuous mode). Coaching questions, if any, go to STATUS.
 
+**Progress (2026-10-23):** built without Part 1 decisions — 6c export a gym's data, delete your account, delete a gym (30 days, then erased), cookie check; 6e runbook draft; 6f Content-Security-Policy, no keys in the browser bundle, dependency audit. The rest waits for Part 1 (see STATUS.md).
+
 ### 6a — Separate production
 - A **new Supabase project for production** (Frankfurt, Pro, Small compute, PITR 7 days); today's project becomes **staging**. All migrations applied to both from `supabase/migrations/`; CI applies them to staging on every merge, and to production only after staging is green. No test data in production; Afrek starts fresh.
 - **Vercel**: production uses the production project, previews use staging (separate environment variables). **The server functions run in Frankfurt** (Vercel's default region is in the US; member data should not travel there).
@@ -72,7 +74,7 @@ The gym is the **controller** of its coaches' and members' data; we are the **pr
 
 ## Programs — required before Afrek go-live
 
-Afrek runs 3–4 programs in parallel, so programs ("tracks" until Daniel's decision 1 of 2026-10-23) must work end to end before the first real day. Audit 2026-10-23 (read-only, evidence in BACKLOG "Programs — Afrek launch requirement"). Daniel's decisions 2–5 (2026-10-23) settle the open points.
+Afrek runs 3–4 programs in parallel, so programs ("tracks" until Daniel's decision 1 of 2026-10-23) must work end to end before the first real day. **Built 2026-10-23** (pull requests #14–#18). Audit 2026-10-23 (read-only, evidence in BACKLOG "Programs — Afrek launch requirement"). Daniel's decisions 2–5 (2026-10-23) settle the open points.
 
 **What already works:** create, rename, recolour, archive and restore programs (owner and head coach); a new gym starts with "Class"; the calendar shows all programs with colours (month: dot + name; week: one column per program) and a workout can be moved between programs; analytics can show one program or all; gym isolation is enforced by the database (a workout can never point to another gym's program) and tested.
 

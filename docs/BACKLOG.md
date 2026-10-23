@@ -12,14 +12,14 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 
 ## Programs — Afrek launch requirement (audit 2026-10-23, Claude chat; Afrek runs 3–4 programs in parallel)
 "Tracks" are called **programs** since Daniel's decision 1 of 2026-10-23 (the table is still `tracks`). Decisions 2–5 of the same day settle the open points below.
-- [ ] [Afrek launch requirement] Every workout must have a program: workouts.track_id NOT NULL (data model §6; existing null rows go to the gym's first active program), required in builder, paste, templates and copy_workout; no "No program" in pickers or the calendar. **Decided: decision 2.** — medium
-- [ ] [Afrek launch requirement] Reorder programs (owner/head coach): up/down in Settings → Programs, persisted in `position`, used everywhere programs are listed. — small
-- [ ] [Afrek launch requirement] Calendar: each program its own space, filtered to one program by default (the last choice remembered per user), with "All programs" as an explicit option showing program colours. **Decided: decision 3.** — small
-- [ ] [Afrek launch requirement] Analytics: one program by default; combinations only when the coach selects several programs, always labelled with their names; `period_metrics` takes uuid[]; the workout list shows each workout's program. Never mix silently. **Decided: decision 4.** — medium
-- [ ] [Afrek launch requirement] Guidelines per program: gym-level defaults, each program can override (owner/head coach); a combined view checks each program against its own guidelines. **Decided: decision 5.** — medium–large
-- [ ] [Afrek launch requirement] Block workouts on archived programs in the database (save_workout, copy_workout, move), not only in the UI. — small
-- [ ] [Afrek launch requirement] Program names unique among a gym's active programs in the database (partial unique index) and checked on restore. — small
-- [ ] [Afrek launch requirement] Tests: update of another gym's program; other gym's program sent through save_workout/copy_workout; null and archived programs; reorder; calendar/analytics program filters (e2e). — small
+- [x] [Afrek launch requirement] Every workout must have a program (NOT NULL, nulls moved to the gym's first active program; required in builder, paste, templates, copy and move; no "No program"). Decision 2. Built 2026-10-23, PR #15. Also: a gym keeps at least one active program.
+- [x] [Afrek launch requirement] Reorder programs (owner/head coach, up/down in Settings → Programs, `position`). PR #15.
+- [x] [Afrek launch requirement] Calendar: one program by default, remembered per person (`member_preferences`), "All programs" with colours. Decision 3. PR #16.
+- [x] [Afrek launch requirement] Analytics: one program by default; several only when chosen, labelled; `period_metrics` takes uuid[]; each workout and warning names its program; warnings, monotony and change per program (calc spec decision 19). Decision 4. PR #17.
+- [x] [Afrek launch requirement] Guidelines per program: gym defaults, a program's own set (owner/head coach), each program checked against its own (calc spec decision 20). Decision 5. PR #18.
+- [x] [Afrek launch requirement] Database blocks new, copied and moved workouts on archived programs. PR #15.
+- [x] [Afrek launch requirement] Program names unique among a gym's active programs, also on restore. PR #15.
+- [x] [Afrek launch requirement] Tests: another gym's program through save_workout/copy_workout, null and archived programs, reorder rights (pgTAP 20); calendar and analytics program filters (e2e). PRs #15–#18.
 - [ ] (not launch) Results page filter by program; builder load panel shows the week's load for the same program. — small / medium
 
 ## Open questions (need Daniel)
@@ -44,7 +44,10 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
   - [x] **4d** `block_results`: table (data model §6), RLS, audit, pgTAP, and the phone-friendly after-class logging screen — built 2026-10-22 (Results, G then R). (2026-10-21, Daniel)
     - [x] Show logged results on the calendar (cards say "2 results") — built in 5a. (2026-10-22, Claude Code)
     - [ ] A gym's class times as a list to pick from when logging (today the class is free text, e.g. "06:00"). (2026-10-22, Claude Code)
-- [ ] **Step 6 — Pilot readiness** (first real gym: Afrek): plan in docs/PLAN-step-6.md, waiting for Daniel's review and his decisions (domain, Vercel Pro, Supabase Pro + PITR, email sender, legal entity, lawyer). (2026-10-22, Daniel)
+- [ ] **Step 6 — Pilot readiness** (first real gym: Afrek): plan in docs/PLAN-step-6.md. Built without Part 1 (2026-10-23): 6f security pass (CSP, no keys in the browser bundle, dependency audit), 6e runbook draft, 6c export a gym's data, delete your account, delete a gym (30 days to bring back, then erased), cookie check. **Waiting for Daniel's Part 1 decisions** (STATUS.md) for 6a–6f's remaining parts. (2026-10-22, Daniel)
+  - [ ] 6c: privacy policy, terms, sub-processor list and DPA pages (needs the legal entity and the lawyer). (2026-10-23, Claude Code)
+  - [ ] 6d: alert if the nightly gym erasure (pg_cron `erase-deleted-gyms`) fails. (2026-10-23, Claude Code)
+  - [ ] Bringing back a deleted gym leaves its cancelled invitations cancelled: offer to send them again. (2026-10-23, Claude Code)
 - [x] Step 5 — Calendar (month and week, drag and drop), templates on several dates, analytics over 7/14/30 days or a range with the four lenses, warnings against the gym's guidelines — built 2026-10-22 (5a, 5b, 5c). (2026-10-21, Daniel)
   - [x] Weekly/period analytics over `workout_metrics` (total, monotony, strain, week-on-week change). (2026-10-21, Claude Code)
   - [ ] A day view in the calendar (month and week today). (2026-10-22, Claude Code)
@@ -57,7 +60,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 ## Infrastructure / ops
 - [ ] Security before first real gym: re-enable Vercel Authentication on previews (disabled 2026-10-21 for testing), separate production database, add CAPTCHA / bot protection on sign-up (Supabase Auth). (2026-10-21, chat)
 - [ ] Before the first real gym: buy/choose a domain, set up a custom email sender (e.g. Resend) in Supabase Auth, send invitation emails automatically (4a shares links), and make sure "Confirm email" is on (turned off for testing in 4a). Supabase's built-in email only reaches members of the Supabase team. Point the email templates at `/auth/confirm?token_hash=…` (already built) so links work in any browser. (2026-10-21, Daniel)
-- [ ] Before the first real gym: a Content-Security-Policy header (nonce-based). 4a sends the other security headers. (2026-10-21, Claude Code)
+- [x] Before the first real gym: a Content-Security-Policy header — built 2026-10-23 (PR #19), without a nonce: prerendered pages cannot carry a per-request one, so inline scripts and styles are allowed; everything else is our own origin only. (2026-10-21, Claude Code)
 - [ ] Next.js 16.4 dev-server bug: a route handler at `/` makes pages reload endlessly in development. `/` is routed in the proxy instead. Re-check on the next Next.js upgrade (and report upstream if still present). (2026-10-21, Claude Code)
 - [ ] Upgrade Supabase to Pro (daily backups + PITR) BEFORE any real gym data goes in. (2026-10-20)
 - [ ] Separate production Supabase project before the first real gym (previews and production share the dev project until then — agreed). (2026-10-21, Daniel)
@@ -75,7 +78,7 @@ Format: `- [ ] Item — context (added YYYY-MM-DD, by)`. Tag the step it belongs
 
 ## Housekeeping
 - [ ] Old Lovable demo account (coach@wodbuilder.app) — password is written in a handover doc; change it or disable the account. (2026-10-20)
-- [ ] `npm audit` reports 5 high-severity issues in ESLint's dev-only dependency chain (braces/micromatch via eslint-config-next). Not shipped to users; the suggested fix downgrades Next's lint config. Re-check when eslint-config-next updates. (2026-10-21, Claude Code)
+- [ ] `npm audit` reports high-severity issues only in dev tools (braces/micromatch via eslint-config-next and the shadcn CLI). Not shipped to users (`npm audit --omit=dev`: 0, since shadcn moved to devDependencies on 2026-10-23); the suggested fixes downgrade those tools. Re-check when they update. (2026-10-21, Claude Code)
 
 ## Done
 - [x] 4b approved (2026-10-21, Daniel). Alternating EMOM: total intervals set the length and the last rotation may be partial; default efforts (calc spec §9.4) all approved. The 4a merge missed CI and the production deploy because of a GitHub incident (push events delayed or lost); a production check now catches that and re-runs CI and the deploy.
