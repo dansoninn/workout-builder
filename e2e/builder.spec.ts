@@ -274,7 +274,7 @@ test("a partner block says how partners share the work, and keeps it", async ({ 
   await page.getByLabel("A1 exercise").fill("air squat");
   await page.keyboard.press("Enter");
   await page.keyboard.type("20");
-  const blockA = page.getByRole("region", { name: "A", exact: true }).filter({ visible: true });
+  const blockA = page.getByRole("region", { name: "Block A", exact: true }).filter({ visible: true });
   await blockA.getByLabel("Partner", { exact: true }).click();
   await page.getByRole("option", { name: "I go, you go", exact: true }).click();
   await expect(blockA.getByLabel("Partner", { exact: true })).toHaveText(/I go, you go/);
