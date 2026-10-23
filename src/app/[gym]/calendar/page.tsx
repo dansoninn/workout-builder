@@ -54,7 +54,7 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
   // Only the numbers the calendar shows, not the whole stored metrics.
   const metrics = "workout_metrics (calc_version, sessionMin:metrics->sessionMin, sRpe:metrics->sRpe)";
   // Every program's workouts in one query; the page shows the chosen program's.
-  const [tracks, remembered, scheduled, templates] = await Promise.all([
+  const [tracks, remembered, scheduled, templates, focuses, programDays, gymDays] = await Promise.all([
     loadTracks(gym.id),
     supabase.from("member_preferences").select("calendar_program_id, calendar_all_programs").eq("org_id", gym.id).maybeSingle(),
     supabase
@@ -67,8 +67,14 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
       .lte("date", days.at(-1)!)
       .order("created_at"),
     supabase.from("workouts").select(`id, date, title, status, track_id, ${metrics}`).eq("org_id", gym.id).eq("kind", "template").is("deleted_at", null).order("title"),
+    supabase.from("day_focuses").select("id, name, color, archived_at").eq("org_id", gym.id).order("position").order("name"),
+    supabase.from("program_days").select("track_id, date, focus_id").eq("org_id", gym.id).gte("date", days[0]!).lte("date", days.at(-1)!),
+    supabase.from("calendar_days").select("date, name, closed").eq("org_id", gym.id).gte("date", days[0]!).lte("date", days.at(-1)!),
   ]);
   if (scheduled.error) throw scheduled.error;
+  if (focuses.error) throw focuses.error;
+  if (programDays.error) throw programDays.error;
+  if (gymDays.error) throw gymDays.error;
 
   // One program by default, each its own space; all programs only when chosen (decision 3).
   const choice = calendarProgramView(
@@ -159,9 +165,16 @@ async function Calendar({ gym, searchParams }: { gym: GymMembership; searchParam
         tracks={tracks}
         programId={programId}
         workouts={workouts}
+        focuses={focuses.data.map((f) => ({ id: f.id, name: f.name, color: f.color, archived: f.archived_at !== null }))}
+        dayFocuses={programDays.data.map((d) => ({ trackId: d.track_id, date: d.date, focusId: d.focus_id }))}
+        gymDays={gymDays.data}
         canProgram={canProgram}
       />
-      {canProgram && <p className="mt-2 text-xs text-muted-foreground">Drag a workout to another day to move it, or use its move button.</p>}
+      {canProgram && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          Drag a workout to another day to move it, or use its move button. Set a program&apos;s day focus on the day; holidays and closed days are in Settings → Days.
+        </p>
+      )}
 
       <section aria-labelledby="templates" className="mt-10 grid gap-3">
         <div className="flex items-end justify-between">

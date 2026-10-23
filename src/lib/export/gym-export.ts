@@ -27,7 +27,10 @@ const README = (gym: string, at: string) => `Workout Builder: the data of ${gym}
 data.json   Everything below, exactly as stored, in one file.
 csv/        The same as spreadsheets, one file per kind of data.
 
-  programs.csv         The gym's programs (Class, Strength club, ...), with their own guidelines if any.
+  programs.csv         The gym's programs (Class, Strength club, ...), with their dates and own guidelines if any.
+  day_focuses.csv      The gym's day focuses (PP, Squat, ...).
+  program_days.csv     Each program's focus for a day, linked by track_id and focus_id.
+  calendar_days.csv    Holidays and closed days.
   workouts.csv         Scheduled workouts and templates, with the text they were written or pasted as.
                        Deleted workouts are included, with the time they were deleted (deleted_at).
   blocks.csv           The blocks of each workout (A, B, C ...), linked by workout_id.
@@ -57,13 +60,16 @@ Times are in UTC. Ids link the files together.
 export async function gymExport(gym: { id: string; name: string }, now: Date): Promise<Uint8Array> {
   const supabase = await createClient();
   const org = gym.id;
-  const [organization, members, invitations, programs, workouts, blocks, items, results, metrics, exercises, aliases, paces, audit] = await Promise.all([
+  const [organization, members, invitations, programs, dayFocuses, programDays, calendarDays, workouts, blocks, items, results, metrics, exercises, aliases, paces, audit] = await Promise.all([
     supabase.from("organizations").select("id, name, slug, country, settings, created_at").eq("id", org).single(),
     supabase.rpc("list_gym_members", { p_org: org }),
     everyRow((a, b) =>
       supabase.from("invitations").select("id, email, role, created_at, expires_at, accepted_at, revoked_at").eq("org_id", org).order("created_at").order("id").range(a, b),
     ),
     everyRow((a, b) => supabase.from("tracks").select("*").eq("org_id", org).order("position").order("id").range(a, b)),
+    everyRow((a, b) => supabase.from("day_focuses").select("*").eq("org_id", org).order("position").order("id").range(a, b)),
+    everyRow((a, b) => supabase.from("program_days").select("*").eq("org_id", org).order("date").order("id").range(a, b)),
+    everyRow((a, b) => supabase.from("calendar_days").select("*").eq("org_id", org).order("date").order("id").range(a, b)),
     everyRow((a, b) => supabase.from("workouts").select("*").eq("org_id", org).order("date").order("id").range(a, b)),
     everyRow((a, b) => supabase.from("blocks").select("*").eq("org_id", org).order("workout_id").order("position").order("id").range(a, b)),
     everyRow((a, b) => supabase.from("block_items").select("*").eq("org_id", org).order("block_id").order("position").order("id").range(a, b)),
@@ -93,6 +99,9 @@ export async function gymExport(gym: { id: string; name: string }, now: Date): P
     members: members.data,
     invitations,
     programs,
+    dayFocuses,
+    programDays,
+    calendarDays,
     workouts,
     blocks,
     blockItems: items,
@@ -116,7 +125,10 @@ export async function gymExport(gym: { id: string; name: string }, now: Date): P
       "README.txt": strToU8(README(gym.name, at)),
       "data.json": strToU8(JSON.stringify(data, null, 2)),
       csv: {
-        "programs.csv": csv(programs, ["id", "name", "color", "position", "archived_at", "guidelines"]),
+        "programs.csv": csv(programs, ["id", "name", "color", "position", "archived_at", "starts_on", "ends_on", "guidelines"]),
+        "day_focuses.csv": csv(dayFocuses, ["id", "name", "color", "position", "archived_at"]),
+        "program_days.csv": csv(programDays, ["id", "track_id", "date", "focus_id"]),
+        "calendar_days.csv": csv(calendarDays, ["id", "date", "name", "closed", "holiday_of"]),
         "workouts.csv": csv(workouts, ["id", "track_id", "kind", "date", "title", "status", "raw_text"]),
         "blocks.csv": csv(blocks, ["id", "workout_id", "position", "label", "format", "params"]),
         "block_items.csv": csv(items, ["id", "block_id", "position", "exercise_id", "raw_line"]),

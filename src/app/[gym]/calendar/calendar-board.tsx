@@ -10,13 +10,23 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { runsOn } from "@/lib/calendar/holidays";
 import { add } from "@/lib/engine/measure";
 import type { Measure } from "@/lib/engine/types";
+import { programDates } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 import { dayLabel } from "@/lib/week";
 
 import type { TrackOption } from "../builder/builder";
-import { moveWorkout } from "./actions";
+import { moveWorkout, setDayFocus } from "./actions";
+import { DayFocusMenu, type FocusOption, type GymDay, GymDayNote } from "./day-marks";
+
+/** A program's focus for a day. */
+export interface DayFocus {
+  trackId: string;
+  date: string;
+  focusId: string;
+}
 
 export interface CalendarWorkout {
   id: string;
@@ -37,7 +47,9 @@ const DRAG_TYPE = "application/x-workout";
  * (each marked with its colour and name). Coaches move a workout by dragging
  * it to another day (and, in the week view, another program), or with its
  * "Move" button (keyboard and touch). The card moves at once; if the server
- * refuses, it goes back and a message says why.
+ * refuses, it goes back and a message says why. Each day shows the gym's
+ * holiday or closed day and each program's day focus (coaches set it here);
+ * a program's days outside its dates are quieter ("Not running").
  */
 export function CalendarBoard({
   slug,
@@ -48,6 +60,9 @@ export function CalendarBoard({
   tracks,
   programId,
   workouts,
+  focuses,
+  dayFocuses,
+  gymDays,
   canProgram,
 }: {
   slug: string;
@@ -61,8 +76,22 @@ export function CalendarBoard({
   /** The program shown, or null for all programs. */
   programId: string | null;
   workouts: CalendarWorkout[];
+  /** The gym's day focuses, archived ones too (they stay on their days). */
+  focuses: FocusOption[];
+  dayFocuses: DayFocus[];
+  /** Holidays and closed days in view. */
+  gymDays: GymDay[];
   canProgram: boolean;
 }) {
+  const [focusShown, setFocusShown] = useOptimistic(dayFocuses, (state, change: { trackId: string; date: string; focusId: string | null }) => [
+    ...state.filter((d) => d.trackId !== change.trackId || d.date !== change.date),
+    ...(change.focusId ? [{ trackId: change.trackId, date: change.date, focusId: change.focusId }] : []),
+  ]);
+  const focusOf = (trackId: string, date: string) => {
+    const id = focusShown.find((d) => d.trackId === trackId && d.date === date)?.focusId;
+    return focuses.find((f) => f.id === id) ?? null;
+  };
+  const gymDay = (date: string) => gymDays.find((d) => d.date === date);
   const [shown, moveShown] = useOptimistic(workouts, (state, move: { id: string; date: string; trackId: string }) =>
     state.map((w) => (w.id === move.id ? { ...w, date: move.date, trackId: move.trackId } : w)),
   );
@@ -72,6 +101,7 @@ export function CalendarBoard({
   const [moving, setMoving] = useState<{ workout: CalendarWorkout; date: string; trackId: string } | null>(null);
   const href = (path: string) => `/${slug}/${path}`;
   const defaultTrack = tracks.find((t) => !t.archived)?.id ?? null;
+  const shownTrack = programId ? tracks.find((t) => t.id === programId) : undefined;
 
   const move = (workout: CalendarWorkout, date: string, trackId: string, undo = false) => {
     if (workout.date === date && workout.trackId === trackId) return;
@@ -82,9 +112,48 @@ export function CalendarBoard({
       if (undo) return void toast.success("Moved back");
       const program = trackId !== workout.trackId ? tracks.find((t) => t.id === trackId)?.name : undefined;
       toast.success(`${workout.title || "Untitled workout"} moved to ${dayLabel(date)}${program ? `, ${program}` : ""}`, {
+        description: dayWarning(date, trackId) ?? undefined,
         action: { label: "Undo", onClick: () => move({ ...workout, date, trackId }, workout.date, workout.trackId, true) },
       });
     });
+  };
+
+  /** Said when a workout lands on a closed day, or outside its program's dates (it is allowed: a warning, not a rule). */
+  const dayWarning = (date: string, trackId: string): string | null => {
+    const closed = gymDay(date);
+    const track = tracks.find((t) => t.id === trackId);
+    const notes = [
+      closed?.closed ? `${closed.name}: the gym is closed.` : null,
+      track && !runsOn(track, date) ? `${track.name} runs ${programDates(track).replace(/^From/, "from").replace(/^Until/, "until")}.` : null,
+    ].filter(Boolean);
+    return notes.length ? notes.join(" ") : null;
+  };
+
+  const setFocus = (trackId: string, date: string, focusId: string | null) =>
+    startTransition(async () => {
+      setFocusShown({ trackId, date, focusId });
+      const result = await setDayFocus(slug, { trackId, date, focusId });
+      if (!result.ok) toast.error(result.error);
+    });
+
+  /** A program's focus for a day, with "Not running" outside the program's dates. */
+  const marks = (day: string, track: TrackOption) => {
+    const running = runsOn(track, day);
+    const focus = focusOf(track.id, day);
+    const editable = canProgram && !track.archived;
+    if (!focus && !editable && running) return null;
+    return (
+      <div className="flex min-w-0 flex-wrap items-center gap-x-1.5">
+        <DayFocusMenu
+          focus={focus}
+          focuses={focuses}
+          label={`${dayLabel(day)}, ${track.name}`}
+          canEdit={editable}
+          onChange={(focusId) => setFocus(track.id, day, focusId)}
+        />
+        {!running && <span className="text-xs text-muted-foreground">Not running</span>}
+      </div>
+    );
   };
 
   /** A day (and program) that takes a dropped workout. */
@@ -147,11 +216,34 @@ export function CalendarBoard({
   return (
     <>
       {view === "month" ? (
-        <MonthGrid days={days} month={month!} today={today} over={over} dropTarget={dropTarget}>
+        <MonthGrid
+          days={days}
+          month={month!}
+          today={today}
+          over={over}
+          dropTarget={dropTarget}
+          tone={(day) => (gymDay(day)?.closed ? "closed" : shownTrack && !runsOn(shownTrack, day) ? "off" : null)}
+        >
           {(day) => {
             const here = shown.filter((w) => w.date === day && (programId === null || w.trackId === programId));
             return (
               <>
+                <GymDayNote day={gymDay(day)} />
+                {shownTrack ? (
+                  marks(day, shownTrack)
+                ) : (
+                  // All programs: each program's focus that day, named.
+                  tracks.flatMap((t) => {
+                    const focus = focusOf(t.id, day);
+                    return focus
+                      ? [
+                          <p key={t.id} className="truncate px-0.5 text-xs text-muted-foreground">
+                            <span className="font-medium text-foreground">{focus.name}</span> · {t.name}
+                          </p>,
+                        ]
+                      : [];
+                  })
+                )}
                 {here.map(card)}
                 {addLink(day, programId ?? defaultTrack, dayLabel(day), true, here.length > 0)}
               </>
@@ -167,11 +259,14 @@ export function CalendarBoard({
           workouts={shown}
           over={over}
           dropTarget={dropTarget}
+          dayNote={(day) => <GymDayNote day={gymDay(day)} />}
+          tone={(day, column) => (gymDay(day)?.closed ? "closed" : !runsOn(column, day) ? "off" : null)}
         >
           {(day, column) => {
             const here = shown.filter((w) => w.date === day && w.trackId === column.id);
             return (
               <>
+                {marks(day, column)}
                 {here.map(card)}
                 {!column.archived && addLink(day, column.id, `${dayLabel(day)}, ${column.name}`, here.length > 0, here.length > 0)}
               </>
@@ -260,12 +355,17 @@ function WorkoutCard({
 type DropTarget = (key: string, date: string, trackId: string | undefined) => Record<string, unknown>;
 
 /** Monday-first weeks; on a phone, a list of days. */
+/** A day the gym is closed, or a program's day outside its dates: quieter. */
+type Tone = "closed" | "off" | null;
+const TONE: Record<Exclude<Tone, null>, string> = { closed: "bg-warning-subtle/60", off: "bg-surface-sunken/60" };
+
 function MonthGrid({
   days,
   month,
   today,
   over,
   dropTarget,
+  tone,
   children,
 }: {
   days: string[];
@@ -273,6 +373,7 @@ function MonthGrid({
   today: string;
   over: string | null;
   dropTarget: DropTarget;
+  tone: (day: string) => Tone;
   children: (day: string) => React.ReactNode;
 }) {
   return (
@@ -287,12 +388,14 @@ function MonthGrid({
       <ol className="grid md:grid-cols-[repeat(7,minmax(0,1fr))]" aria-label="Days">
         {days.map((day) => {
           const outside = !day.startsWith(month);
+          const quiet = tone(day);
           return (
             <li
               key={day}
               {...dropTarget(day, day, undefined)}
               className={cn(
                 "group/cell grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-1 border-b border-border p-1.5 md:min-h-28 md:border-r md:[&:nth-child(7n)]:border-r-0",
+                quiet && TONE[quiet],
                 outside && "bg-surface-sunken/60 max-md:hidden",
                 day === today && "bg-primary-subtle/40",
                 over === day && "bg-primary-subtle ring-2 ring-ring ring-inset",
@@ -323,6 +426,8 @@ function WeekTable({
   workouts,
   over,
   dropTarget,
+  dayNote,
+  tone,
   children,
 }: {
   days: string[];
@@ -331,6 +436,8 @@ function WeekTable({
   workouts: CalendarWorkout[];
   over: string | null;
   dropTarget: DropTarget;
+  dayNote: (day: string) => React.ReactNode;
+  tone: (day: string, column: TrackOption) => Tone;
   children: (day: string, column: TrackOption) => React.ReactNode;
 }) {
   const weekTotal = (trackId: string): Measure | null =>
@@ -364,14 +471,16 @@ function WeekTable({
               <th scope="row" className="px-3 py-2 text-left text-sm font-medium whitespace-nowrap">
                 {dayLabel(day)}
                 {day === today && <span className="ml-1.5 text-xs font-normal text-primary-text">today</span>}
+                <span className="block font-normal">{dayNote(day)}</span>
               </th>
               {columns.map((column) => {
                 const key = `${day}:${column.id}`;
+                const quiet = tone(day, column);
                 return (
                   <td
                     key={column.id}
                     {...dropTarget(key, day, column.id)}
-                    className={cn("group/cell px-2 py-1.5", over === key && "bg-primary-subtle ring-2 ring-ring ring-inset")}
+                    className={cn("group/cell px-2 py-1.5", quiet && TONE[quiet], over === key && "bg-primary-subtle ring-2 ring-ring ring-inset")}
                   >
                     <div className="grid gap-1">{children(day, column)}</div>
                   </td>

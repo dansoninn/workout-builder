@@ -9,10 +9,21 @@ import { can } from "@/lib/permissions";
 import { createClient } from "@/lib/supabase/server";
 import { TRACK_COLORS } from "@/lib/tracks";
 
-const trackSchema = z.object({
-  name: z.string().trim().min(1, { error: "Enter a name" }).max(40, { error: "Use at most 40 characters" }),
-  color: z.enum(TRACK_COLORS.map((c) => c.value) as [string, ...string[]], { error: "Choose a colour" }),
-});
+const optionalDate = z
+  .string()
+  .trim()
+  .refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), { error: "Enter a date" })
+  .transform((v) => (v === "" ? null : v));
+
+const trackSchema = z
+  .object({
+    name: z.string().trim().min(1, { error: "Enter a name" }).max(40, { error: "Use at most 40 characters" }),
+    color: z.enum(TRACK_COLORS.map((c) => c.value) as [string, ...string[]], { error: "Choose a colour" }),
+    // A seasonal program runs between dates (Afrek's Þrek: January to May); without them, always.
+    starts_on: optionalDate.default(null),
+    ends_on: optionalDate.default(null),
+  })
+  .refine((t) => !t.starts_on || !t.ends_on || t.ends_on >= t.starts_on, { error: "The end comes after the start", path: ["ends_on"] });
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -21,7 +32,7 @@ async function nameTaken(supabase: Supabase, orgId: string, name: string, except
   return (data ?? []).some((t) => t.id !== exceptId && t.name.trim().toLowerCase() === name.toLowerCase());
 }
 
-/** Creates a program (stored in `tracks`, last in the order), or renames and recolours one when `trackId` is given. */
+/** Creates a program (stored in `tracks`, last in the order), or changes its name, colour and dates when `trackId` is given. */
 export async function saveTrack(
   slug: string,
   trackId: string | null,
@@ -31,7 +42,7 @@ export async function saveTrack(
   const gym = await gymForAction(slug, can.manageTracks);
   if (!gym || (trackId && !uuidSchema.safeParse(trackId).success)) return { error: NOT_ALLOWED };
 
-  const values = keepValues(formData, ["name", "color"]);
+  const values = keepValues(formData, ["name", "color", "starts_on", "ends_on"]);
   const parsed = trackSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { fieldErrors: fieldErrorsOf(parsed.error), values };
 

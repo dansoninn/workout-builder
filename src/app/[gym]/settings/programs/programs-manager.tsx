@@ -21,12 +21,12 @@ import {
 } from "@/components/ui/dialog";
 import { FieldError } from "@/components/ui/field";
 import { type FormState, initialFormState } from "@/lib/forms";
-import { TRACK_COLORS, trackColorLabel } from "@/lib/tracks";
+import { programDates, TRACK_COLORS, trackColorLabel } from "@/lib/tracks";
 import { cn } from "@/lib/utils";
 
 import { reorderPrograms, saveTrack, setTrackArchived } from "./actions";
 
-export type Track = { id: string; name: string; color: string | null; archived: boolean };
+export type Track = { id: string; name: string; color: string | null; archived: boolean; startsOn: string | null; endsOn: string | null };
 
 export function TrackDot({ color, className }: { color: string | null; className?: string }) {
   return (
@@ -103,7 +103,10 @@ export function ProgramsManager({ slug, canManage, tracks }: { slug: string; can
       {list.map((t, index) => (
         <li key={t.id} className="flex h-11 items-center gap-3 px-3">
           <TrackDot color={t.color} />
-          <span className={cn("flex-1 truncate font-medium", t.archived && "text-muted-foreground")}>{t.name}</span>
+          <span className={cn("min-w-0 flex-1 truncate font-medium", t.archived && "text-muted-foreground")}>
+            {t.name}
+            {(t.startsOn || t.endsOn) && <span className="ml-2 text-xs font-normal text-muted-foreground">{programDates(t)}</span>}
+          </span>
           <span className="sr-only">Colour: {trackColorLabel(t.color)}</span>
           {t.archived && <Badge variant="outline">Archived</Badge>}
           {canManage && (
@@ -234,7 +237,7 @@ function TrackDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{track ? `Edit ${track.name}` : "New program"}</DialogTitle>
-          <DialogDescription>The colour marks this program&apos;s workouts in the calendar.</DialogDescription>
+          <DialogDescription>The colour marks this program&apos;s workouts in the calendar. Dates are for a program that runs for a season.</DialogDescription>
         </DialogHeader>
         <form action={action} className="grid gap-4" noValidate>
           <FormError>{state.error}</FormError>
@@ -271,6 +274,24 @@ function TrackDialog({
             </div>
             {state.fieldErrors?.color && <FieldError className="text-xs">{state.fieldErrors.color}</FieldError>}
           </fieldset>
+          <div className="grid grid-cols-2 gap-3">
+            <TextField
+              label="Runs from"
+              name="starts_on"
+              type="date"
+              defaultValue={state.values?.starts_on ?? track?.startsOn ?? ""}
+              error={state.fieldErrors?.starts_on}
+              description="Optional"
+            />
+            <TextField
+              label="Until"
+              name="ends_on"
+              type="date"
+              defaultValue={state.values?.ends_on ?? track?.endsOn ?? ""}
+              error={state.fieldErrors?.ends_on}
+              description="Optional. Workouts outside the dates are kept."
+            />
+          </div>
           <DialogFooter>
             <DialogClose render={<Button type="button" variant="ghost" />}>Cancel</DialogClose>
             <SubmitButton pendingLabel="Saving…">{track ? "Save program" : "Create program"}</SubmitButton>

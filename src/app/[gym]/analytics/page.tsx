@@ -48,19 +48,24 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
 
   // One program by default (the person's calendar program); several only when chosen, always named (decision 4).
   const supabase = await createClient();
-  const [tracks, remembered] = await Promise.all([
+  const [tracks, remembered, focusRows] = await Promise.all([
     loadTracks(gym.id),
     supabase.from("member_preferences").select("calendar_program_id").eq("org_id", gym.id).maybeSingle(),
+    supabase.from("day_focuses").select("id, name, color, archived_at").eq("org_id", gym.id).order("position").order("name"),
   ]);
+  // ?focus=<id>: only the days a program has that focus ("all Squat days this quarter").
+  const focuses = (focusRows.data ?? []).map((f) => ({ id: f.id, name: f.name, color: f.color, archived: f.archived_at !== null }));
+  const focus = focuses.find((f) => f.id === query.focus) ?? null;
   const programIds = analyticsPrograms(programsParam(query), remembered.data?.calendar_program_id ?? null, tracks);
   const shown = tracks.filter((t) => programIds.includes(t.id));
   const names = shown.map((t) => t.name).join(" + ");
   const combined = shown.length > 1;
   // After a calculation version bump, a coach's visit works out the gym's workouts again first.
   if (can.program(gym.role)) await refreshStaleMetrics(gym.id);
-  const { summary, byProgram } = await loadPeriod(gym.id, from, to, programIds);
+  const { summary, byProgram } = await loadPeriod(gym.id, from, to, programIds, focus?.id ?? null);
   // Each program against its own guidelines (its own set, else the gym's; decision 5), never mixed.
-  const warnings = checkPrograms(byProgram);
+  // Guidelines are about whole weeks, so not checked on some days only.
+  const warnings = focus ? [] : checkPrograms(byProgram);
   // "Change them" opens the guidelines that apply: one program's own set, or the gym's.
   const single = byProgram.length === 1 ? byProgram[0]! : null;
   const settings =
@@ -75,10 +80,27 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
     <PageBody className="max-w-6xl">
       <PageHeader
         title="Analytics"
-        description={`${dayLabel(from)} – ${dayLabel(to)} · ${summary.days} days · ${names || "no program"}`}
+        description={`${dayLabel(from)} – ${dayLabel(to)} · ${summary.days} days · ${names || "no program"}${focus ? ` · ${focus.name} days` : ""}`}
       />
       <div className="mb-6 grid gap-4">
-        <PeriodControls slug={gym.slug} days={days} from={from} to={to} programIds={programIds} tracks={tracks} />
+        <PeriodControls
+          slug={gym.slug}
+          days={days}
+          from={from}
+          to={to}
+          programIds={programIds}
+          tracks={tracks}
+          focuses={focuses.filter((f) => !f.archived || f.id === focus?.id)}
+          focusId={focus?.id ?? null}
+        />
+        {focus && (
+          <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm">
+            <span className="font-medium">Only {focus.name} days.</span>{" "}
+            <span className="text-muted-foreground">
+              The workouts on days a program has this focus. Warnings, monotony and the change from the week before need every day, so they are left out.
+            </span>
+          </p>
+        )}
         {combined && (
           <p className="rounded-lg border border-border bg-surface px-4 py-3 text-sm">
             <span className="font-medium">{names}, together.</span>{" "}
@@ -113,19 +135,21 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
             </p>
           )}
 
-          <Warnings
-            summary={summary}
-            warnings={warnings}
-            programName={combined ? (id) => programOf(id)?.name ?? "" : null}
-            source={
-              single
-                ? `${names} uses ${single.ownGuidelines ? "its own guidelines" : "the gym's guidelines"}`
-                : "Each program is checked against its own guidelines (its own set, or the gym's)"
-            }
-            configured={byProgram.some((p) => hasGuidelines(p.guidelines))}
-            settings={settings.allowed ? href(settings.href) : null}
-            href={href}
-          />
+          {!focus && (
+            <Warnings
+              summary={summary}
+              warnings={warnings}
+              programName={combined ? (id) => programOf(id)?.name ?? "" : null}
+              source={
+                single
+                  ? `${names} uses ${single.ownGuidelines ? "its own guidelines" : "the gym's guidelines"}`
+                  : "Each program is checked against its own guidelines (its own set, or the gym's)"
+              }
+              configured={byProgram.some((p) => hasGuidelines(p.guidelines))}
+              settings={settings.allowed ? href(settings.href) : null}
+              href={href}
+            />
+          )}
 
           <section aria-labelledby="lens-load" className="grid gap-4">
             <LensHeading id="lens-load" title="Session load" note="Planned RPE × minutes, block by block. Monotony and strain are per calendar week, Monday to Sunday." />
@@ -139,7 +163,7 @@ async function Analytics({ gym, searchParams }: { gym: GymMembership; searchPara
                 }),
               )}
             />
-            {combined ? <ProgramsWeekTable summary={summary} byProgram={byProgram} programOf={programOf} /> : <WeekTable summary={summary} />}
+            {combined ? <ProgramsWeekTable summary={summary} byProgram={byProgram} programOf={programOf} /> : <WeekTable summary={summary} someDays={focus !== null} />}
           </section>
 
           <div className="grid gap-8 lg:grid-cols-2">
@@ -330,7 +354,8 @@ function Warnings({
   );
 }
 
-function WeekTable({ summary }: { summary: PeriodSummary }) {
+/** `someDays`: one day focus only, so the week's load is those days' and monotony and change say nothing. */
+function WeekTable({ summary, someDays }: { summary: PeriodSummary; someDays: boolean }) {
   return (
     <div className="overflow-x-auto rounded-lg border border-border bg-surface">
       <table className="w-full min-w-[32rem] text-sm">
@@ -353,9 +378,9 @@ function WeekTable({ summary }: { summary: PeriodSummary }) {
               <td className="px-3 py-2 text-right tabular">
                 <Estimate measure={w.total} unit="AU" />
               </td>
-              <td className="px-3 py-2 text-right tabular">{w.monotony === null ? "—" : w.monotony.toFixed(2)}</td>
-              <td className="px-3 py-2 text-right tabular">{w.strain === null ? "—" : Math.round(w.strain).toLocaleString("en-US")}</td>
-              <td className="px-3 py-2 text-right tabular">{w.change === null ? "—" : `${w.change > 0 ? "+" : ""}${Math.round(w.change * 100)}%`}</td>
+              <td className="px-3 py-2 text-right tabular">{someDays || w.monotony === null ? "—" : w.monotony.toFixed(2)}</td>
+              <td className="px-3 py-2 text-right tabular">{someDays || w.strain === null ? "—" : Math.round(w.strain).toLocaleString("en-US")}</td>
+              <td className="px-3 py-2 text-right tabular">{someDays || w.change === null ? "—" : `${w.change > 0 ? "+" : ""}${Math.round(w.change * 100)}%`}</td>
             </tr>
           ))}
         </tbody>

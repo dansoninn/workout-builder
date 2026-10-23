@@ -8,7 +8,7 @@ import { loadLibrary } from "@/lib/workout/load-library";
 
 import { Builder } from "./builder";
 import { BuilderSkeleton } from "./builder-skeleton";
-import { loadTracks, programParam } from "./load";
+import { loadClosedDays, loadTracks, programParam } from "./load";
 
 export const metadata: Metadata = { title: "Builder" };
 
@@ -25,7 +25,7 @@ export default function NewWorkoutPage({ params, searchParams }: PageProps<"/[gy
 
 async function NewWorkout({ gym, searchParams }: { gym: GymMembership; searchParams: PageProps<"/[gym]/builder">["searchParams"] }) {
   const query = await searchParams;
-  const [library, tracks] = await Promise.all([loadLibrary(gym.id), loadTracks(gym.id)]);
+  const [library, tracks, closedDays] = await Promise.all([loadLibrary(gym.id), loadTracks(gym.id), loadClosedDays(gym.id)]);
   const asked = typeof query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : null;
   const template = query.template === "1";
   const date = template ? null : (asked ?? new Date().toISOString().slice(0, 10));
@@ -40,6 +40,7 @@ async function NewWorkout({ gym, searchParams }: { gym: GymMembership; searchPar
       slug={gym.slug}
       library={library}
       tracks={tracks}
+      closedDays={closedDays}
       initial={initial}
       isNew
       canEdit={can.program(gym.role)}
