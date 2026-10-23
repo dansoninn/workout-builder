@@ -33,7 +33,7 @@ test("day focus: the gym's list in Settings, set on a day of the calendar, kept,
   await page.goto(`/${slug}/settings/days`);
   await addFocus(page, "Squat");
   await addFocus(page, "Mix");
-  await expect(page.getByRole("listitem").filter({ hasText: "Squat" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit Squat" })).toBeVisible();
   await expectAccessible(page, "settings, days");
 
   const base = `${iso(new Date()).slice(0, 7)}-10`;
