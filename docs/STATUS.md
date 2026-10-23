@@ -1,106 +1,84 @@
 # Status
 
-**Updated:** 2026-10-22 by Claude Code
-**Working mode:** continuous (CLAUDE.md, "Continuous working mode").
-**Now:** all seven batch-review answers are built and on production. **Stopped for your review of `docs/PLAN-step-6.md`** (pilot readiness for Afrek): Part 1 lists what you must decide or buy, with prices; nothing in Step 6 is built until you approve it.
+**Updated:** 2026-10-23 by Claude Code
+**Working mode:** continuous (CLAUDE.md).
+**Now:** your Programs decisions (1–5) are built, and everything in Step 6 that needs none of your Part 1 decisions. **Stopped: the rest of Step 6 needs your Part 1 decisions below.**
 
-## What changed since your batch review (2026-10-22)
-- **Effort framework (your answers 1–4):** calc spec §4.4 has the four boxes with % effort, RPE and descriptions (decisions 15–18 added). In the builder each effort box shows its % effort, RPE and description in a tooltip (and to screen readers), and the load panel and paste screen show a legend. The parser reads "% effort" (a range by its midpoint), "% 1RM / % of 1RM / % of max" and a bare % on a lift as loads, effort words, "RPE n" and "@ n/10"; the check screen says which word set which effort ("“heavy” → Load Hard"). Hints now name the part not understood ('Did not understand "Effort" after 75-80%. Try …').
-  - Interpretations to check: a value between two boxes goes to the nearer one (47% → Easy, 88% → Max); a bare "%" on a row, run or bodyweight line is % effort; "with a load" includes a lift done with weights even when no weight is written ("Back squat 5x5 heavy" → Load Hard).
-- **AMRAP "7 + 12" (answer 5):** when logging results, "7 + 12" means 7 rounds and 12 reps into the next. The 12 reps go through the round's lines in order, and each line counts by its share of the round's estimated time (5 swings and 7 of 10 squats in a 50-second round = 29 s → 7.58). The app shows what it comes to while you type ("7 + 12 ≈ 7.58 rounds"), stores your text next to the number, and lists it as "7 + 12 rounds (≈ 7.58)". On a phone the number pad has "+" and a comma. Without paces it asks for a decimal instead; "+30" in a 30-rep round is refused (that is a whole round).
-- **Men/women amounts (answer 6):** "15/12 cal" and "400/300 m" are read in the builder and the parser; both numbers are stored and shown ("15/12 cal (15 cal in the numbers)"), and the first one counts in every calculation. Up to four amounts.
-- **Default guidelines (answer 7):** every new gym starts with them (calc spec decision 18), labelled as the gym's guidelines. The owner changes them in Settings → Guidelines, or goes **Back to the defaults**; Analytics links owners there. Existing gyms keep what they have. Your §7 week is outside five of the defaults: no hinge, vertical push or vertical pull hard sets, push : pull 1.3 (above 1.2) and knee : hip 4.1 (above 1.5).
+## Part 1 — what you must decide or buy (from `docs/PLAN-step-6.md`)
+Everything else in Step 6 waits on these. **1 and 3 unblock the most.**
+
+| # | Decision | My recommendation | Unblocks |
+|---|---|---|---|
+| 1 | **Product name and domain** | Choose the name, then the `.com` (and `.is` if you like). App at `app.<domain>`, email from `<domain>`. | Email (6b), app address (6a), privacy policy (6c) |
+| 2 | **Legal entity** that sells the service | Your company: name, kennitala, address, contact email. It is the gyms' data processor. | Privacy policy, terms, data processing agreement (6c) |
+| 3 | **Vercel Pro** ($20 a month per seat) | Needed: the free plan is for non-commercial use only. | Selling the app, custom domain (6a) |
+| 4 | **Supabase Pro**, a new production project in Frankfurt with Small compute and Point-in-Time Recovery 7 days (~$140 a month incl. staging) | Today's project becomes staging. | Separate production (6a), the restore drill (6e) |
+| 5 | **Email sender** | Resend (free to start). Brevo or Mailjet if you want EU-hosted. | Confirm email, password reset, automatic invitation emails (6b) |
+| 6 | **Bot protection** | Cloudflare Turnstile (free). | Sign-up, sign-in, reset (6b) |
+| 7 | **Error monitoring** | Sentry free plan, EU data. | 6d |
+| 8 | **Privacy policy, terms, DPA** | I draft them; a lawyer reviews. Do you have one? | Afrek go-live (6c) |
+| 9 | **Who gets alerts** | You, by email. | 6d, 6e |
+| 10 | **Afrek's start date** | Sets the order. | Planning |
+
+## What changed since your Programs message (2026-10-23)
+Each part is its own pull request; each merges when CI is fully green, and its database change goes to the hosted project just before. **The merge state of each is in the table at the end.**
+
+### Programs (your decisions 1–5)
+- **"Tracks" are "Programs"** everywhere you see or read (the database table is still `tracks`). Old links to Settings → Tracks still work.
+- **Every workout belongs to a program** (decision 2). The builder, paste, templates and the calendar's move all require one; "No program" is gone. Workouts without one were moved to the gym's first active program. The database refuses a new, copied or moved workout on an **archived** program (ones already there stay editable), program names are **unique** within a gym (also when restoring one), and a gym **keeps at least one active program**.
+- **Reorder programs** in Settings → Programs with up/down arrows (owners and head coaches; the keyboard stays on the program you move). Their order there is their order everywhere.
+- **Calendar: one program at a time** (decision 3). It shows the gym's first program, or the one you chose last (remembered for you on any device). **All programs** is in the program menu and shows each program's colour and name. Templates follow the program shown.
+- **Analytics: one program by default** (decision 4): yours from the calendar, else the gym's first. Tick several programs to see them together: the page says "Class + Strength club, together", each workout and warning names its program, and the week table shows each program's load and the total. "Only Strength club" goes back to one in one click.
+- **Guidelines per program** (decision 5): Settings → Guidelines has "Gym defaults" and a tab per program, each marked "gym's" or "own". A program uses the gym's guidelines unless an owner or head coach gives it its own. Analytics checks each program against the guidelines that apply to it and says which ("Strength club uses its own guidelines").
+
+### Step 6, the parts that need no Part 1 decision
+- **Security (6f):** a Content-Security-Policy on every page (the browser only ever talks to the app; the database is reached from the server). A CI check fails if any database key is in what the browser downloads. Production dependencies have no known vulnerabilities. (`vercel.json` has asked for Frankfurt functions since 4a; I confirm it in 6a on Vercel Pro.)
+- **Export the gym's data (6c):** Settings → Gym → "Export the gym's data" (owners): one zip with everything the gym has stored, as JSON and as spreadsheets (Icelandic letters work in Excel), with a README.
+- **Delete your account (6c):** Settings → Profile. Your sign-in, name and memberships go; what you wrote stays with each gym, shown as "a former member". Not while you are a gym's only owner (it says which gym).
+- **Delete a gym (6c):** Settings → Gym (owners, type its name). Gone for everyone at once; its owners can **bring it back for 30 days** ("Gyms you deleted"); then a nightly job erases it for good, with everything in it and its history.
+- **Cookies (6c):** checked by a test: only the sign-in session, and one that remembers the last gym you opened (Question 6).
+- **Runbook (6e), first draft:** `docs/RUNBOOK.md`: restore the database, roll back a deploy, rotate a leaked key, who to tell after a data breach. The drill needs the separate production project.
+
+### Found and fixed on the way
+- **Paste could bring back the previous workout's text.** The text is saved in the browser shortly after typing; if "Make workout" finished first, the waiting save put the old text back, and the next paste started with it (a test caught a "WOD 1" holding WOD 1 and WOD 2). Fixed, with a test.
+- **Deleting a coach's account would have failed** once they had logged a result (who logged a result may never change), and would have marked their workouts as edited by them. Taking a deleted person's name off a row is now not an edit.
 
 ## Questions for Daniel
-The ten decisions in `docs/PLAN-step-6.md`, Part 1. The ones that unblock everything: **the product name and domain**, and **Vercel Pro** (Vercel's free plan does not allow commercial use).
+Interpretations I made to keep going. Each is easy to change.
+1. **Programs together in Analytics:** the totals are the programs added up, but **warnings, monotony, strain and week-on-week change stay per program** (a sum describes nobody's week). Calc spec decision 19. Right?
+2. **A program's own guidelines replace the gym's as a whole**, not value by value (calc spec decision 20). Value by value is possible if you prefer.
+3. **A gym always keeps one active program** (archiving the last is refused), since every workout needs one.
+4. **Analytics opens on your calendar program** (else the gym's first).
+5. **The calendar's templates list shows the program's templates**; "All programs" shows all.
+6. **The last-gym cookie** (remembers which gym `/` opens; 1 year; no tracking). I read it as a strictly necessary preference that needs no consent banner; the lawyer should confirm, or I make it last only for the session.
+7. **Deleting a gym:** 30 days to bring it back (from the plan). Invitations cancelled at deletion stay cancelled. Someone who deletes their account takes with them the deleted gyms only they own.
 
 ## Your steps
-1. **Let the production check redeploy by itself** (5 minutes, once): in Vercel, **Project → Settings → Git → Deploy Hooks**, create a hook named `production-check` for branch `main`, copy its address; in GitHub, **dansoninn/workout-builder → Settings → Secrets and variables → Actions → New repository secret**, name `VERCEL_DEPLOY_HOOK`, paste the address. Without it the check still catches a missed deploy, but only tells you (by GitHub email) instead of fixing it.
-
-## Earlier: what changed between your 4b review and your batch review
-
-### 5c: analytics and warnings (Analytics, G then A; Settings → Guidelines)
-- **Any period**: the last 7, 14 or 30 days, or any range (up to a year); all tracks or one.
-- **The four lenses**, summed from the numbers stored when each workout was saved (the same engine as the builder, so they always agree; estimates stay ranges):
-  - **Session load**: planned load per day as columns (days still to come lighter, the likely range as a thin line), and per calendar week its load, **monotony**, **strain** and change from the week before (a trend, never an injury prediction).
-  - **Strength**: hard sets by pattern and by muscle, volume load.
-  - **Movement**: push : pull, knee : hip, upper : lower, and reps by pattern and plane.
-  - **Conditioning**: distance, calories and work time per modality.
-  - A workout whose load is unknown (a line without an amount or pace) is left out of the load and named, with a link.
-- **Warnings against your gym's guidelines**, which the owner sets in Settings → Guidelines: at least N hard sets per pattern per week, ranges for the three ratios, monotony at most N, week-on-week increase at most N %. Each warning says the guideline it breaks and links to the workouts behind it ("Knee : hip ~4.1: knee-heavy — WOD 3, WOD 1, WOD 2"). **None is set by default** (Question 4).
-- **Your three §7 workouts on one week show the approved numbers** in Analytics (tested end to end, pasted in): ~593 AU (569–625), monotony 0.85, hard sets squat 5 / horizontal push 4 / horizontal pull 4 and no hinge, push : pull ~1.3, knee : hip ~4.1.
-
-### 5b: a template on several dates
-- **Apply template** on the calendar, or **Use on dates** on a template in the builder (also ⌘K): pick the template, the track and any number of days in a small month (click, or arrow keys and Space). Each day gets its own draft copy, all made together (if one cannot be made, none are). The template and the other days stay as they are when you change a copy.
-
-### 5a: month calendar, moving workouts
-- The calendar opens on the **month** (Monday first; on a phone, a list of days), with **Week** (tracks as columns, the week's planned load per track) one click away. Each workout shows its track colour, Draft, session length, planned load and **logged results** ("2 results").
-- **Move a workout** by dragging it to another day (in the week view, also another track), or with its move button (keyboard and touch: pick a date and track). It moves at once; the message has **Undo**; if the server refuses, it goes back and says why. Results and history stay with the workout.
-
-### 4c: paste a workout (Builder → "Paste text", or ⌘K "Paste a workout as text")
-Try it at https://workout-builder-cyan.vercel.app with one of your whiteboard workouts.
-- **Paste or type the workout as you write it**: block letters (A., B.), section words (Strength, Metcon, Skill, Mobility, Warm-up), formats (AMRAP 12 · 12 min AMRAP · EMOM 10 · E3M x 5 · E90S x 8 · Every 2:00 x 6 · Every 2 min for 10 min · For time · 3 RFT · 5 rounds for time, 20 min cap · Chipper · 21-15-9 · Tabata · 4 rounds 90/30 · 40 s on / 20 s off x 8 · 4 sets), alternating minutes (Min 1: … + …, Odd/Even), lines after a colon ("AMRAP 8: 5 KB swing, 10 air squat"), supersets (A1., A2.), "Back squat" with "5 x 5 @ 80%" on the next line, rest lines, partner, notes.
-- Amounts and loads are read **by the same rules as the builder's fields** (8-10, 8/8, 21-15-9, 800 m, 1 km, 15 cal, :45, max cal; @75-80%, (22.5/15 kg), 2 x 22.5 kg, bw), so anything you can type in the builder can be pasted. Plurals and small words are fine ("burpees over the rower" → Burpee).
-- **Line by line, as you type**, the right side says what the app understood: ✓ understood, ? for you, – kept as a note. The line number jumps to that line in your text.
-- **Nothing is guessed.** A generic word asks "Which “squat” does your gym mean?" **once**: the answer becomes your gym's name for it and is used in every later paste (and in the builder's search). An unknown exercise is picked from suggestions or the library (owners and head coaches can tick "Remember … as your gym's name"); left unpicked, it waits in the builder like any unmatched line. A missing number ("AMRAP" without a time, a line without an amount) stops the workout from being made and says which line. Lines the app cannot place ("Scale: …", "Score: …") become the block's notes.
-- **Make workout** saves it as a draft (the text as pasted and each line as written are stored with it) and opens it in the builder to check, change and publish.
-- **Your three §7 workouts, pasted, give the approved numbers**: WOD 1 202 AU and ~7.7 rounds (in the spec's one-line style and written down a whiteboard), WOD 2 ~163 AU, WOD 3 228 AU after answering "bike" and "lunge".
-
-### 4d: what each class did (Results, G then R)
-Try it on your phone at https://workout-builder-cyan.vercel.app.
-- **Results** in the sidebar lists the last two weeks' workouts that have an AMRAP or For time block ("Earlier" goes back further), with how many results are logged. The builder has a **Log results** link on such workouts, and ⌘K "Log results".
-- A workout's results page shows each AMRAP and For time block: its lines, **the plan** (AMRAP "~5.3 rounds 4.5–6.1"; For time "~6:50 5:50–8:10", the same numbers as the builder) and **what each class did**.
-- **Log a result** (built for a phone: big fields, number pads): AMRAP **fewest and most rounds** (decimals for part of a round; "7,5" works too); For time **fastest and slowest finish** (12:15, or 1215 on a number pad; "Some were capped" fills in the cap). One number if the whole class did the same. Class ("06:00") and a note are optional. **Correct** or **remove** a result (with Undo). Viewers see results but cannot log.
-- **Rules** (database and screen agree, tested on one list of cases): rounds only on AMRAP blocks, finish times only on For time blocks; lowest ≤ highest; no finish over the time cap; results only on workouts in the calendar, not on templates. Every change is in the audit log with who made it.
-- **A block keeps its results**: while a block has results, the builder will not delete it or change its format, and says why ("Block A has results logged for it. Remove those results first, or keep the block."). Other changes (e.g. AMRAP 8 → 10) are allowed.
-- Results are stored only. Comparing plan with results and calibrating your gym's paces come later (BACKLOG), and a result never changes a pace by itself.
-
-### Your 4b answers, built
-- **Alternating EMOM: the minutes set the length.** The field is now "Intervals" (total minutes for EMOM), and the last rotation may be partial: EMOM 10 with three minutes is 3 rotations + minute 1 once more, so minute 1's lines are done 4 times and the others 3. Under the field the builder says how it falls ("3 rotations + minute 1"). Calc spec §4.3 and decision 13 updated.
-- **Default efforts approved**: calc spec §9.4 marked ✅.
-- **Working mode** added to CLAUDE.md as you wrote it.
-
-### Why the 4a merge neither ran CI nor deployed, and the fix
-- **Cause:** GitHub had an incident on 2026-10-21, 14:52–19:22 UTC, "Delays for Pull Requests and Webhook deliveries". The 4a merge (15:12 UTC) fell inside it: GitHub never told our CI or Vercel that `main` had changed. Nothing in our setup was wrong, but nothing noticed either.
-- **Fix: a production check** that runs after every CI run on `main` and every 30 minutes: if `main`'s latest commit has no CI run, it starts one; once CI has passed, it asks production which commit it runs (public address `/api/version`, shows only the commit) and waits for the deploy; if production stays behind, it triggers a Vercel deploy (your step 1), and if that fails too, the check fails and GitHub emails you.
-- **Proof** with the 4b merge (merge commit `ab35f96`): CI ran on `main` by itself and passed; production answered `{"commit":"ab35f964…"}` within minutes; the production check ran by itself and passed ("Production runs ab35f96; main is ab35f96"). Every merge since went the same way.
-
-### Found and fixed on the way (all three would bite a fast coach)
-- **Keys typed right after picking an exercise were lost** (they went into the closing search list). Now they go into the amount.
-- **The first key after Enter or ⌘Enter landed in the line just left** ("15a"), because the cursor moved to the new line a moment later. Now the new line gets the cursor in the same keystroke.
-- **iPhones zoomed in when a field was tapped** (text smaller than 16 px). Fields now use 16 px text on phones; nothing changes on larger screens.
-Each has a browser test that slows the page down the way a busy phone or laptop would, and fails without the fix.
-
-## Decisions made or interpreted (please check)
-**5 (calendar, templates, analytics):**
-1. **The calendar opens on the month**; the week (tracks as columns) is one click away. A day view is in BACKLOG.
-2. **Analytics periods end today** (7, 14, 30 days), or any range you choose, which can include days still to come (planned load is planned).
-3. **Weekly numbers are over whole calendar weeks**, Monday to Sunday, even when the period starts mid-week, so monotony and strain mean what Foster's method means.
-4. **Warnings name the workouts behind them**: for a ratio, the workouts adding most to the heavy side; for a weekly warning, that week's biggest loads; for missing hard sets, the workouts that have some (none, if there are none).
-
-**4c (paste):**
-1. **Intent from the format** when no section word says it: sets → strength; an EMOM of weighted lifts (a load written, or a barbell, dumbbell or kettlebell exercise) → strength; other EMOMs, AMRAP, For time, intervals, tabata → conditioning. The check screen says "(from the format)", and you change it in the builder.
-2. **"3 rounds" without "for time"** is read as 3 sets of a circuit (conditioning), with a note on the line: write "for time" if it is.
-3. **Lines without an amount** take the 21-15-9 of their block; in intervals and tabata they mean "max" in each work window (WOD 3: "Max row").
-4. **Warm-up and cool-down sections** become mobility blocks like any other (counted at their default effort, Pace Easy). Delete the block in the builder if a warm-up should not count.
-5. **A pasted workout is a new draft**, opened in the builder; pasting into an existing workout is in BACKLOG.
-
-**4d (results):**
-1. **Results is its own section** in the sidebar (G then R), since it is what a coach opens on a phone after class; the builder and ⌘K link to it too. The calendar will show results in Step 5.
-2. **Results only for AMRAP and For time blocks**, as the spec says; other formats (EMOM, intervals) have nothing to log.
-3. **A class is free text** ("06:00"); a list of the gym's class times is in BACKLOG.
-4. **Removing a result** is immediate with an Undo, not a confirm dialog: it is a soft delete and stays in the audit log.
+1. **Part 1 above.**
+2. If not done yet: the deploy hook for the production check (Vercel → Project → Settings → Git → Deploy Hooks, a hook `production-check` for `main`; GitHub → Settings → Secrets → Actions, `VERCEL_DEPLOY_HOOK`).
 
 ## How it was verified
 | What | Result |
 |---|---|
-| Unit tests (Vitest) | **389 of 389** (new in 5: month helpers, period sums and weeks on the §7 week, guidelines and warnings); before: **368** (new in 4c: 38 parser tests — the three §7 workouts with their approved numbers, 17 heading formats, 21-15-9, alternating minutes, strength lines, supersets, sections, amounts and loads, generic words and plurals, unknown exercises, missing numbers, notes; in 4d: result rules on the shared cases, rounds and times as typed, clock format) |
-| Database tests (pgTAP) | **616 of 616** (new in 5: copying a workout to dates 14, analytics and guidelines 13, guideline rule cases 10); before: **579** (new in 4c: paste 19 — workout, text and answers in one transaction, a coach may only answer generic words, head coaches name any word, viewers and other gyms nothing, the builder keeps the pasted text, audit; in 4d: block results 32, result rules 19) |
-| Browser tests (Playwright, production build) | **41 of 41** on GitHub (new in 5: month calendar drag and drop and keyboard move with Undo; a template on three days and one more by keyboard; the §7 week pasted in and read in Analytics with warnings); before: **39** (new in 4c: paste with a missing number, a generic word answered once and remembered, an unknown exercise picked and remembered, into the builder, the gym's names used next time; viewers cannot paste; in 4d: the whole after-class flow on a phone) |
-| Accessibility (axe, WCAG 2.2 AA) | Paste screen with questions; Results list, results page with the form, read-only results on a phone: **no problems** |
-| Looked at by eye | Analytics and Guidelines; month calendar (light, dark, phone); paste screen (light, dark, tablet); Results on a phone and desktop |
-| Note | This Mac is under heavy memory pressure (swap nearly full after 49 days up), which made a local full browser run take an hour and time out. The browser tests run on GitHub for every pull request, and every merge was green there. |
-| Production | CI on `main`, deploy and production check after each merge |
+| Unit tests (Vitest) | **443 of 443** (new: program choice for calendar and analytics, per-program warnings, CSV) |
+| Database tests (pgTAP) | **723** across 24 files (new: programs 22, member preferences 13, program guidelines 10, account deletion 17, gym deletion 32; older files updated so every workout has a program) |
+| Browser tests (Playwright, production build) | **48 of 48** on the export pull request, plus the account, gym and cookie tests on the last two (see the table) |
+| Accessibility (axe, WCAG 2.2 AA) | Calendar with all programs, Analytics with two programs, a program's guidelines, profile with account deletion, the create-your-gym page with a deleted gym |
+| Keys in the browser | "No keys in 360 files the browser can download" (CI) |
+| Note | This Mac cannot run the local database (Docker is off under memory pressure), so database and browser tests ran on GitHub for every pull request. |
+
+## Pull requests
+| PR | What | Database change | State |
+|---|---|---|---|
+| #14 | Tracks → Programs | — | merged |
+| #15 | Every workout has a program; reorder | 002600 | merged, applied |
+| #16 | Calendar per program | 002700 | merged, applied |
+| #17 | Analytics per program | 002800 | see below |
+| #18 | Guidelines per program | 002900 | see below |
+| #19 | Security: CSP, keys, audit; runbook | — | see below |
+| #20 | Export the gym's data | — | see below |
+| #21 | Delete your account | 003000 | see below |
+| #22 | Delete a gym (30 days to undo) | 003100 | see below |
 
 ## Next
-Your batch review on production. After that, the build order is complete; BACKLOG holds what is parked (your four questions above, real workouts as parser tests, a day view, comparing periods, gym time zone, custom email sender before the first real gym).
+Your Part 1 decisions. Then, in the plan's order: 6a separate production → 6b email and bot protection → 6c privacy policy, terms and DPA pages → 6d error monitoring → 6e the restore drill → 6f Afrek's setup.
