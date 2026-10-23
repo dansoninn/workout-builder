@@ -16,7 +16,6 @@ insert into public.blocks (id, workout_id, org_id, position, label, intent, form
   (tests.id('amrap'), tests.id('workout_a'), tests.id('gym_a'), 1, 'B', 'conditioning', 'amrap', '{"time_s": 480}', 'hard');
 insert into public.block_results (id, org_id, block_id, rounds_low, rounds_high) values (tests.id('result'), tests.id('gym_a'), tests.id('amrap'), 6, 8);
 insert into public.exercise_pace_overrides (org_id, exercise_id, pace) values (tests.id('gym_a'), tests.id('ex_a'), '{"sec_per_rep": 3}');
-insert into public.workout_metrics (workout_id, org_id, calc_version, taxonomy_version, metrics) values (tests.id('workout_a'), tests.id('gym_a'), 1, 1, '{}');
 insert into public.member_preferences (org_id, user_id, calendar_all_programs) values (tests.id('gym_a'), tests.id('coach_a'), true);
 
 select has_function('public', 'delete_gym', array['uuid', 'text'], 'delete_gym exists');
