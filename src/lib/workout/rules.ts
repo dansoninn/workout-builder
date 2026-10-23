@@ -14,7 +14,10 @@ const whole = (min: number) => z.number().int().min(min);
 const positive = z.number().positive();
 
 export const blockParamsSchemas = {
-  sets: z.strictObject({ sets: whole(1), rest_s: whole(0).optional() }),
+  // time_s: sets within a time box; then the count is optional (estimated from what fits).
+  sets: z
+    .strictObject({ sets: whole(1).optional(), rest_s: whole(0).optional(), time_s: whole(1).optional() })
+    .refine((p) => p.sets !== undefined || p.time_s !== undefined, { error: "Give the sets, or the time they fit in" }),
   every: z.strictObject({ interval_s: whole(1), rounds: whole(1), alternating: z.boolean().optional() }),
   amrap: z.strictObject({ time_s: whole(1) }),
   for_time: z.strictObject({ rounds: whole(1), time_cap_s: whole(1).optional() }),
@@ -24,6 +27,9 @@ export const blockParamsSchemas = {
     rest_s: whole(0),
     stations: whole(1),
     rest_between_rounds_s: whole(0).optional(),
+    // Station by station: all rounds of one station, then the next, with rest between stations.
+    by_station: z.boolean().optional(),
+    rest_between_stations_s: whole(0).optional(),
   }),
   tabata: z.strictObject({ rounds: whole(1), work_s: z.literal(20), rest_s: z.literal(10) }),
 } as const;
@@ -41,6 +47,15 @@ export const quantitySchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("reps"), value: whole(1) }),
   z.strictObject({ type: z.literal("reps_per_side"), value: whole(1) }),
   z
+    .strictObject({ type: z.literal("reps_per_side_range"), min: whole(1), max: whole(1) })
+    .refine((q) => q.min < q.max, { error: "The first number must be smaller" }),
+  z
+    .strictObject({ type: z.literal("distance_m_range"), min: positive, max: positive })
+    .refine((q) => q.min < q.max, { error: "The first distance must be shorter" }),
+  z
+    .strictObject({ type: z.literal("time_s_range"), min: whole(1), max: whole(1) })
+    .refine((q) => q.min < q.max, { error: "The first time must be shorter" }),
+  z
     .strictObject({ type: z.literal("reps_range"), min: whole(1), max: whole(1) })
     .refine((q) => q.min < q.max, { error: "The first number must be smaller" }),
   z.strictObject({ type: z.literal("reps_scheme"), scheme: z.array(whole(1)).min(1) }),
@@ -54,6 +69,15 @@ export const quantitySchema = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("time_s"), value: whole(1) }),
   z.strictObject({ type: z.literal("max_effort"), unit: z.enum(MEASURE_UNITS) }),
 ]);
+
+/** A cap on a line (calc spec §5): a time, or an amount in reps, metres or calories. */
+export const capSchema = z.strictObject({ type: z.enum(MEASURE_UNITS), value: positive }).refine(
+  (c) => c.type === "distance_m" || Number.isInteger(c.value),
+  { error: "Whole seconds, reps or calories" },
+);
+
+/** Alternatives to a line's exercise, as written: up to ten, each a short name. */
+export const alternativesSchema = z.array(z.string().trim().min(1).max(80)).max(10);
 
 export const loadSchema = z.discriminatedUnion("type", [
   z

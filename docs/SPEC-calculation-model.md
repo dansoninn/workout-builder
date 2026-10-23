@@ -85,9 +85,12 @@ The examples below are part of the approved table, unchanged:
 | `reps` | 5, 21-15-9 (summed) | exact |
 | `reps_range` | 8–10 → midpoint 9 | estimated |
 | `reps_per_side` | 8/8 | exact |
+| `reps_per_side_range` | 4–8/4–8 → 6 each side | estimated |
 | `distance_m` | 800 m | exact |
+| `distance_m_range` | 800–1000 m → 900 m | estimated |
 | `calories` | 15 cal; 8–12 cal → 10 | exact / estimated |
 | `time_s` | 30 s plank | exact |
+| `time_s_range` | 20–30 s hold → 25 s | estimated |
 | `max_effort` | max meters / max cal / max reps in a window | estimated via pace (§5) |
 
 ### 4.2 Load — optional, one of
@@ -99,11 +102,11 @@ The examples below are part of the approved table, unchanged:
 ### 4.3 Block formats
 | Format | Parameters | Duration |
 |---|---|---|
-| `sets` | sets, rest | estimated from sets × (work + rest) |
+| `sets` | sets, rest, time box (optional) | estimated from sets × (work + rest); within a **time box** ("in 12–15 min find a heavy 3", "12–14 min technique work"): the box, and as many sets as fit when no count is written (version 3) |
 | `every` (EMOM/E2M/E3M) | interval_s, rounds, alternating (optional) | exact: interval × rounds |
 | `amrap` | time_s | exact |
 | `for_time` | rounds, time_cap_s | estimated finish, capped |
-| `intervals` | rounds, stations, work_s, rest_s, rest_between_rounds_s | exact |
+| `intervals` | rounds, stations, work_s, rest_s, rest_between_rounds_s; or **station by station** with rest_between_stations_s | exact: round by round, rounds × stations × (work + rest) + rest between rounds; station by station (all rounds of one station, then the next), the same + rest between stations (version 3) |
 | `tabata` | rounds (default 8), 20/10 | exact |
 
 **Alternating EMOM** ✅ (approved 2026-10-21; slots and partial rotations from Daniel's reviews the same day): an option of `every`, not stations. The block has **ordered slots**, one per interval, and each slot holds one or more lines ("min 1: 10 cal row + 5 burpees, min 2: 12 wall balls"). **`rounds` is the total number of intervals and sets the length**: duration (exact) = interval × rounds. The slots take turns, and **the last rotation may be partial**: EMOM 10 with 3 slots is 3 rotations plus minute 1 once more, so slot 1's lines are done 4 times and slot 2's and 3's lines 3 times. A max-effort line's window is the interval; its fatigue uses the block's total work time (interval × rounds). Without the option, every line is done in every interval.
@@ -174,6 +177,13 @@ Every number is **per athlete**, always as a class buffer. A block is a partner 
 | Unilateral 8/8 | **8 reps exposure + 1 set** (each side gets the same stimulus as one bilateral set) | exact |
 | Rx variants | calculations use the first-listed Rx; all stored ✅ (§9.6) | exact |
 | Implements | volume load = kg per implement × implement count (exercise default, line override) ✅ (§9.8) | exact |
+| **One side only** ("Right arm", then "Left arm") | half of a both-sides line in exposure and hard sets, so a right and a left line count like one 8/8 line; the time is the side's own (version 3) | as the amount |
+| **A cap on a line** ("max 40 sec", "max 10 reps") | the line stops at the cap: a time cap scales the amount to what fits; an amount cap limits the amount (and its time) (version 3) | estimated when it bites |
+| **Alternatives** ("Burpees/Sprawls", "KB or DB") | the first is counted; the others are stored with the line (BACKLOG 2026-10-23) | — |
+| **Not counted in load** (stretching) | the block's time is in the session length; it adds nothing to planned load or the lenses (version 3) | — |
+| **A block without lines and without a time** ("Stretch and Relax") | counts nothing, and does not make the workout's load unknown (version 3) | — |
+| **One number per set** ("2 x 5, 2 x 4, 3 x 3 …" building up) | in a `sets` block whose scheme has one number per set, each set does its own (version 3) | exact |
+| **Building / find heaviest** ("Bench Press (Building)", "in 12–15 min find heaviest 3–4 rep") | reps as written, load unknown, Load effort Hard (Max on load becomes Hard); "find heaviest" is sets within a time box (version 3) | estimated |
 
 ### 5.1 Pace model ✅ (approved 2026-10-21)
 
@@ -257,7 +267,7 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (~5
 - Raw workout text is stored alongside parsed data and is the source of truth.
 - Every computed metric snapshot stores `calc_version` and `taxonomy_version`.
 - Changing a formula or taxonomy → new version, history recomputed from raw + parsed data. History is never silently mixed across versions.
-- Calculation engine is a pure, deterministic function with unit tests; the three WODs above are the first test fixtures. Built in Step 3 (`src/lib/engine`, `CALC_VERSION = 1`); a change to a formula or to the rules in §5.1 bumps the version. **Version 2** (2026-10-23): partner blocks (§4.5). After a bump the app recomputes every stored workout of a gym from its stored lines the next time a coach opens the calendar or analytics, so no screen ever mixes versions.
+- Calculation engine is a pure, deterministic function with unit tests; the three WODs above are the first test fixtures. Built in Step 3 (`src/lib/engine`, `CALC_VERSION = 1`); a change to a formula or to the rules in §5.1 bumps the version. **Version 2** (2026-10-23): partner blocks (§4.5). **Version 3** (2026-10-23): one-sided lines, caps, blocks not counted in load, blocks without lines, sets in a time box, one number per set, intervals station by station, distance/time/per-side ranges (§4.1, §4.3, §5). After a bump the app recomputes every stored workout of a gym from its stored lines the next time a coach opens the calendar or analytics, so no screen ever mixes versions.
 
 ---
 
@@ -284,6 +294,7 @@ This is the case for separate lenses: on exposure alone, hinge looks covered (~5
 19. ✅ **Analytics per program** (Daniel, 2026-10-23, decision 4): one program by default; several only when the coach selects them, always labelled with their names; never mixed silently. *Interpreted (for review):* when several programs are shown together, the lenses and planned load are their sum (labelled "Class + Strength club, together"); **warnings, monotony, strain and week-on-week change are each program's own**, since those numbers describe one program's week and a sum would describe nobody's. The week table then shows each program's planned load and the total.
 20. ✅ **Guidelines per program** (Daniel, 2026-10-23, decision 5): the gym's guidelines are every program's default; owners and head coaches can give a program its own. *Interpreted (for review):* a program's own set replaces the gym's as a whole; each program is checked against the guidelines that apply to it, also in a combined view.
 21. ✅ **Partner workouts** (Daniel, 2026-10-23): per-athlete volume, always as a class buffer. "Split reps at will" → each athlete does 50% of the reps. "I go, you go" → partners alternate, each works about half the time; time-bound pieces → each gets 50% of the team's estimated rounds; amounts written "each" → each does the full amount and the block takes about 2× as long. Planned load uses the block duration with the effort of the work; hard sets and exposure use the per-athlete volume (§4.5, calculation version 2).
+22. **Real programming's notations in the numbers** (calculation version 3, from Daniel's BACKLOG list of 2026-10-23; the listed notations are decided, the counting rules marked *interpreted* are for review): one side = half of both sides in exposure and hard sets; a cap on a line stops it there; alternatives count the first; stretching blocks are not counted in load; a block with neither lines nor time counts nothing; one number per set when a scheme has as many numbers as sets; distance, time and per-side ranges are estimates from the range. *Interpreted:* "find heaviest" within a time box = as many sets as fit (work + the block's rest, else 120 s), **all at Load Hard, so all count as hard sets**; a range of sets ("4–5 sets") counts the lower number and a range of minutes ("20–25 min") the middle, and the check screen says so.
 
 ---
 

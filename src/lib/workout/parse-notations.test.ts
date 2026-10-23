@@ -80,21 +80,21 @@ describe("heavy, medium, light inside a line", () => {
 describe("alternatives", () => {
   it("are counted on the first, and the others are kept on the line", () => {
     const { blocks } = parse("For time\n10 x Burpees/Sprawls\n20 x V-Ups or Tuck Ups\n8-12 x Pull Ups (Strict-Kipp-Bfly-C2B-MU)");
-    expect(blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.notes])).toEqual([
-      ["Burpee", "or Sprawls"],
-      ["V-up", "or Tuck Ups"],
-      ["Pull-up", "Strict-Kipp-Bfly-C2B-MU"],
+    expect(blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.alternatives, i.notes])).toEqual([
+      ["Burpee", ["Sprawls"], ""],
+      ["V-up", ["Tuck Ups"], ""],
+      ["Pull-up", [], "Strict-Kipp-Bfly-C2B-MU"],
     ]);
   });
 
   it('"KB or DB" chooses the implement of the same exercise', () => {
     const { blocks } = parse("EMOM 10\n8-12 x Dbl. DB or KB Front Squat");
-    expect(blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.implementCount, i.notes])).toEqual([["Dumbbell front squat", 2, "or KB"]]);
+    expect(blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.implementCount, i.alternatives])).toEqual([["Dumbbell front squat", 2, ["KB"]]]);
   });
 
   it("an amount per option: 50 double-unders or 100 single-unders", () => {
     const { blocks } = parse("For time\n50 x DU/100 x SU");
-    expect(blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.quantity, i.notes])).toEqual([["Double-under", "50", "or 100 x SU"]]);
+    expect(blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.quantity, i.alternatives])).toEqual([["Double-under", "50", ["100 x SU"]]]);
   });
 });
 
@@ -266,5 +266,79 @@ describe("names and efforts before a format", () => {
   it('"x 3 rounds" after work and rest is rounds, even when the stations take turns', () => {
     const { blocks } = parse("Alt. 90 sec On - 30 sec Off x 3 Rounds\n10 x Push-ups\n10 x Air Squats");
     expect(blocks[0]).toMatchObject({ format: "intervals", params: { rounds: 3, stations: 2, work_s: 90, rest_s: 30 } });
+  });
+});
+
+describe("details kept in their own fields (calc spec version 3)", () => {
+  it("one side: (Right Arm), (L Arm - in place), and (Other Arm) after a sided line", () => {
+    const { blocks } = parse("4 Rounds For Time\n12 x DB Snatch (Right Arm)\n8 x DB Overhead Lunges (R Arm - in place)\n12 x DB Snatch (Left Arm)\n21 x DB Snatch (Other Arm)");
+    expect(blocks[0]!.items.map((i) => [i.side, i.notes])).toEqual([["right", ""], ["right", "in place"], ["left", ""], ["right", ""]]);
+  });
+
+  it('"L/R" after an amount is per side; "(L/R)" too', () => {
+    expect(parse("3 x 10 Split squat L/R").blocks[0]!.items[0]!.quantity).toBe("10/10");
+    expect(parse("EMOM 10\n8 x Single KB Reverse Lunge (L/R)").blocks[0]!.items[0]!.quantity).toBe("8/8");
+  });
+
+  it("a cap on a line: (max 40 sec), (max 10 reps)", () => {
+    const { blocks } = parse("EMOM 12\n10 Burpees (max 40 sec)\nMax Rep Strict Pull Ups (max 10 reps)");
+    expect(blocks[0]!.items.map((i) => [i.quantity, i.cap])).toEqual([["10", "40 sec"], ["Max Rep", "10 reps"]]);
+  });
+
+  it("stretching is not counted in planned load; mobility and warm-ups are", () => {
+    expect(parse("F. Stretch and Relax").blocks[0]!.countsInLoad).toBe(false);
+    expect(parse("Cool-down stretch\n2 min Pigeon").blocks[0]!.countsInLoad).toBe(true);
+    expect(parse("Warm-up\n2 rounds\n10 air squats").blocks[0]!.countsInLoad).toBe(true);
+  });
+
+  it("a time box: find a heavy set within it, or the minutes given to technique", () => {
+    const heavy = parse("A. In 12-15 min Find Heaviest 3-4 Rep Back Squat");
+    expect(heavy.blocks[0]).toMatchObject({ format: "sets", params: { time_s: 810 } });
+    expect(heavy.blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.quantity, i.loadEffort])).toEqual([["Back squat", "3-4", "hard"]]);
+    expect(parse("A. 13-16 min To Find 3 Rep Max Deadlift").blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.quantity])).toEqual([["Deadlift", "3"]]);
+    expect(parse("Build to a heavy 5 in 15 min\nBack squat").blocks.length).toBeGreaterThan(0);
+    const technique = parse("A. 12-14 min Technique Work");
+    expect(technique.blocks[0]).toMatchObject({ format: "sets", params: { time_s: 780 }, intent: "skill", title: "Technique Work", items: [] });
+  });
+
+  it("sets building up, one number per set", () => {
+    const { blocks } = parse("A. Bench Press (Building)\n2 x 5 Rep\n2 x 4 Rep\n3 x 3 Rep\n3 x 2 Rep\n2 x 1 Rep");
+    expect(blocks[0]).toMatchObject({ format: "sets", params: { sets: 12 } });
+    expect(blocks[0]!.items.map((i) => [exercise(i.exerciseId), i.quantity, i.loadEffort])).toEqual([["Bench press", "5-5-4-4-3-3-3-2-2-2-1-1", "hard"]]);
+  });
+
+  it("station by station, with rest between stations, in the heading or on a line of its own", () => {
+    const inline = parse("6x 30 sec on, 12 sec off, 90 sec rest between stations\n1. Continuous bike\n2. Air squats\n3. Push-ups");
+    expect(inline.blocks[0]).toMatchObject({ format: "intervals", params: { rounds: 6, work_s: 30, rest_s: 12, stations: 3, by_station: true, rest_between_stations_s: 90 } });
+    const ownLine = parse("30sec ON, 12sec OFF x 6\nWith 90sec rest between stations\n1. Bike\n2. Row");
+    expect(ownLine.blocks[0]).toMatchObject({ format: "intervals", params: { rounds: 6, by_station: true, rest_between_stations_s: 90, stations: 2 } });
+    const emom = parse("EMOM 4 on each station - Rest 90sec between stations\n10 Burpees\n12 cal Row");
+    expect(emom.blocks[0]).toMatchObject({ format: "intervals", params: { rounds: 4, work_s: 60, rest_s: 0, stations: 2, by_station: true, rest_between_stations_s: 90 } });
+  });
+
+  it("ranges of distance, time and reps each side; rest as a range", () => {
+    const { blocks } = parse("For time\n800-1000m Row\n20-30 sec Hollow Hold\n4-8/4-8 x Dbl. KB Split Squat");
+    expect(blocks[0]!.items.map((i) => i.quantity)).toEqual(["800-1000m", "20-30 sec", "4-8/4-8"]);
+    const rest = parse("5 x 5 Back squat\nRest 90-120 sec between sets");
+    expect(rest.blocks[0]!.params.rest_s).toBe(105);
+  });
+});
+
+describe("instructions and rest stations", () => {
+  it('"Use 1 x heavy KB" and "- Next Round -" are notes, not lines', () => {
+    const { blocks, lines: read } = parse("AMRAP 20\nUse 1 x Heavyish KB\n10 x KB Swing\n- Next Round -");
+    expect(blocks[0]!.items).toHaveLength(1);
+    expect(read[1]!.status).toBe("note");
+  });
+
+  it('"Rest" in a list of stations is a station of rest', () => {
+    const { blocks } = parse("40 sec on - 20 sec off x 3\n1. Bike\n2. Burpees\n3. Rest");
+    expect(blocks[0]).toMatchObject({ format: "intervals", params: { stations: 3 } });
+    expect(blocks[0]!.items).toHaveLength(2);
+  });
+
+  it('"@ easy-ish to med tempo": the higher, read with its abbreviation; "med ball" is not an effort', () => {
+    expect(parse("AMRAP 32 min @ easy-ish to med tempo\n10 burpees").blocks[0]!.paceEffort).toBe("moderate");
+    expect(parse("For time\n20 x Med Ball Cleans").blocks[0]!.items[0]!.paceEffort).toBeNull();
   });
 });

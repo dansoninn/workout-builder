@@ -99,3 +99,18 @@ test("once the workout is made, the paste page starts empty again, even when mad
   await page.goto(`/${slug}/builder/paste`);
   await expect(box()).toHaveValue("");
 });
+
+test("alternatives, one side and a cap are kept: pasted, saved, and shown on the line", async ({ page }) => {
+  const { slug } = await ownerWithGym(page);
+  await page.goto(`/${slug}/builder/paste`);
+  const box = page.getByLabel("The workout, as you would write it on the whiteboard").filter({ visible: true });
+  await box.fill("EMOM 12\n10 x Burpees/Sprawls (max 40 sec)\n12 x DB Snatch (Right Arm)");
+  await page.getByRole("button", { name: "Make workout" }).filter({ visible: true }).click();
+  await expect(page).toHaveURL(/\/builder\/[0-9a-f-]{36}$/);
+  await page.getByRole("button", { name: /^Save/ }).filter({ visible: true }).click();
+  await page.reload();
+  const block = page.getByRole("region", { name: "Block A", exact: true }).filter({ visible: true });
+  await expect(block).toContainText("max 40 sec");
+  await expect(block).toContainText("or Sprawls");
+  await expect(block).toContainText("right side only");
+});

@@ -31,6 +31,7 @@ const WORDS: Record<string, { level: EffortKey; axis: EffortAxis }> = {
   easy: { level: "easy", axis: "pace" },
   moderate: { level: "moderate", axis: "pace" },
   medium: { level: "moderate", axis: "pace" },
+  med: { level: "moderate", axis: "pace" },
   steady: { level: "moderate", axis: "pace" },
   heavy: { level: "hard", axis: "loaded" },
   hard: { level: "hard", axis: "pace" },
@@ -40,11 +41,11 @@ const WORDS: Record<string, { level: EffortKey; axis: EffortAxis }> = {
   "all-out": { level: "max", axis: "pace" },
   sprint: { level: "max", axis: "pace" },
 };
-const WORD = String.raw`(light|easy|moderate|medium|steady|heavy|hard|fast|max|all[ -]out|sprint)(?:[ -]?ish)?`;
+const WORD = String.raw`(light|easy|moderate|medium|med(?!\s*ball)|steady|heavy|hard|fast|max|all[ -]out|sprint)(?:[ -]?ish)?`;
 /** "easy to medium", "medium-hard": a span of two words, read as the higher (the class buffer). */
-const SPAN = String.raw`(light|easy|moderate|medium|steady|heavy|hard|fast)(?:[ -]?ish)?\s*(?:to|-|\/)\s*${WORD}`;
+const SPAN = String.raw`(light|easy|moderate|medium|med|steady|heavy|hard|fast)(?:[ -]?ish)?\s*(?:to|-|\/)\s*${WORD}`;
 /** "hard pace", "heavy load": a word that says the axis. */
-const AXIS_WORD = String.raw`(?:\s+(pace|effort|intensity|load|weight))?`;
+const AXIS_WORD = String.raw`(?:\s+(pace|tempo|effort|intensity|load|weight))?`;
 const NUMBER = String.raw`(\d+(?:[.,]\d+)?)`;
 const RANGE = String.raw`${NUMBER}(?:\s*[-–]\s*${NUMBER})?`;
 

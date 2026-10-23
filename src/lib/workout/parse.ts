@@ -4,7 +4,7 @@ import type { EffortKey } from "@/lib/taxonomy";
 
 import { type BlockParams, type DraftBlock, type DraftItem, FORMAT_LABELS, newBlock, newItem, PARTNER_LABELS } from "./draft";
 import { type EffortFound, effortFromPercent, takeEffortText } from "./effort-text";
-import { durationText, loadMeaning, parseDuration, parseLoad, parseQuantity, quantityMeaning } from "./fields";
+import { durationText, loadMeaning, parseCap, parseDuration, parseLoad, parseQuantity, quantityMeaning } from "./fields";
 import { type Library, type LibraryExercise, searchExercises } from "./library";
 import type { BlockFormat } from "./rules";
 
@@ -158,6 +158,7 @@ const UNIT = String.raw`(?:km|k|m|meters?|metres?|cal(?:orie)?s?|reps?|s|secs?|s
 const QUANTITY = new RegExp(
   String.raw`(?:max(?:imum)?(?:\s+(?:cal(?:orie)?s?|reps?|m|meters?|metres?|distance)\b)?` +
     String.raw`|\d+(?:-\d+){2,}` +
+    String.raw`|\d+\s*-\s*\d+\s*\/\s*\d+\s*-\s*\d+` +
     String.raw`|\d+\s*\/\s*\d+(?:\s*(?:cal(?:orie)?s?|m)\b)?` +
     String.raw`|\d*:\d\d` +
     String.raw`|\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?(?:\s*${UNIT})?)`,
@@ -166,13 +167,17 @@ const QUANTITY = new RegExp(
 const QUANTITY_START = new RegExp(String.raw`^(${QUANTITY.source})(?=\s|$|[,.:])`, "i");
 const QUANTITY_END = new RegExp(String.raw`\s(${QUANTITY.source})$`, "i");
 const LOAD_END = /(?:^|\s)((?:[1-4]\s*x\s*)?\d+(?:[.,]\d+)?(?:\s*\/\s*\d+(?:[.,]\d+)?)*\s*kgs?|\d+(?:[.,]\d+)?(?:\s*-\s*\d+(?:[.,]\d+)?)?\s*%|bw|body ?weight)$/i;
-const PER_SIDE = /\s*(?:\b(?:each|per)\s+(?:side|arm|leg)\b|\/\s*(?:side|arm|leg)\b|\be\/s\b)/i;
+const PER_SIDE = /\s*(?:\b(?:each|per)\s+(?:side|arm|leg)\b|\/\s*(?:side|arm|leg)\b|\be\/s\b|\b[lr]\s*\/\s*[rl]\b)/i;
 
 interface ItemParts {
   /** Something written that the app does not read yet (pounds). */
   problems: string[];
   /** "Dbl. KB" = 2, "Single DB" = 1 (calc spec §9.8); null when the line does not say. */
   implementCount: number | null;
+  /** "(Right Arm)", "(L Arm)": one side; "other": the side the line before did not do. */
+  side: "left" | "right" | "other" | null;
+  /** "(max 40 sec)", "(max 10 reps)": a cap on the line, as written. */
+  cap: string | null;
   sets: number | null;
   quantity: string | null;
   words: string;
@@ -190,13 +195,23 @@ function splitItem(original: string): ItemParts {
   const notes: string[] = [];
   const problems: string[] = [];
   let load: string | null = null;
+  let side: ItemParts["side"] = null;
+  let cap: string | null = null;
+  let sidesBoth = false;
   if (/\d\s*(?:lbs?|pounds?|#)(?![a-z])/i.test(s)) problems.push("Pounds are not read yet: write the load in kg");
 
-  // (9/6 kg) is a load; anything else in brackets is a note.
+  // (9/6 kg) is a load; (max 40 sec) a cap; (Right Arm) one side; (L/R) both sides; anything else in brackets is a note.
   s = s.replace(/\(([^)]*)\)/g, (_, inner: string) => {
     const text = inner.trim();
+    const sided = text.match(SIDE);
     if (!load && looksLikeLoad(text)) load = text.replace(/^@\s*/, "");
-    else if (text) notes.push(text);
+    else if (!cap && /^max(?:imum)?\s*\d/i.test(text) && parseCap(text).ok) cap = text.replace(/^max(?:imum)?\s*/i, "");
+    else if (/^[lr]\s*\/\s*[rl]$/i.test(text)) sidesBoth = true;
+    else if (!side && sided) {
+      side = sideOf(sided[1]!);
+      const rest = text.slice(sided[0].length).replace(/^[\s,;:-]+/, "").trim();
+      if (rest) notes.push(rest);
+    } else if (text) notes.push(text);
     return " ";
   });
   // @75-80% · @ 60 kg: the load runs to the end of the line.
@@ -218,7 +233,7 @@ function splitItem(original: string): ItemParts {
     s = s.slice(0, trailingLoad.index).trim();
   }
 
-  const perSide = PER_SIDE.test(s);
+  const perSide = sidesBoth || PER_SIDE.test(s);
   s = s.replace(PER_SIDE, " ").replace(/\s+/g, " ").trim();
 
   // 5 x 5 back squat · back squat 5x5 · 3 x 8-10 DB bench
@@ -276,7 +291,15 @@ function splitItem(original: string): ItemParts {
     })
     .replace(/\s+/g, " ")
     .trim();
-  return { problems, implementCount, sets, quantity, words, load, notes, efforts: found };
+  return { problems, implementCount, side, cap, sets, quantity, words, load, notes, efforts: found };
+}
+
+/** One side, in brackets: "Right Arm", "R Arm - in place", "Left Leg", "Other Arm", "Left or Right Arm". */
+const SIDE = /^(right|left|r|l|other|left or right|right or left|one)\s*(?:arm|leg|side|hand)?\b|^(right|left)$/i;
+
+function sideOf(word: string): ItemParts["side"] {
+  const w = word.toLowerCase();
+  return w === "right" || w === "r" ? "right" : w === "other" ? "other" : "left";
 }
 
 /** Implement words alone ("KB", "Dbl. DB", "dumbbells"): an option that only changes the implement. */
@@ -319,6 +342,8 @@ interface FormatRead {
   totalIntervals?: number;
   /** "x 3 rounds": the count is rounds, said so. */
   roundsSaid?: boolean;
+  /** "In 12-15 min find a heavy 3", "12-14 min technique work": sets within a time box. */
+  timeBox?: boolean;
   alternating: boolean;
   /** What is left after the format: inline lines, or an exercise ("Tabata air squats"). */
   rest: string;
@@ -380,6 +405,11 @@ function readFormat(input: string): FormatRead | null {
     const count = Number(m[3]);
     const totalMinutes = m[4] !== undefined && /^(?:min|')/.test(m[4]);
     make("every", { interval_s: interval ?? undefined, rounds: totalMinutes && interval ? Math.round((count * 60) / interval) : count });
+  } else if (
+    // "In 12-15 min find heaviest 3-4 rep", "12-14 min technique work", "Last 5-10 min": sets within a time box.
+    (m = take(new RegExp(`^(?:in\\s+|last\\s+)?${TIME}(?:\\s*-\\s*${TIME})?\\s*(?:min(?:ute)?s?\\.?|')(?=[\\s:!.-]|$)(?!\\s*(?:amrap|emom|alt|cap|time\\s*cap|rest|on\\b|of\\b|x\\b|every|for\\s*time))`)))
+  ) {
+    make("sets", { time_s: minutesBetween(m[1]!, m[2], problems) ?? undefined }, { timeBox: true });
   } else if ((m = take(/^tabata\b(?:\s*x\s*(\d+))?/))) {
     make("tabata", { rounds: 8 * Number(m[1] ?? 1), work_s: 20, rest_s: 10 });
   } else if ((m = take(/^(\d+(?:-\d+){2,})\b/))) {
@@ -438,6 +468,19 @@ function readFormat(input: string): FormatRead | null {
     const text = restSets[1] ? `${restSets[1]}${restSets[2] ? ` ${restSets[2]}` : ""}` : `${restSets[3]}${restSets[4] ? ` ${restSets[4]}` : ""}`;
     const restSec = seconds(text, "s");
     if (restSec !== null) result.params.rest_s = restSec;
+  }
+  // "EMOM 4 on each station", "Every 90s x 4 (each box)": all intervals of one station, then the next.
+  if (result.format === "every" && take(/[\s(]*(?:on\s+)?each\s+(?:station|box)\b\)?/)) {
+    result.format = "intervals";
+    result.params = { rounds: result.params.rounds, work_s: result.params.interval_s, rest_s: 0, stations: 1, by_station: true };
+  }
+  const betweenStations = take(/(?:with\s+)?(?:rest\s*)?(\d+(?::\d\d)?)\s*(s|secs?|seconds?|min(?:ute)?s?\.?|')?\s*(?:rest\s*)?between\s*(?:stations|boxes)/);
+  if (betweenStations) {
+    const restSec = seconds(`${betweenStations[1]}${betweenStations[2] ? ` ${betweenStations[2].replace(".", "")}` : ""}`, "s");
+    if (result.format === "intervals" && restSec !== null) {
+      result.params.by_station = true;
+      result.params.rest_between_stations_s = restSec;
+    } else problems.push("Rest between stations belongs to an intervals block");
   }
   const stations = take(/(?:x\s*)?(\d+)\s*stations?\b/);
   const alternating = !!altFirst || !!take(/\b(?:alternating|alt)\b\.?/);
@@ -594,6 +637,8 @@ interface Building {
   roundsPending: boolean;
   /** Alternating work and rest: the intervals in all, shared by the stations. */
   totalIntervals: number | null;
+  /** "6. Rest" in a list of stations: a station of rest, with no line. */
+  restStations: number;
   /** Every heading line of the block ("Metcon", then "EMOM 12"). */
   headingLines: ParsedLine[];
   /** The block's efforts, set once its lines are known ("heavy" is Load only if the block has a load). */
@@ -645,11 +690,18 @@ function withoutPartnerWords(text: string): string {
     .replace(/\s{2,}/g, " ");
 }
 
+/** "Find heaviest 3-4 rep back squat", "to find 3 rep max deadlift", "build to a heavy 5": a ramp to a heavy set. */
+const FIND_HEAVY =
+  /^(?:to\s+)?(?:find|build(?:\s+up)?\s+to|work\s+up\s+to|go\s+for)\s+(?:a\s+|your\s+|the\s+)?(?:heaviest|heavy|max(?:imum)?|daily\s+max)?\s*(\d+(?:\s*-\s*\d+)?)\s*(?:-?\s*rep|rm)s?\b(?:\s*max)?\s*(.*)$/i;
+
 /** "First:", "Then straight to:", "Straight to and finish with:", "Followed by:" — a new part of the workout. */
 const SEQUENCE =
   /^(?:first|then(?:\s+(?:straight\s+)?(?:to|into))?|(?:and\s+)?(?:straight\s+(?:to|into)\s*(?:and\s+)?)?finish(?:\s+(?:with|off))?|straight\s+(?:to|into)|followed\s+by|after\s+that|next)\s*[:-]\s*/i;
 
 const NOTE_LINE = /^(?:scale[sd]?|scaling|score|rx|note|notes|coach(?:'s)? notes?|goal|stimulus|target|options?|tip)\s*[:-]/i;
+/** "Use 1 x heavy KB", "Use pair of light DB's", "- Next round -": instructions, kept as notes. */
+const INSTRUCTION_LINE =
+  /^(?:(?:use|using|grab)\s+(?:a\s+|an\s+|one\s+|two\s+|\d\s*x\s+|pair\s+of\s+)?.*\b(?:kbs?|dbs?|kettlebells?|dumbbells?|plates?|barbells?|bands?|boxe?s?|balls?)(?:'?s)?\b.*|-*\s*next\s+round\s*-*)$/i;
 
 export function parseWorkoutText(text: string, library: Library, answers: Answers = {}): ParseResult {
   const lines: ParsedLine[] = [];
@@ -662,13 +714,16 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
   let seenContent = false;
   /** In alternating minutes: the slot the lines are in ("2." starts slot 2). */
   let slot: number | null = null;
+  /** The lift whose sets came from a line ("2 x 5 Rep"), so "2 x 4 Rep" after it builds on it. */
+  let lastSets: { item: DraftItem; building: Building; scheme: number[] } | null = null;
 
   const startBlock = (letter: string | null): Building => {
-    const building: Building = { block: { ...newBlock(), items: [] }, letter, hasFormat: false, intentFrom: "format", scheme: null, headingLine: null, setsFromLine: false, roundsOnly: false, roundsPending: false, totalIntervals: null, headingLines: [], efforts: [] };
+    const building: Building = { block: { ...newBlock(), items: [] }, letter, hasFormat: false, intentFrom: "format", scheme: null, headingLine: null, setsFromLine: false, roundsOnly: false, roundsPending: false, totalIntervals: null, restStations: 0, headingLines: [], efforts: [] };
     blocks.push(building);
     current = building;
     waiting = null;
     slot = null;
+    lastSets = null;
     return building;
   };
   /** The slot for a line of the current block, when its minutes alternate. */
@@ -687,6 +742,16 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
   const addItem = (partText: string, line: ParsedLine, slot: number | null): boolean => {
     const building = current ?? startBlock(null);
     const parts = splitItem(partText);
+    // "2 x 5 Rep", then "2 x 4 Rep", "3 x 3 Rep" under the same lift: sets building up, one number per set.
+    const repsHere = parts.quantity?.match(/^(\d+)(?:\s*reps?)?$/i);
+    const built = lastSets as { item: DraftItem; building: Building; scheme: number[] } | null;
+    if (!parts.words && parts.sets !== null && repsHere && built?.building === building && building.setsFromLine) {
+      built.scheme.push(...Array<number>(parts.sets).fill(Number(repsHere[1])));
+      building.block.params.sets = built.scheme.length;
+      built.item.quantity = built.scheme.join("-");
+      line.items.push({ itemId: built.item.id, words: "", resolution: null, meaning: `+ ${parts.sets} × ${repsHere[1]}` });
+      return true;
+    }
     if (!parts.words && waiting && (parts.quantity || parts.sets !== null)) {
       fill(building, waiting.item, parts, waiting.parsed.resolution, line);
       line.items.push(waiting.parsed);
@@ -699,10 +764,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     const alternatives = parts.words
       ? splitAlternatives(parts.words, (words) => resolveExercise(library, words, answers).kind !== "unmatched")
       : null;
-    if (alternatives) {
-      parts.words = alternatives.first;
-      parts.notes.push(`or ${alternatives.others.join(", ")}`);
-    }
+    if (alternatives) parts.words = alternatives.first;
     const resolution = parts.words ? resolveExercise(library, parts.words, answers) : null;
     // Words without an amount that are no exercise ("Leave nothing behind!"): a note, not a line —
     // except where lines have no amount (work windows, alternating minutes): there it is a station.
@@ -711,6 +773,15 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     const item = { ...newItem(slot), rawLine: partText.trim() };
     if (resolution?.kind === "matched") item.exerciseId = resolution.exercise.id;
     if (parts.notes.length) item.notes = parts.notes.join("; ");
+    // "(Building)": sets that build up to heavy, so the work is at Load Hard.
+    if (parts.notes.some((n) => /^building\b/i.test(n))) item.loadEffort ??= "hard";
+    if (alternatives) item.alternatives = alternatives.others.slice(0, 10);
+    if (parts.cap) item.cap = parts.cap;
+    if (parts.side) {
+      // "(Other Arm)": the side the last one-sided line of the block did not do.
+      const before = [...building.block.items].reverse().find((i) => i.side)?.side;
+      item.side = parts.side === "other" ? (before === "right" ? "left" : "right") : parts.side;
+    }
     fill(building, item, parts, resolution, line);
     building.block.items.push(item);
     items.set(item.id, { item, building });
@@ -745,6 +816,8 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
         block.format = "sets";
         block.params = { sets: parts.sets };
         building.setsFromLine = true;
+        const reps = item.quantity.match(/^(\d+)(?:\s*reps?)?$/i);
+        lastSets = reps ? { item, building, scheme: Array<number>(parts.sets).fill(Number(reps[1])) } : null;
       } else if (block.format !== "sets") {
         line.problems.push(`"${parts.sets} x" inside ${FORMAT_LABELS[block.format]}: read as the amount only`);
       } else if (block.params.sets !== parts.sets) {
@@ -855,7 +928,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
 
     const open = current as Building | null;
-    if (NOTE_LINE.test(tidied)) {
+    if (NOTE_LINE.test(tidied) || INSTRUCTION_LINE.test(tidied)) {
       note(line, open ?? startBlock(null));
       return;
     }
@@ -914,18 +987,32 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
 
     // Rest on its own line: between sets, between rounds, or after the block.
-    const restLine = tidied.match(/^rest\s*:?\s*(\d+(?::\d\d)?\s*(?:s|secs?|seconds?|min(?:ute)?s?|')?)\s*(?:between\s*(sets|rounds))?\.?$/i);
+    const restLine =
+      tidied.match(/^(?:with\s+)?rest\s*:?\s*(\d+(?::\d\d)?(?:\s*-\s*\d+(?::\d\d)?)?\s*(?:s|secs?|seconds?|min(?:ute)?s?\.?|')?)\s*(?:between\s*(sets|rounds|stations|boxes))?\.?$/i) ??
+      tidied.match(/^(?:with\s+)?(\d+(?::\d\d)?(?:\s*-\s*\d+(?::\d\d)?)?\s*(?:s|secs?|seconds?|min(?:ute)?s?\.?|')?)\s*rest\s*(?:between\s*(sets|rounds|stations|boxes))\.?$/i);
     if (restLine && open) {
-      const secs = seconds(restLine[1]!, "min");
-      const between = restLine[2]?.toLowerCase();
-      const fits = secs !== null && (!between || (between === "sets" && open.block.format === "sets") || (between === "rounds" && open.block.format === "intervals"));
+      // "Rest 90-120 sec": a range counts at its middle.
+      const [lowText, highText] = restLine[1]!.replace(/\.$/, "").split(/\s*-\s*/);
+      const unit = (highText ?? lowText!).match(/[a-z']+$/i)?.[0] ?? "";
+      const low = seconds(lowText!.match(/[a-z']/i) ? lowText! : `${lowText}${unit ? ` ${unit}` : ""}`, "min");
+      const high = highText ? seconds(highText, "min") : null;
+      const secs = low !== null && high !== null && high > low ? Math.round((low + high) / 2) : low;
+      let between = restLine[2]?.toLowerCase();
+      if (between === "boxes") between = "stations";
+      const fits =
+        secs !== null &&
+        (!between || (between === "sets" && open.block.format === "sets") || ((between === "rounds" || between === "stations") && open.block.format === "intervals"));
       if (!fits) {
         note(line, open);
         return;
       }
       if (between === "sets") open.block.params.rest_s = secs!;
       else if (between === "rounds") open.block.params.rest_between_rounds_s = secs!;
-      else open.block.restAfterSec = secs!;
+      else if (between === "stations") {
+        open.block.params.by_station = true;
+        open.block.params.rest_between_stations_s = secs!;
+      } else open.block.restAfterSec = secs!;
+      if (high !== null && high > low!) line.problems.push(`${restLine[1]!.trim()}: counted as ${durationText(secs!)}`);
       line.meaning = between ? `Rest ${durationText(secs!)} between ${between}` : `Rest ${durationText(secs!)} after block ${letterOf(blocks.indexOf(open))}`;
       line.block = blocks.indexOf(open);
       return;
@@ -965,6 +1052,8 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
         building.block.intent = heading.intent;
         building.intentFrom = "section";
       }
+      // Stretching is in the session's length, not in planned load (BACKLOG, 2026-10-23).
+      if (/\b(?:stretch|relax)/i.test(heading.section ?? "")) building.block.countsInLoad = false;
       for (const found of efforts.found) building.efforts.push({ found, line });
       building.block.partner = strongerPartner(building.block.partner, readPartner(tidied));
       if (/\bteams? of (?:3|three)\b/i.test(tidied)) line.problems.push("Teams of 3: counted as partners (half each) for now");
@@ -984,6 +1073,28 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
       building.headingLines.push(line);
       line.block = blocks.indexOf(building);
 
+      // A time box: "find heaviest 3-4 rep back squat" is the line; other words are the block's name.
+      if (read?.timeBox) {
+        const words = read.rest.replace(/^[\s:!.-]+|[\s:!.]+$/g, "");
+        const find = words.match(FIND_HEAVY);
+        if (find) {
+          if (addItem(`${find[1]} ${find[2] ?? ""}`, line, null)) {
+            const item = building.block.items.at(-1)!;
+            item.loadEffort ??= "hard";
+            line.efforts.push({ source: find[0].split(/\s+/).slice(0, 2).join(" "), axis: "load", level: "hard" });
+          }
+        } else if (words) {
+          const section = words.match(SECTION_IN_NAME);
+          building.block.title ||= words;
+          if (section && building.intentFrom === "format") {
+            building.block.intent = SECTION_INTENT[section[1]!.toLowerCase().replace(/[^a-z]/g, "")] ?? building.block.intent;
+            building.intentFrom = "section";
+          }
+          if (/\b(?:stretch|relax)/i.test(words)) building.block.countsInLoad = false;
+        }
+        return;
+      }
+
       // Lines written after the heading: "AMRAP 8: 5 KB swing, 10 air squat" or "Tabata air squats".
       const rest = withoutPartnerWords(read ? read.rest : efforts.text).trim();
       const inline = rest.includes(":") ? rest.slice(rest.indexOf(":") + 1) : read || heading.letter ? rest : "";
@@ -997,6 +1108,13 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     else if (heading.itemOfBlock && open?.block.format === "every" && heading.item !== null) {
       open.block.params.alternating = true;
       slot = heading.item;
+    }
+    // "6. Rest" among stations: a station of rest.
+    if (open && (open.block.format === "intervals" || open.block.format === "tabata") && /^(?:rest|recover(?:y)?|active recovery)\.?$/i.test(tidied)) {
+      open.restStations++;
+      line.meaning = "A station of rest";
+      line.block = blocks.indexOf(open);
+      return;
     }
     // "6 x Hang Snatch + 3/3 x S2OH + 6 x Front Squat": lines done back to back, written on one line.
     const lineText = heading.itemOfBlock ? heading.rest : tidied;
@@ -1031,7 +1149,7 @@ export function parseWorkoutText(text: string, library: Library, answers: Answer
     }
     if (block.format === "intervals") {
       const stated = block.params.stations;
-      block.params.stations = Math.max(1, block.items.length);
+      block.params.stations = Math.max(1, block.items.length + building.restStations);
       if (building.totalIntervals !== null) {
         // The stations take turns over the intervals in all: rounds = intervals ÷ stations.
         const perRound = block.params.stations;
