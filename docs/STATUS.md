@@ -89,9 +89,9 @@ Every rule is tested on other gyms' styles too (`parse-notations.test.ts`). On A
 | #26 | Parser: Afrek's notations, written generally | — | merged |
 | #27 | Alternatives, one side, caps, stretching, time boxes (calc version 3) | 003300 | merged, applied |
 | #28 | Library coverage report and proposals; the row rule | — | merged |
-| #29 | Day focus, holidays and closed days, program dates | 003400 | CI |
-| #30 | Program import: the engine and the database | 003500 | CI |
-| #31 | Program import: the workspace and the report | — | CI |
+| #29 | Day focus, holidays and closed days, program dates | 003400 | merged, applied |
+| #30 | Program import: the engine and the database | 003500 | merged, applied |
+| #31 | Program import: the workspace and the report | — | this one |
 
 ## Next
 Your decisions above (the library additions first: they take Afrek's year from 47% to 76% of exercises matched before an import). Then Part 1 of Step 6 when you are ready, and the follow-ups in BACKLOG.
