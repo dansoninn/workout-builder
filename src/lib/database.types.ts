@@ -507,14 +507,14 @@ isOneToOne: false
                   ]
                 },"organizations": {
                   Row: {
-                    "country": string | null,"created_at": string,"id": string,"name": string,"settings": NonNullable<Json>,"slug": string
+                    "country": string | null,"created_at": string,"deleted_at": string | null,"deleted_by": string | null,"id": string,"name": string,"settings": NonNullable<Json>,"slug": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "country"?: string | null,"created_at"?: string,"id"?: string,"name": string,"settings"?: NonNullable<Json>,"slug": string
+                    "country"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"name": string,"settings"?: NonNullable<Json>,"slug": string
                   }
                   Update: {
-                    "country"?: string | null,"created_at"?: string,"id"?: string,"name"?: string,"settings"?: NonNullable<Json>,"slug"?: string
+                    "country"?: string | null,"created_at"?: string,"deleted_at"?: string | null,"deleted_by"?: string | null,"id"?: string,"name"?: string,"settings"?: NonNullable<Json>,"slug"?: string
                   }
                   Relationships: [
                     
@@ -669,6 +669,9 @@ isOneToOne: false
 "create_organization":
 { Args: { "p_country"?: string,"p_name": string,"p_slug": string }; Returns: string
                            },
+"delete_gym":
+{ Args: { "p_name": string,"p_org": string }; Returns: undefined
+                           },
 "delete_my_account":
 { Args: never; Returns: undefined
                            },
@@ -682,6 +685,11 @@ isOneToOne: false
               "display_name": string,"email": string,"joined_at": string,"role": Database["public"]['Enums']["org_role"],"user_id": string
             }[]
                            },
+"my_deleted_gyms":
+{ Args: never; Returns: {
+              "deleted_at": string,"erased_after": string,"id": string,"name": string,"slug": string
+            }[]
+                           },
 "period_metrics":
 { Args: { "p_calc_version": number,"p_from": string,"p_org": string,"p_to": string,"p_tracks": string[] }; Returns: {
               "date": string,"metrics": Json,"title": string,"track_id": string,"workout_id": string
@@ -689,6 +697,9 @@ isOneToOne: false
                            },
 "reorder_programs":
 { Args: { "p_ids": string[],"p_org": string }; Returns: undefined
+                           },
+"restore_gym":
+{ Args: { "p_org": string }; Returns: string
                            },
 "save_gym_exercise":
 { Args: { "p_exercise": Json,"p_org": string }; Returns: string

@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { countryName } from "@/lib/countries";
 import { can } from "@/lib/permissions";
 
+import { DeleteGym } from "./delete-gym";
 import { GymSettingsForm } from "./gym-settings-form";
 
 export const metadata: Metadata = { title: "Gym settings" };
@@ -46,6 +47,14 @@ export default function GymSettingsPage({ params }: PageProps<"/[gym]/settings/g
               <a href={`/${gym.slug}/settings/gym/export`} download className={buttonVariants({ variant: "outline", className: "w-fit" })}>
                 <DownloadIcon /> Export the gym&apos;s data
               </a>
+            </SettingsSection>
+          )}
+          {can.editGym(gym.role) && (
+            <SettingsSection
+              title="Delete the gym"
+              description="For a gym that stops using the app. Export its data first if you want to keep it. Its owners can bring it back for 30 days."
+            >
+              <DeleteGym slug={gym.slug} name={gym.name} />
             </SettingsSection>
           )}
         </div>

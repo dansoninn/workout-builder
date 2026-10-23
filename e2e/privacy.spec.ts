@@ -85,3 +85,52 @@ test("a coach deletes their account; their workout stays with the gym; the only 
   await expect(page.getByRole("button", { name: "Delete my account…" })).toHaveCount(0);
   await expectAccessible(page, "profile with account deletion");
 });
+
+test("an owner deletes the gym: gone for everyone at once; for 30 days it can be brought back as it was", async ({ page, browser }) => {
+  test.setTimeout(120_000);
+  const { slug } = await ownerWithGym(page);
+  await workout(page, slug, "Last class");
+  const { context, page: coach } = await acceptAsNewUser(browser, await invite(page, slug, uniqueEmail("coach"), "Coach"), "Cora Coach");
+
+  await page.goto(`/${slug}/settings/gym`);
+  const name = (await page.getByLabel("Gym name").inputValue()).trim();
+  await page.getByRole("button", { name: "Delete this gym…" }).click();
+  const dialog = page.getByRole("dialog", { name: `Delete ${name}?` });
+  await dialog.getByLabel(`Type ${name} to confirm`).fill("Another gym");
+  await dialog.getByRole("button", { name: "Delete the gym" }).click();
+  await expect(dialog.getByText("Type the gym's name exactly as shown")).toBeVisible();
+  await dialog.getByLabel(`Type ${name} to confirm`).fill(name.toUpperCase());
+  await dialog.getByRole("button", { name: "Delete the gym" }).click();
+
+  // The owner has no other gym: "create your gym", with the deleted one listed.
+  await expect(page).toHaveURL(/\/onboarding$/);
+  const deleted = page.getByRole("region", { name: "Gyms you deleted" });
+  await expect(deleted.getByRole("listitem")).toHaveCount(1);
+  await expect(deleted).toContainText(name);
+  await expect(deleted).toContainText("Erased for good on");
+  await expectAccessible(page, "onboarding with a deleted gym");
+  // Gone for its coach too.
+  await coach.goto(`/${slug}/calendar`);
+  await expect(coach.getByRole("heading", { name: "Gym not found" })).toBeVisible();
+
+  // Brought back, as it was.
+  await deleted.getByRole("button", { name: `Bring back ${name}` }).click();
+  await expect(page).toHaveURL(new RegExp(`/${slug}/builder$`));
+  await page.goto(`/${slug}/calendar`);
+  await expect(page.getByRole("link", { name: /Last class/ })).toBeVisible();
+  await coach.goto(`/${slug}/calendar`);
+  await expect(coach.getByRole("link", { name: /Last class/ })).toBeVisible();
+  await context.close();
+});
+
+test("cookies: only the sign-in session and the last gym opened; nothing that tracks", async ({ page, context }) => {
+  const { slug } = await ownerWithGym(page);
+  for (const path of ["calendar", "analytics", "builder/paste", "settings/profile"]) await page.goto(`/${slug}/${path}`);
+  const cookies = await context.cookies();
+  // Supabase's sign-in cookies: the session (maybe in parts) and the short-lived code verifiers of email links.
+  const session = /^sb-[a-z0-9-]+-auth-token(\.\d+|(-flows?(-[0-9a-f]+)?)?-code-verifier)?$/;
+  expect(cookies.map((c) => c.name).filter((name) => !session.test(name) && name !== "wb_gym")).toEqual([]);
+  // The last gym: its address only, readable by the server only, for this site only.
+  const gym = cookies.find((c) => c.name === "wb_gym");
+  expect(gym).toMatchObject({ value: slug, httpOnly: true, sameSite: "Lax" });
+});

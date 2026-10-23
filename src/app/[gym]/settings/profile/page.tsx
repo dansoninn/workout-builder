@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
+import { DeletedGyms } from "@/components/app/deleted-gyms";
 import { SectionSkeleton, SettingsSection } from "@/components/app/settings";
 import { requireUser } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,9 @@ export default function ProfilePage() {
       <SettingsSection title="Theme" description="Light, dark, or follow this device. Remembered in this browser.">
         <ThemeChoice />
       </SettingsSection>
+      <Suspense>
+        <DeletedGyms className="grid gap-1" />
+      </Suspense>
       <Suspense fallback={<SectionSkeleton rows={1} />}>
         <DeleteSection />
       </Suspense>
