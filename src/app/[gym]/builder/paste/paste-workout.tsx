@@ -67,16 +67,19 @@ export function PasteWorkout({
   const [remember, setRemember] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [creating, startCreating] = useTransition();
+  // The pending save of the text, cancelled once the workout is made: otherwise
+  // a save still waiting would bring the text back for the next paste.
+  const pendingSave = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (edited === null) return;
-    const timer = window.setTimeout(() => {
+    pendingSave.current = window.setTimeout(() => {
       try {
         if (text) localStorage.setItem(storageKey(slug), text);
         else localStorage.removeItem(storageKey(slug));
       } catch {}
     }, 400);
-    return () => window.clearTimeout(timer);
+    return () => window.clearTimeout(pendingSave.current);
   }, [slug, text, edited]);
 
   const deferredText = useDeferredValue(text);
@@ -117,6 +120,7 @@ export function PasteWorkout({
         setError(result.error);
         return;
       }
+      window.clearTimeout(pendingSave.current);
       try {
         localStorage.removeItem(storageKey(slug));
       } catch {}
