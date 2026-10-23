@@ -411,6 +411,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"member_preferences": {
+                  Row: {
+                    "calendar_all_programs": boolean,"calendar_program_id": string | null,"org_id": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "calendar_all_programs"?: boolean,"calendar_program_id"?: string | null,"org_id": string,"user_id"?: string
+                  }
+                  Update: {
+                    "calendar_all_programs"?: boolean,"calendar_program_id"?: string | null,"org_id"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "member_preferences_calendar_program_id_org_id_fkey"
+      columns: ["calendar_program_id","org_id"]
+isOneToOne: false
+      referencedRelation: "tracks"
+      referencedColumns: ["id","org_id"]
+    },{
+      foreignKeyName: "member_preferences_org_id_user_id_fkey"
+      columns: ["org_id","user_id"]
+isOneToOne: true
+      referencedRelation: "memberships"
+      referencedColumns: ["org_id","user_id"]
+    }
+                  ]
                 },"memberships": {
                   Row: {
                     "created_at": string,"org_id": string,"role": Database["public"]['Enums']["org_role"],"user_id": string

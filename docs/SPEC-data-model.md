@@ -112,6 +112,10 @@ Rules (Afrek launch requirement, decisions of 2026-10-23; migration `002600`):
 - **A gym keeps at least one active program** (interpreted from decision 2: with none, nothing could be programmed). Archiving the last active one is refused.
 - **Order:** `position` is the order everywhere (calendar columns, pickers). `reorder_programs(org, ids)` sets it in one statement: owners and head coaches only, and `ids` must be every program of the gym (archived ones too), each once.
 
+### `member_preferences` — a person's own choices in a gym
+`org_id`, `user_id`, `calendar_program_id` (NULL or one of the gym's programs), `calendar_all_programs` (bool; not both). PK `(org_id, user_id)`, FK to `memberships`, so leaving the gym removes them. Private: only that person reads and writes their row, not even the owner (migration `002700`).
+- **The calendar's program** ✅ (decision 3, 2026-10-23): each program is its own space. The calendar shows one program: the one in the address (`?program=<id>` or `?program=all`), else the person's last choice, else the gym's first active program. "All programs", with each program's colour and name, only when chosen. Choosing in the calendar's program menu is remembered; a remembered program archived since falls back to the first active one.
+
 ---
 
 ## 4. Reference taxonomy (global, read-only)
