@@ -57,6 +57,8 @@ muscles, effort_levels, equipment, taxonomy_versions
 ### `profiles`
 `id` (= `auth.users.id`), `display_name`, `locale` (`is` / `en`), `created_at`. `locale` is kept but unused under English only — decided 2026-10-21 ✅.
 
+**Deleting an account** (PLAN-step-6 6c; migration `003000`): `delete_my_account()` deletes the signed-in person's sign-in (`auth.users`), and with it their profile, memberships and preferences. What they wrote stays with each gym: the person columns (`created_by`, `updated_by`, `logged_by`, `invited_by`, `accepted_by`) are `ON DELETE SET NULL`, and the app shows "a former member". Taking a deleted person's name off a row is not an edit: it does not change `updated_at`, writes no audit entry, and is the only way a pinned column (who logged a result) may change (`private.only_names_removed`). The audit log keeps their id (no name). Refused while they are a gym's only owner, naming the gyms.
+
 ### `memberships`
 | column | type | notes |
 |---|---|---|

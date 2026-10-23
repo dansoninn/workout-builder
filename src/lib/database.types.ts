@@ -669,6 +669,9 @@ isOneToOne: false
 "create_organization":
 { Args: { "p_country"?: string,"p_name": string,"p_slug": string }; Returns: string
                            },
+"delete_my_account":
+{ Args: never; Returns: undefined
+                           },
 "invitation_preview":
 { Args: { "p_token": string }; Returns: {
               "email": string,"email_matches": boolean,"gym_name": string,"gym_slug": string,"role": Database["public"]['Enums']["org_role"],"status": string

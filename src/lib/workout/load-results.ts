@@ -44,7 +44,8 @@ export async function loadLoggedResults(orgId: string, blockIds: string[]): Prom
     finish_low_s: r.finish_low_s,
     finish_high_s: r.finish_high_s,
     note: r.note,
-    loggedBy: r.profiles?.display_name ?? null,
+    // No profile to read: the person deleted their account or left the gym.
+    loggedBy: r.profiles ? r.profiles.display_name : "a former member",
     loggedAt: r.created_at,
   }));
 }
