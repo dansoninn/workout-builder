@@ -98,7 +98,7 @@ export function ProgramPicker({
                 </p>
               )}
               <Button type="submit" disabled={ticked.length === 0}>
-                Show
+                Show these programs
               </Button>
             </div>
           </form>
